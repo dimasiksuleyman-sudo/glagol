@@ -21,7 +21,7 @@ Once we reach v1.0, we will commit to supporting the latest major version with s
 
 If you discover a security vulnerability in Glagol, please report it responsibly:
 
-1. **Email:** security@glagol.app *(placeholder — see "Contact" section below for current contact)*
+1. **Email:** d99s9@yandex.ru
 2. **GitHub Security Advisories:** Use the [private vulnerability reporting](https://github.com/dimasiksuleyman-sudo/glagol/security/advisories/new) feature
 3. **Encrypted contact:** PGP key available upon request
 
