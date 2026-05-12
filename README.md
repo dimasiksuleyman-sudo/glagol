@@ -9,7 +9,7 @@
 [![Tauri](https://img.shields.io/badge/Tauri-2.x-24c8db?logo=tauri)](https://tauri.app/)
 [![Rust](https://img.shields.io/badge/Rust-stable-orange?logo=rust)](https://www.rust-lang.org/)
 [![React](https://img.shields.io/badge/React-19-61dafb?logo=react)](https://react.dev/)
-[![Made with love](https://img.shields.io/badge/made_with-♥-red.svg)](https://github.com/glagol-app/glagol)
+[![Made with love](https://img.shields.io/badge/made_with-♥-red.svg)](https://github.com/dimasiksuleyman-sudo/glagol)
 
 [Русский](#-русский) · [English](#-english) · [Disclaimer](#️-disclaimer--юридический-статус)
 
@@ -59,7 +59,7 @@
 
 ### Установка
 
-> 🚧 Проект в активной разработке. Установщик появится в [Releases](https://github.com/glagol-app/glagol/releases) после первого релиза.
+> 🚧 Проект в активной разработке. Установщик появится в [Releases](https://github.com/dimasiksuleyman-sudo/glagol/releases) после первого релиза.
 
 После релиза:
 
