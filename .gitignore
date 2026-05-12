@@ -1,0 +1,154 @@
+# ============================================================================
+# Glagol — .gitignore
+# ============================================================================
+# Stack: Tauri 2.x + React + TypeScript + Rust + pnpm
+# ============================================================================
+
+# ----------------------------------------------------------------------------
+# Node.js / pnpm
+# ----------------------------------------------------------------------------
+node_modules/
+.pnpm-store/
+.pnpm-debug.log*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# pnpm lockfile is committed (it is the source of truth for deps)
+# pnpm-lock.yaml — KEEP
+
+# ----------------------------------------------------------------------------
+# Frontend build artifacts
+# ----------------------------------------------------------------------------
+dist/
+dist-ssr/
+build/
+.vite/
+*.local
+
+# ----------------------------------------------------------------------------
+# Rust / Cargo
+# ----------------------------------------------------------------------------
+# Build output (gigabytes, regenerated locally)
+src-tauri/target/
+target/
+
+# Cargo.lock is committed for binaries (Tauri app is a binary)
+# src-tauri/Cargo.lock — KEEP
+
+# Rust temp files
+**/*.rs.bk
+*.pdb
+
+# ----------------------------------------------------------------------------
+# Tauri runtime
+# ----------------------------------------------------------------------------
+# Generated bundles
+src-tauri/gen/
+src-tauri/WixTools/
+
+# Tauri private signing key (CRITICAL — NEVER COMMIT)
+# Public key goes in tauri.conf.json, private key stays local + in GitHub Secrets
+*.key
+*.pem
+!src-tauri/assets/russiantrustedca.pem
+tauri-signing-key.json
+
+# ----------------------------------------------------------------------------
+# Secrets, credentials, API keys (CRITICAL)
+# ----------------------------------------------------------------------------
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+secrets/
+credentials/
+*.secret
+*.token
+salutespeech-credentials.*
+
+# ----------------------------------------------------------------------------
+# IDE / Editors
+# ----------------------------------------------------------------------------
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# JetBrains
+.idea/
+*.iml
+*.iws
+
+# Visual Studio
+.vs/
+
+# ----------------------------------------------------------------------------
+# OS-specific
+# ----------------------------------------------------------------------------
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+
+# ----------------------------------------------------------------------------
+# Testing / Coverage
+# ----------------------------------------------------------------------------
+coverage/
+*.lcov
+.nyc_output/
+test-results/
+playwright-report/
+
+# ----------------------------------------------------------------------------
+# Logs and dumps
+# ----------------------------------------------------------------------------
+logs/
+*.log
+*.dump
+
+# ----------------------------------------------------------------------------
+# Temporary files
+# ----------------------------------------------------------------------------
+tmp/
+temp/
+.tmp/
+.cache/
+
+# ----------------------------------------------------------------------------
+# Audio cache (local user data, never commit)
+# ----------------------------------------------------------------------------
+audio_cache/
+*.wav
+*.opus
+*.mp3
+!docs/audio-samples/
+!src-tauri/assets/sample.wav
+
+# ----------------------------------------------------------------------------
+# Local development helpers
+# ----------------------------------------------------------------------------
+.scratch/
+TODO.local.md
+NOTES.local.md
+*.local.md
