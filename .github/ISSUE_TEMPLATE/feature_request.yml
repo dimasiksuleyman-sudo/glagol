@@ -1,0 +1,86 @@
+name: 💡 Feature Request
+description: Suggest a new feature or improvement / Предложить новую функцию или улучшение
+title: "[Feature]: "
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting an improvement to Glagol!
+        
+        Спасибо за предложение улучшения Glagol!
+        
+        Before submitting, please check our [roadmap in README](../blob/main/README.md#дорожная-карта) and [existing feature requests](https://github.com/dimasiksuleyman-sudo/glagol/issues?q=is%3Aissue+label%3Aenhancement).
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve? / Какую проблему решает?
+      description: |
+        Describe the problem you're trying to solve, not just the solution.
+        Опишите проблему, которую вы пытаетесь решить, а не только решение.
+      placeholder: "I often need to listen to articles in English mixed with Russian... / Мне часто нужно слушать статьи с английским и русским вперемешку..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution / Предлагаемое решение
+      description: How would you like this to work? / Как вы хотите, чтобы это работало?
+      placeholder: "Add a language detection per paragraph and switch voices automatically... / Добавить определение языка по абзацам с автоматической сменой голоса..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered / Рассмотренные альтернативы
+      description: What other approaches did you consider? / Какие другие подходы вы рассматривали?
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: How important is this to you? / Насколько это важно?
+      options:
+        - "Nice to have / Было бы хорошо"
+        - "Would significantly improve my workflow / Существенно улучшит мой workflow"
+        - "Blocker — I can't use Glagol without this / Блокер — не могу пользоваться без этого"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Estimated scope / Оценка объёма
+      description: How big do you think this change is? / Насколько большое изменение?
+      options:
+        - "Small (UI tweak, copy change) / Малое (правка UI, текста)"
+        - "Medium (new component, refactor) / Среднее (новый компонент, рефакторинг)"
+        - "Large (new feature area) / Большое (целая новая область)"
+        - "Not sure / Не уверен(а)"
+
+  - type: textarea
+    id: mockups
+    attributes:
+      label: Mockups, references, screenshots / Макеты, референсы, скриншоты
+      description: Drag and drop or paste links / Перетащите или вставьте ссылки
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Are you willing to contribute? / Готовы ли вы помочь с реализацией?
+      options:
+        - label: I'd like to implement this myself / Я хочу реализовать это сам(а)
+        - label: I can help with testing / Я могу помочь с тестированием
+        - label: I can help with documentation / Я могу помочь с документацией
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-submission checks / Проверки перед отправкой
+      options:
+        - label: I have searched existing feature requests / Я проверил существующие feature requests
+          required: true
+        - label: This aligns with the project goals stated in README and CLAUDE.md / Это соответствует целям проекта из README и CLAUDE.md
+          required: true
