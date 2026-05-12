@@ -1,0 +1,25 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 Questions & Discussions / Вопросы и обсуждения
+    url: https://github.com/dimasiksuleyman-sudo/glagol/discussions
+    about: |
+      For general questions, usage help, or open-ended ideas, please use GitHub Discussions.
+      Для общих вопросов, помощи с использованием или идей — пожалуйста, используйте GitHub Discussions.
+
+  - name: 🔒 Security Vulnerability / Уязвимость безопасности
+    url: https://github.com/dimasiksuleyman-sudo/glagol/security/advisories/new
+    about: |
+      Please report security issues privately via Security Advisories — NOT public issues.
+      Пожалуйста, сообщайте об уязвимостях приватно через Security Advisories, а НЕ публичными issues.
+
+  - name: 📖 Documentation / Документация
+    url: https://github.com/dimasiksuleyman-sudo/glagol#readme
+    about: |
+      Check the README first — many common questions are answered there.
+      Сначала проверьте README — там есть ответы на многие вопросы.
+
+  - name: 🆘 SaluteSpeech API issues / Проблемы с SaluteSpeech API
+    url: https://developers.sber.ru/
+    about: |
+      For issues with the SaluteSpeech API itself (not Glagol), contact Sberbank directly.
+      По проблемам самого SaluteSpeech API (не Glagol) обращайтесь напрямую в Сбер.
