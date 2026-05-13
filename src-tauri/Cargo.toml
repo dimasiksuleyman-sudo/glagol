@@ -1,9 +1,12 @@
 [package]
 name = "glagol"
 version = "0.1.0"
-description = "A Tauri App"
-authors = ["you"]
+description = "Free local text-to-speech for long Russian documents via SaluteSpeech"
+authors = ["Glagol Contributors"]
 edition = "2021"
+license = "MIT"
+repository = "https://github.com/dimasiksuleyman-sudo/glagol"
+readme = "../README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -18,8 +21,34 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
+# Tauri framework
 tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
+
+# Serialization
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
+# HTTP client (with pure-Rust TLS for embedded certificate pinning)
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json", "stream"] }
+
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# Error handling
+thiserror = "1"
+anyhow = "1"
+
+# Utilities
+uuid = { version = "1", features = ["v4"] }
+base64 = "0.22"
+chrono = "0.4"
+
+# Structured logging (subscriber added in Sprint 5)
+tracing = "0.1"
+
+[dev-dependencies]
+# HTTP mocking for unit tests
+mockito = "1"
+# Multi-thread tokio runtime for tests
+tokio = { version = "1", features = ["full", "test-util"] }
