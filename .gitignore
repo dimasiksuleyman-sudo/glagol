@@ -144,7 +144,15 @@ audio_cache/
 *.mp3
 !docs/audio-samples/
 !src-tauri/assets/sample.wav
-
+# ----------------------------------------------------------------------------
+# Claude Code worktrees and state
+# ----------------------------------------------------------------------------
+# Claude Code creates isolated git worktrees in .claude/worktrees/ for each
+# PR session. After PR merge, worktrees should be removed via
+# `git worktree remove --force <path>` to free disk space (~2-4 GB each).
+# This directory contains build artifacts, node_modules, and tool state —
+# never commit it.
+.claude/
 # ----------------------------------------------------------------------------
 # Local development helpers
 # ----------------------------------------------------------------------------
