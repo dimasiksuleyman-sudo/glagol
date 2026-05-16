@@ -28,8 +28,10 @@
 //! This module does NOT preprocess the input: it does not replace URLs,
 //! decode HTML entities, normalize ellipses, expand abbreviations, or
 //! strip Markdown formatting. See `text::preprocessor` (planned Sprint 3,
-//! tracked in a GitHub issue) for those transformations. The preprocessor
+//! tracked in Issue #5) for those transformations. The preprocessor
 //! is meant to run BEFORE `chunk_text` in the pipeline.
+//!
+//! See Issue #5 for preprocessing pipeline (Sprint 3).
 
 /// Default chunk size for the SaluteSpeech sync API.
 ///
