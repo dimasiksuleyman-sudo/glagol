@@ -145,6 +145,11 @@ fn is_sentence_end_char(ch: char) -> bool {
 
 /// Splits one oversized paragraph by sentence boundaries, packing
 /// adjacent sentences into chunks of `≤ max_chars` characters.
+///
+/// Note: multiple consecutive whitespace characters between
+/// sentences are normalized to a single space in the output.
+/// This is intentional — Sberbank's TTS engine ignores whitespace
+/// runs, and normalization keeps a tight bound on chunk lengths.
 fn chunk_paragraph(paragraph: &str, max_chars: usize) -> Vec<String> {
     if paragraph.chars().count() <= max_chars {
         return vec![paragraph.trim().to_string()];
