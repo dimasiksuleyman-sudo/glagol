@@ -7,6 +7,9 @@ pub mod text;
 // Audio utilities (WAV chunk concatenation).
 pub mod audio;
 
+// Secrets storage via OS-native credential manager.
+pub mod secrets;
+
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
 fn greet(name: &str) -> String {

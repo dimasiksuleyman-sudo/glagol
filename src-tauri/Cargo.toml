@@ -50,8 +50,12 @@ tracing = "0.1"
 # Audio (WAV read/write for chunk concatenation)
 hound = "3.5"
 
+# Secrets storage via OS-native credential manager (Wincred on Windows).
+# `windows-native` is REQUIRED — without it, production silently uses
+# the mock backend and credentials are not persisted between launches.
+keyring = { version = "3", features = ["windows-native"] }
+
 [dev-dependencies]
 # HTTP mocking for unit tests
 mockito = "1"
-# Multi-thread tokio runtime for tests
 tokio = { version = "1", features = ["full", "test-util"] }
