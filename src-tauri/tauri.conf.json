@@ -18,7 +18,8 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src https://ngw.devices.sberbank.ru:9443 https://smartspeech.sber.ru; img-src 'self' data:",
+      "devCsp": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src https://ngw.devices.sberbank.ru:9443 https://smartspeech.sber.ru ws://localhost:1421 http://localhost:1420; img-src 'self' data:"
     }
   },
   "bundle": {

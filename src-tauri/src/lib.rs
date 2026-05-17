@@ -10,17 +10,29 @@ pub mod audio;
 // Secrets storage via OS-native credential manager.
 pub mod secrets;
 
-// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
+// Shared Tauri application state.
+pub mod state;
+
+// Tauri commands exposed to the frontend.
+pub mod commands;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let http_client = salute::http::build_client()
+        .expect("failed to build HTTP client (embedded НУЦ Минцифры cert may be malformed)");
+    let app_state = state::AppState::new(http_client);
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet])
+        .plugin(tauri_plugin_dialog::init())
+        .manage(app_state)
+        .invoke_handler(tauri::generate_handler![
+            commands::credentials::set_credentials,
+            commands::credentials::test_credentials,
+            commands::credentials::delete_credentials,
+            commands::synthesize::synthesize_document,
+            commands::synthesize::write_wav_file,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

@@ -77,7 +77,48 @@ impl VoiceId {
             VoiceId::Sergey => "Pon_24000",
         }
     }
+
+    /// Parse a SaluteSpeech API identifier back into the typed enum.
+    ///
+    /// This is the inverse of [`VoiceId::as_api_id`] and is used by Tauri
+    /// commands that receive `voice` as a `String` from the frontend. The
+    /// frontend sends the API id (e.g. `"Nec_24000"`) because that is the
+    /// stable identifier the user-facing voice picker is keyed by.
+    ///
+    /// Returns `None` for unknown identifiers — callers translate that to
+    /// a typed error (e.g. `"unknown voice: ..."`).
+    pub fn from_api_id(id: &str) -> Option<Self> {
+        Some(match id {
+            "Nec_24000" => VoiceId::Natalia,
+            "Bys_24000" => VoiceId::Boris,
+            "May_24000" => VoiceId::Marfa,
+            "Tur_24000" => VoiceId::Taras,
+            "Ost_24000" => VoiceId::Alexandra,
+            "Pon_24000" => VoiceId::Sergey,
+            _ => return None,
+        })
+    }
 }
+
+impl std::str::FromStr for VoiceId {
+    type Err = UnknownVoiceId;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::from_api_id(s).ok_or_else(|| UnknownVoiceId(s.to_string()))
+    }
+}
+
+/// Error returned when a string fails to parse as a [`VoiceId`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UnknownVoiceId(pub String);
+
+impl std::fmt::Display for UnknownVoiceId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "unknown voice: {}", self.0)
+    }
+}
+
+impl std::error::Error for UnknownVoiceId {}
 
 /// Synthesis client for SaluteSpeech.
 ///
@@ -229,6 +270,42 @@ mod tests {
         assert_eq!(VoiceId::Taras.as_api_id(), "Tur_24000");
         assert_eq!(VoiceId::Alexandra.as_api_id(), "Ost_24000");
         assert_eq!(VoiceId::Sergey.as_api_id(), "Pon_24000");
+    }
+
+    #[test]
+    fn test_voice_id_from_api_id_roundtrip() {
+        // Every VoiceId variant must round-trip through `from_api_id`.
+        let voices = [
+            VoiceId::Natalia,
+            VoiceId::Boris,
+            VoiceId::Marfa,
+            VoiceId::Taras,
+            VoiceId::Alexandra,
+            VoiceId::Sergey,
+        ];
+        for v in voices {
+            assert_eq!(VoiceId::from_api_id(v.as_api_id()), Some(v));
+        }
+    }
+
+    #[test]
+    fn test_voice_id_from_api_id_unknown_returns_none() {
+        assert_eq!(VoiceId::from_api_id("Kin_24000"), None); // English-only Kira
+        assert_eq!(VoiceId::from_api_id("Natalia"), None); // enum variant name, not api id
+        assert_eq!(VoiceId::from_api_id(""), None);
+        assert_eq!(VoiceId::from_api_id("nec_24000"), None); // case-sensitive
+    }
+
+    #[test]
+    fn test_voice_id_from_str_unknown_returns_err() {
+        use std::str::FromStr;
+
+        let ok: Result<VoiceId, _> = VoiceId::from_str("Nec_24000");
+        assert_eq!(ok, Ok(VoiceId::Natalia));
+
+        let err = VoiceId::from_str("FooBar_9999").unwrap_err();
+        assert_eq!(err, UnknownVoiceId("FooBar_9999".to_string()));
+        assert_eq!(err.to_string(), "unknown voice: FooBar_9999");
     }
 
     #[test]
