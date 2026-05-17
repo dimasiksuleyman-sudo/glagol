@@ -47,6 +47,9 @@ chrono = "0.4"
 # Structured logging (subscriber added in Sprint 5)
 tracing = "0.1"
 
+# Audio (WAV read/write for chunk concatenation)
+hound = "3.5"
+
 [dev-dependencies]
 # HTTP mocking for unit tests
 mockito = "1"
