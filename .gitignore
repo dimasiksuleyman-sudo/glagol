@@ -62,8 +62,14 @@ tauri-signing-key.json
 .env.*.local
 .env.production
 .env.development
+# Anywhere a top-level "secrets" / "credentials" folder appears outside
+# src-tauri/src/ — block as a sensitive-data dump. The Rust module at
+# src-tauri/src/secrets/ is source code (Wincred wrapper), NOT a secret
+# store, and is explicitly re-allowed below.
 secrets/
 credentials/
+!src-tauri/src/secrets/
+!src-tauri/src/secrets/**
 *.secret
 *.token
 salutespeech-credentials.*
