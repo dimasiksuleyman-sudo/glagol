@@ -59,11 +59,18 @@ pub async fn synthesize_document(
     text: String,
     voice: String,
     on_progress: Channel<ProgressEvent>,
-) -> Result<Vec<u8>, String> {
-    synthesize_document_impl(&state, text, voice, move |event| {
+) -> Result<tauri::ipc::Response, String> {
+    let bytes = synthesize_document_impl(&state, text, voice, move |event| {
         let _ = on_progress.send(event);
     })
-    .await
+    .await?;
+
+    // Return as binary `Response` instead of `Vec<u8>` so the WAV bytes
+    // travel through the Tauri IPC bridge as a raw ArrayBuffer rather
+    // than a JSON array of numbers. A 21 MB WAV serialised as JSON
+    // would balloon to ~84 MB on the wire and cost seconds of CPU on
+    // both sides; `Response` skips the serde layer entirely.
+    Ok(tauri::ipc::Response::new(bytes))
 }
 
 #[tauri::command]
