@@ -267,6 +267,20 @@ impl SaluteAuth {
 
         Ok(token_response.access_token)
     }
+
+    /// Clear the cached token so the next [`Self::get_token`] call forces
+    /// a fresh OAuth request.
+    ///
+    /// This is the recovery path when SaluteSpeech rejects our access
+    /// token with HTTP 401 *before* the cached `expires_at` has passed
+    /// (Sberbank can revoke tokens server-side). Without this, the cache
+    /// would happily return the same dead token on every retry.
+    ///
+    /// Cheap: takes a write lock just long enough to assign `None`.
+    pub async fn invalidate(&self) {
+        let mut guard = self.token_cache.write().await;
+        *guard = None;
+    }
 }
 
 // =============================================================================
@@ -412,6 +426,35 @@ mod tests {
             }
             other => panic!("expected SaluteError::Api, got: {:?}", other),
         }
+    }
+
+    #[tokio::test]
+    async fn test_invalidate_forces_token_refresh() {
+        let mut server = mockito::Server::new_async().await;
+
+        // Expect exactly TWO calls: one before invalidate(), one after.
+        // Without invalidate the second call would hit the cache and not
+        // touch the network.
+        let mock = server
+            .mock("POST", "/api/v2/oauth")
+            .with_status(200)
+            .with_body(r#"{"access_token":"reissued_token","expires_at":99999999999999}"#)
+            .expect(2)
+            .create_async()
+            .await;
+
+        let auth = make_test_auth(&server);
+
+        let first = auth.get_token().await.expect("first call succeeds");
+        auth.invalidate().await;
+        let second = auth
+            .get_token()
+            .await
+            .expect("post-invalidate call succeeds");
+
+        assert_eq!(first, "reissued_token");
+        assert_eq!(second, "reissued_token");
+        mock.assert_async().await;
     }
 
     #[tokio::test]
