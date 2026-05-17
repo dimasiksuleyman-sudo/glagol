@@ -1,22 +1,28 @@
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+
+import { testCredentials } from "@/lib/tauri";
 
 /**
- * Shared boolean signalling whether the backend currently has valid
- * SaluteSpeech credentials configured (i.e. a working Authorization Key
- * is stored in the OS keyring and was last seen to authenticate).
+ * Tri-state credentials signal mirrored from the backend.
  *
- * Used by the Synthesize page to gate the workflow ("Configure
- * credentials in Settings first") and by Settings to react to the
- * outcome of Save / Test / Delete actions.
+ * - `"unknown"` — first paint, while the mount-time probe is in
+ *   flight. The UI renders a neutral loading view rather than briefly
+ *   showing the "configure first" gate.
+ * - `"valid"` — Sberbank accepted the stored Authorization Key on the
+ *   most recent probe; Synthesize can proceed.
+ * - `"invalid"` — no key configured, or the key exists but failed
+ *   OAuth (revoked, malformed, etc.). The Synthesize page shows a
+ *   gating Card with a link back to Settings.
  *
- * Source of truth for the *backend* state is the keyring + the cached
- * `SaluteAuth` on the Rust side; this context just mirrors the latest
- * known answer so the UI can render without an async round-trip on
- * every keystroke.
+ * Source of truth for the *backend* state is the keyring plus the
+ * cached `SaluteAuth` on the Rust side; this context just mirrors the
+ * latest known answer so the UI doesn't have to await on every render.
  */
+export type CredentialsState = "unknown" | "valid" | "invalid";
+
 interface CredentialsContextValue {
-  hasCredentials: boolean;
-  setHasCredentials: (value: boolean) => void;
+  state: CredentialsState;
+  setState: (next: CredentialsState) => void;
 }
 
 const CredentialsContext = createContext<CredentialsContextValue | undefined>(undefined);
@@ -26,14 +32,27 @@ interface CredentialsProviderProps {
 }
 
 export function CredentialsProvider({ children }: CredentialsProviderProps) {
-  // Initial state is `false` — first paint assumes "not configured".
-  // Phase 3 will add a `useEffect` that calls `testCredentials()` once
-  // on mount and updates this to `true` if Sberbank accepts the cached
-  // key (i.e. the keyring is non-empty AND the AK is still valid).
-  const [hasCredentials, setHasCredentials] = useState<boolean>(false);
+  const [state, setState] = useState<CredentialsState>("unknown");
+
+  // Mount-time probe: ask the backend whether the stored AK still
+  // authenticates with Sberbank. The Settings page can re-trigger this
+  // later via its own Test handler.
+  useEffect(() => {
+    let cancelled = false;
+    testCredentials()
+      .then(() => {
+        if (!cancelled) setState("valid");
+      })
+      .catch(() => {
+        if (!cancelled) setState("invalid");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
-    <CredentialsContext.Provider value={{ hasCredentials, setHasCredentials }}>
+    <CredentialsContext.Provider value={{ state, setState }}>
       {children}
     </CredentialsContext.Provider>
   );

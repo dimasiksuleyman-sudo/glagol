@@ -1,32 +1,70 @@
 import { useState } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+import { useCredentials } from "@/contexts/CredentialsContext";
+import { deleteCredentials, setCredentials, testCredentials } from "@/lib/tauri";
+
 /**
  * Settings page — manage the SaluteSpeech Authorization Key.
  *
- * Phase 2 skeleton: form layout only. The three buttons (Save / Test /
- * Delete) are wired in Phase 3 to call the Tauri commands and update
- * the {@link CredentialsContext} on success.
+ * Three independent actions, each guarded by a single `isLoading`
+ * flag so two requests can't fly at once. The credentials context
+ * mirrors the outcome so the Synthesize page reflects the latest
+ * state without an additional probe.
  */
 export function Settings() {
+  const { state, setState } = useCredentials();
   const [authKey, setAuthKey] = useState<string>("");
-  // Phase 3: replace placeholder with a proper isLoading flag toggled
-  // around each invoke call so the three buttons disable correctly.
-  const isLoading = false;
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  // Placeholder handlers — Phase 3 wires them to setCredentials() etc.
-  function handleSave() {
-    // Phase 3.
+  async function handleSave() {
+    setIsLoading(true);
+    try {
+      await setCredentials(authKey);
+      toast.success("Ключ сохранён. Нажмите «Проверить», чтобы убедиться.");
+      // The backend reset its cached SaluteAuth — we don't know if the
+      // new key works yet, so reset the context to "unknown" until the
+      // user runs Test (or until they navigate elsewhere and the mount
+      // probe re-runs).
+      setState("unknown");
+      setAuthKey("");
+    } catch (err) {
+      toast.error(stringifyError(err));
+    } finally {
+      setIsLoading(false);
+    }
   }
-  function handleTest() {
-    // Phase 3.
+
+  async function handleTest() {
+    setIsLoading(true);
+    try {
+      await testCredentials();
+      toast.success("Ключ работает.");
+      setState("valid");
+    } catch (err) {
+      toast.error(stringifyError(err));
+      setState("invalid");
+    } finally {
+      setIsLoading(false);
+    }
   }
-  function handleDelete() {
-    // Phase 3.
+
+  async function handleDelete() {
+    setIsLoading(true);
+    try {
+      await deleteCredentials();
+      toast.success("Ключ удалён.");
+      setState("invalid");
+    } catch (err) {
+      toast.error(stringifyError(err));
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
@@ -60,6 +98,9 @@ export function Settings() {
               onChange={(event) => setAuthKey(event.target.value)}
               disabled={isLoading}
             />
+            <p className="text-muted-foreground text-xs">
+              Текущий статус: <StatusLabel state={state} />
+            </p>
           </div>
 
           <div className="flex flex-wrap gap-2">
@@ -77,4 +118,21 @@ export function Settings() {
       </Card>
     </div>
   );
+}
+
+function StatusLabel({ state }: { state: ReturnType<typeof useCredentials>["state"] }) {
+  switch (state) {
+    case "unknown":
+      return <span className="text-muted-foreground">проверяем…</span>;
+    case "valid":
+      return <span className="text-foreground font-medium">подтверждён Сбером</span>;
+    case "invalid":
+      return <span className="text-muted-foreground">не настроен или не работает</span>;
+  }
+}
+
+function stringifyError(err: unknown): string {
+  if (typeof err === "string") return err;
+  if (err instanceof Error) return err.message;
+  return String(err);
 }

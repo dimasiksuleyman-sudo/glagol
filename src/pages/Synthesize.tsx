@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { save } from "@tauri-apps/plugin-dialog";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -21,26 +23,66 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 
 import { useCredentials } from "@/contexts/CredentialsContext";
+import { synthesizeDocument, writeWavFile, type ProgressEvent } from "@/lib/tauri";
 import { DEFAULT_VOICE_ID, VOICES } from "@/lib/voices";
-import type { ProgressEvent } from "@/lib/tauri";
 
 /**
  * Synthesize page — paste text, pick a voice, hit "Озвучить и
  * сохранить". The single button runs the full pipeline (chunker →
- * synthesize → wav_join) and immediately opens a native Save As dialog
- * so the resulting WAV lands wherever the user picks.
+ * synthesize → wav_join) and immediately opens a native Save As
+ * dialog so the resulting WAV lands wherever the user picks.
  *
- * Phase 2 skeleton: UI only, no Tauri wiring. Phase 3 connects the
- * button to {@link synthesizeDocument} + {@link writeWavFile}.
+ * Gated by the credentials context: while the mount-time probe is in
+ * flight (`"unknown"`) we render nothing distracting; on `"invalid"`
+ * we point the user at Settings.
  */
 export function Synthesize() {
-  const { hasCredentials } = useCredentials();
+  const { state } = useCredentials();
   const [text, setText] = useState<string>("");
   const [voice, setVoice] = useState<string>(DEFAULT_VOICE_ID);
-  const [isLoading, _setIsLoading] = useState<boolean>(false);
-  const [progress, _setProgress] = useState<ProgressEvent | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [progress, setProgress] = useState<ProgressEvent | null>(null);
 
-  if (!hasCredentials) {
+  async function handleSynthesize() {
+    setIsLoading(true);
+    setProgress(null);
+    try {
+      const bytes = await synthesizeDocument(text, voice, setProgress);
+
+      const path = await save({
+        title: "Сохранить WAV",
+        defaultPath: "glagol.wav",
+        filters: [{ name: "WAV audio", extensions: ["wav"] }],
+      });
+
+      if (path === null) {
+        // User cancelled the dialog. WAV bytes are discarded; the
+        // SaluteSpeech character cost has already been paid.
+        return;
+      }
+
+      await writeWavFile(path, bytes);
+
+      const filename = path.split(/[\\/]/).pop() ?? path;
+      toast.success(`Сохранено: ${filename}`);
+    } catch (err) {
+      toast.error(stringifyError(err));
+    } finally {
+      setIsLoading(false);
+      setProgress(null);
+    }
+  }
+
+  if (state === "unknown") {
+    return (
+      <div className="space-y-6">
+        <Header />
+        <p className="text-muted-foreground text-sm">Загружаем…</p>
+      </div>
+    );
+  }
+
+  if (state === "invalid") {
     return (
       <div className="space-y-6">
         <Header />
@@ -59,11 +101,6 @@ export function Synthesize() {
         </Card>
       </div>
     );
-  }
-
-  function handleSynthesize() {
-    // Phase 3: synthesizeDocument(text, voice, setProgress) →
-    // dialog.save() → writeWavFile(path, bytes) → toast.
   }
 
   const trimmedTextLength = text.trim().length;
@@ -134,8 +171,8 @@ interface ProgressIndicatorProps {
 
 function ProgressIndicator({ event }: ProgressIndicatorProps) {
   // Translate a discriminated ProgressEvent into a [0..100] percentage
-  // plus a Russian status line. Phase 3 will keep this logic identical
-  // — only the call site that supplies `event` becomes real.
+  // plus a Russian status line. Reserve 5% for chunking, 90% for the
+  // per-chunk loop, and 5% for the final join.
   let percent = 0;
   let label = "";
   switch (event.kind) {
@@ -144,7 +181,6 @@ function ProgressIndicator({ event }: ProgressIndicatorProps) {
       label = `Текст разбит на ${event.total.toLocaleString("ru-RU")} фрагментов`;
       break;
     case "synthesizingChunk":
-      // Reserve 5% for chunking, 5% for joining, 90% for synthesis.
       percent = 5 + Math.round((event.current / event.total) * 90);
       label = `Озвучиваем фрагмент ${event.current} из ${event.total}`;
       break;
@@ -159,4 +195,10 @@ function ProgressIndicator({ event }: ProgressIndicatorProps) {
       <p className="text-muted-foreground text-xs">{label}</p>
     </div>
   );
+}
+
+function stringifyError(err: unknown): string {
+  if (typeof err === "string") return err;
+  if (err instanceof Error) return err.message;
+  return String(err);
 }
