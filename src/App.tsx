@@ -1,50 +1,29 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import { invoke } from "@tauri-apps/api/core";
-import "./App.css";
+import { Navigate, Route, Routes } from "react-router-dom";
 
+import { AppShell } from "@/components/layout/AppShell";
+import { Library } from "@/pages/Library";
+import { Settings } from "@/pages/Settings";
+import { Synthesize } from "@/pages/Synthesize";
+
+/**
+ * Top-level route table. Every page sits beneath the {@link AppShell}
+ * layout (sidebar + Outlet); `/` redirects to `/synthesize` as the
+ * default landing page.
+ *
+ * `<BrowserRouter>` lives in {@link ./main.tsx} so the credentials
+ * context provider can sit outside (and survive route changes).
+ */
 function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
-
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke("greet", { name }));
-  }
-
   return (
-    <main className="container">
-      <h1>Welcome to Tauri + React</h1>
-
-      <div className="row">
-        <a href="https://vite.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
-
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          greet();
-        }}
-      >
-        <input
-          id="greet-input"
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="Enter a name..."
-        />
-        <button type="submit">Greet</button>
-      </form>
-      <p>{greetMsg}</p>
-    </main>
+    <Routes>
+      <Route element={<AppShell />}>
+        <Route path="/" element={<Navigate to="/synthesize" replace />} />
+        <Route path="/synthesize" element={<Synthesize />} />
+        <Route path="/library" element={<Library />} />
+        <Route path="/settings" element={<Settings />} />
+        <Route path="*" element={<Navigate to="/synthesize" replace />} />
+      </Route>
+    </Routes>
   );
 }
 
