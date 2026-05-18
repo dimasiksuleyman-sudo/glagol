@@ -42,45 +42,52 @@ export async function deleteCredentials(): Promise<void> {
 
 /**
  * Run the full synthesis pipeline (chunker → loop synthesize →
- * wav_join) and return the resulting WAV bytes.
+ * wav_join), persist the result into the local library, and resolve
+ * with the freshly minted `document_id` (UUID v4).
  *
  * Progress flows through a Tauri `Channel<ProgressEvent>`; the caller
  * receives `Chunked`, then one `SynthesizingChunk` per chunk, and
  * finally `Joining` before resolution.
  *
- * The Rust side returns `tauri::ipc::Response`, which Tauri delivers
- * as an `ArrayBuffer` on the JS side — avoiding the multi-MB JSON
- * array-of-numbers round-trip a plain `Vec<u8>` would incur.
+ * Audio bytes do not cross the IPC boundary — they're written directly
+ * to `%LOCALAPPDATA%\<bundle>\audio_cache\{document_id}.wav` by the
+ * backend, inside the same transaction that inserts the library row.
+ * Use {@link exportAudio} when the user wants a copy at a path they
+ * pick themselves.
  */
 export async function synthesizeDocument(
   text: string,
   voice: string,
   onProgress: (event: ProgressEvent) => void,
-): Promise<Uint8Array> {
+): Promise<string> {
   const channel = new Channel<ProgressEvent>();
   channel.onmessage = onProgress;
-  const buffer = await invoke<ArrayBuffer>("synthesize_document", {
+  return await invoke<string>("synthesize_document", {
     text,
     voice,
     onProgress: channel,
   });
-  return new Uint8Array(buffer);
 }
 
 /**
- * Write WAV bytes to a path the user just chose via `dialog.save()`.
+ * Resolve the absolute filesystem path of a document's cached audio,
+ * ready to be handed to the Tauri asset protocol for playback.
  *
- * Bytes are serialised as a JSON array of numbers because the Tauri 2
- * raw-body API for commands would require encoding the path in an HTTP
- * header — uglier than the wire-cost overhead is worth at MVP scale.
- * A 21 MB WAV takes about a second to serialise on top of the disk
- * write; revisit in Sprint 4 if real-world docs exceed that.
+ * Rejects with a string error if the document does not exist or its
+ * `audio_path` column is `NULL` (Sprint 4 error-row case).
  */
-export async function writeWavFile(path: string, bytes: Uint8Array): Promise<void> {
-  await invoke("write_wav_file", {
-    path,
-    bytes: Array.from(bytes),
-  });
+export async function getAudioPath(documentId: string): Promise<string> {
+  return await invoke<string>("get_audio_path", { documentId });
+}
+
+/**
+ * Copy a document's cached audio to `destPath` (typically chosen by
+ * the user via `dialog.save()`). Backend uses `fs::copy`, so the
+ * original cached file stays in place; this is a pure export, not a
+ * move.
+ */
+export async function exportAudio(documentId: string, destPath: string): Promise<void> {
+  await invoke("export_audio", { documentId, destPath });
 }
 
 export { Channel };
