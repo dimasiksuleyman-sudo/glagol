@@ -24,8 +24,8 @@
 | HTTP client (Rust) | **reqwest + rustls** | Pure-Rust TLS, works with embedded cert |
 | Local database | **SQLite via rusqlite + rusqlite_migration** | Battle-tested, embedded, sync (chose over `tauri-plugin-sql` for security/test reasons) |
 | Secret storage | **keyring-rs** (NOT Stronghold) | Windows Credential Manager, OS-level encryption |
-| PDF parsing | **pdfium-render** | Same lib as Chromium, highest quality |
-| DOCX parsing | **docx-rs** | Active maintenance, correct Cyrillic |
+| PDF parsing | **pdfium-render** | Same lib as Chromium, highest quality. Pdfium shared library downloaded by `build.rs` from `bblanchon/pdfium-binaries` and cached in `OUT_DIR/pdfium/`; path baked in via `PDFIUM_LIBRARY_PATH`. |
+| DOCX parsing | **docx-rust** | Parsing-focused fork (the original `docx-rs` is writer-first); correct Cyrillic |
 | Markdown | **pulldown-cmark** | Fast CommonMark parser |
 | Audio (WAV) | **hound** (synthesis-side) + manual streaming (concat-side) | Simple, predictable; streaming WAV header normalization established in Sprint 1 PR #13 |
 | Async runtime | **tokio** | Tauri default, mature |
@@ -78,20 +78,22 @@ glagol/
 │   │   ├── commands/       # Tauri commands exposed to frontend
 │   │   │   ├── credentials.rs   # set/test/delete with force-bypass cache-first
 │   │   │   ├── synthesize.rs    # synthesize_document returns document_id
-│   │   │   └── storage.rs       # list_documents/get_audio_path/delete_document/export_audio
+│   │   │   ├── storage.rs       # list_documents/get_audio_path/delete_document/export_audio
+│   │   │   └── file.rs          # read_and_parse_file (size/content caps + extension dispatch)
 │   │   ├── salute/         # SaluteSpeech client
 │   │   │   ├── auth.rs     # OAuth flow with embedded cert
 │   │   │   ├── synthesize.rs    # /synthesize endpoint
 │   │   │   ├── errors.rs   # SaluteError enum
 │   │   │   └── http.rs     # shared HTTP client with cert pinning + RqUID
 │   │   ├── parser/         # File parsers (Sprint 4)
-│   │   │   ├── txt.rs
-│   │   │   ├── md.rs
-│   │   │   ├── docx.rs
-│   │   │   └── pdf.rs
+│   │   │   ├── mod.rs           # ParsedDocument + ParseError + try_all dispatcher
+│   │   │   ├── txt.rs           # BOM → UTF-8 strict → Windows-1251 fallback
+│   │   │   ├── md.rs            # pulldown-cmark event filter; code blocks → «фрагмент кода»
+│   │   │   ├── docx.rs          # docx-rust paragraph + table (row-by-row) extraction
+│   │   │   └── pdf.rs           # pdfium-render dynamic bind; scanned PDFs flagged
 │   │   ├── text/
 │   │   │   ├── chunker.rs       # text splitting for API limits
-│   │   │   └── preprocessor.rs  # Sprint 3 work-in-progress (URL/email/abbreviation humanization)
+│   │   │   └── preprocessor.rs  # URL/email/abbreviation humanization (Sprint 3)
 │   │   ├── audio/
 │   │   │   └── wav_join.rs # WAV concatenation with streaming header normalization
 │   │   ├── db/             # SQLite layer
@@ -407,6 +409,8 @@ These quirks repeatedly affect dev sessions:
 
 - **Tauri runtime features require Cargo feature parity.** Enabling `assetProtocol` in `tauri.conf.json` requires `tauri = { features = ["protocol-asset"] }` in `Cargo.toml`. Build script enforces this — discovered runtime in Sprint 2 PR #17.
 
+- **Pdfium DLL distribution.** `src-tauri/build.rs` downloads `chromium/7834` from `bblanchon/pdfium-binaries` on the first build (uses `curl` + `tar` already on every supported host) and caches the unpacked `pdfium.dll` / `libpdfium.so` / `libpdfium.dylib` in `OUT_DIR/pdfium/`. The absolute path is propagated to the compiled binary via the `PDFIUM_LIBRARY_PATH` env var and read in `parser::pdf` via `env!()`. For the Sprint 5 MSI installer, the matching `pdfium.dll` must be bundled alongside the `.exe` (Tauri's NSIS / WiX bundle config picks it up from a known location next to the binary; falls back to `Pdfium::bind_to_system_library()` at runtime if the cached path is missing).
+
 ### Things NOT to repeat
 
 Anti-patterns encountered Sprint 1-2 that should be avoided:
@@ -484,5 +488,5 @@ By contributing, you agree your contributions are licensed under the same terms.
 
 ---
 
-*Last updated: 2026-05-18 (post Sprint 2 closure)*
+*Last updated: 2026-05-19 (Sprint 4 entry — file parsers landed)*
 *Maintained by: Glagol Contributors*
