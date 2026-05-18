@@ -33,8 +33,11 @@ pub async fn set_credentials(
 }
 
 #[tauri::command]
-pub async fn test_credentials(state: tauri::State<'_, AppState>) -> Result<(), String> {
-    test_credentials_impl(&state).await
+pub async fn test_credentials(
+    state: tauri::State<'_, AppState>,
+    force: bool,
+) -> Result<(), String> {
+    test_credentials_impl(&state, force).await
 }
 
 #[tauri::command]
@@ -59,11 +62,33 @@ pub(crate) async fn set_credentials_impl(state: &AppState, auth_key: &str) -> Re
     Ok(())
 }
 
-/// Validate the stored Authorization Key by performing a real OAuth
-/// handshake. On success, caches the resulting [`SaluteAuth`] in state
-/// so the next `synthesize_document` call reuses it (and its token
-/// cache).
-pub(crate) async fn test_credentials_impl(state: &AppState) -> Result<(), String> {
+/// Validate the stored Authorization Key. With `force = false` (the
+/// mount-time probe), returns `Ok(())` immediately if we already
+/// authenticated this process lifetime — the in-memory
+/// [`SaluteAuth`] in `state.salute_auth` is treated as a positive
+/// signal and Sberbank is not contacted. With `force = true` (the
+/// user-initiated Settings → Test button), the cache is bypassed and
+/// a real OAuth handshake is performed; on success the resulting
+/// [`SaluteAuth`] is cached so the next `synthesize_document` call
+/// reuses it (and its token cache).
+///
+/// Why cache-first: Sprint 1 always performed the OAuth call. Any
+/// transient error on the mount-time probe (Ctrl+R refresh of the
+/// dev WebView, page navigation, brief network blip) mapped the
+/// frontend `CredentialsContext` to `"invalid"` even though the
+/// keyring entry was perfectly valid. Trusting our own
+/// process-lifetime cache for the probe path removes that false
+/// negative without weakening the explicit-revalidation path.
+pub(crate) async fn test_credentials_impl(state: &AppState, force: bool) -> Result<(), String> {
+    if !force {
+        let guard = state.salute_auth.lock().await;
+        if guard.is_some() {
+            return Ok(());
+        }
+        // Guard drops here at end of `if` block before the keyring
+        // call below, so the network roundtrip never holds the lock.
+    }
+
     let auth_key = keyring::get_auth_key()
         .map_err(|e| e.to_string())?
         .ok_or_else(|| "no credentials configured".to_string())?;
@@ -212,10 +237,69 @@ mod tests {
         init_mock();
         let state = fresh_state();
 
-        let err = test_credentials_impl(&state).await.unwrap_err();
+        // force=true is semantically irrelevant here (cache is empty),
+        // but explicit value avoids the implicit-default trap if the
+        // signature ever changes again.
+        let err = test_credentials_impl(&state, true).await.unwrap_err();
         assert!(
             err.contains("no credentials configured"),
             "expected 'no credentials configured', got: {err}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_credentials_uses_cache_when_force_false_and_auth_cached() {
+        // Mount-time probe contract: if SaluteAuth is already cached,
+        // return Ok without touching the network. Removing the
+        // cache-first short-circuit in the impl makes this test fail
+        // (the placeholder key seeded below would force a real OAuth
+        // call to the hardcoded Sberbank URL, which then errors out).
+        init_mock();
+        let state = fresh_state();
+        seed_state_with_auth(&state).await;
+
+        test_credentials_impl(&state, false)
+            .await
+            .expect("force=false with cached auth must succeed via cache");
+
+        assert!(
+            state.salute_auth.lock().await.is_some(),
+            "cached auth must remain in place after a cache-hit probe"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_credentials_skips_cache_when_force_true() {
+        // User-initiated revalidation must bypass the cache. The
+        // keyring is empty under the mock backend (per-Entry state
+        // isn't shared with seed_state_with_auth's placeholder), so
+        // the full path falls through to `no credentials configured`.
+        // Reaching that error at all proves the cache check was
+        // skipped — otherwise we'd have returned Ok on the cache hit.
+        init_mock();
+        let state = fresh_state();
+        seed_state_with_auth(&state).await;
+
+        let err = test_credentials_impl(&state, true).await.unwrap_err();
+        assert!(
+            err.contains("no credentials configured"),
+            "force=true must bypass cache and hit the keyring path, got: {err}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_credentials_full_oauth_path_when_no_cache_and_force_false() {
+        // The cache-first branch must only short-circuit when the
+        // cache is populated. With an empty `salute_auth`, force=false
+        // still has to proceed to the keyring + OAuth flow.
+        init_mock();
+        let state = fresh_state();
+        // Deliberately no seed_state_with_auth — salute_auth is None.
+
+        let err = test_credentials_impl(&state, false).await.unwrap_err();
+        assert!(
+            err.contains("no credentials configured"),
+            "force=false with empty cache must proceed to keyring path, got: {err}"
         );
     }
 }
