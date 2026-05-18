@@ -17,3 +17,12 @@ export const VOICES: readonly Voice[] = [
 
 /** Default voice selected on first visit to the Synthesize page. */
 export const DEFAULT_VOICE_ID = "Nec_24000";
+
+/**
+ * Look up the Russian display label for a SaluteSpeech voice API id.
+ * Falls back to the raw id if the voice isn't in our catalogue —
+ * forward-safe for new voices Sberbank may roll out.
+ */
+export function getVoiceLabel(voiceApiId: string): string {
+  return VOICES.find((v) => v.id === voiceApiId)?.label ?? voiceApiId;
+}
