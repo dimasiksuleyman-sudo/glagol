@@ -6,5 +6,6 @@
 //! layer serializes errors to strings on the JavaScript side anyway.
 
 pub mod credentials;
+pub mod file;
 pub mod storage;
 pub mod synthesize;
