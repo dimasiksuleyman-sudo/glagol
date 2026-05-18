@@ -197,7 +197,8 @@ mod tests {
 
     fn fresh_state() -> AppState {
         let client = http::build_client().expect("client builds");
-        AppState::new(client)
+        let conn = crate::db::test_connection();
+        AppState::new(client, conn)
     }
 
     fn noop_progress(_event: ProgressEvent) {}
