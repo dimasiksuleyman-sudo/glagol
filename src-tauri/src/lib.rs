@@ -54,7 +54,6 @@ pub fn run() {
             commands::credentials::test_credentials,
             commands::credentials::delete_credentials,
             commands::synthesize::synthesize_document,
-            commands::synthesize::write_wav_file,
             commands::storage::get_audio_path,
             commands::storage::export_audio,
         ])
