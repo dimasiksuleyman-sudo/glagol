@@ -24,12 +24,23 @@ export async function setCredentials(authKey: string): Promise<void> {
 }
 
 /**
- * Perform a real OAuth handshake against Sberbank to confirm the
- * stored key works. Resolves on success; rejects with a string error
- * otherwise (no credentials, network failure, invalid AK, etc.).
+ * Check that credentials are usable.
+ *
+ * - `force = false` (the default — mount-time probe path): if the
+ *   backend has already authenticated this process lifetime, returns
+ *   immediately without contacting Sberbank. This protects the
+ *   `CredentialsContext` mount-time probe from transient network
+ *   errors (Ctrl+R refresh of the dev WebView, page navigation)
+ *   falsely mapping a valid key to `"invalid"`.
+ * - `force = true` (the Settings → Test button path): bypass the
+ *   cache and perform a real OAuth handshake. Used when the user
+ *   explicitly asks to revalidate.
+ *
+ * Rejects with a string error otherwise (no credentials, network
+ * failure, invalid AK, etc.).
  */
-export async function testCredentials(): Promise<void> {
-  await invoke("test_credentials");
+export async function testCredentials(force = false): Promise<void> {
+  await invoke("test_credentials", { force });
 }
 
 /**

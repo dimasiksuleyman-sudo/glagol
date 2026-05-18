@@ -43,7 +43,7 @@ export function Settings() {
   async function handleTest() {
     setIsLoading(true);
     try {
-      await testCredentials();
+      await testCredentials(true);
       toast.success("Ключ работает.");
       setState("valid");
     } catch (err) {

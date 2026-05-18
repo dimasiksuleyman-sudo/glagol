@@ -39,7 +39,7 @@ export function CredentialsProvider({ children }: CredentialsProviderProps) {
   // later via its own Test handler.
   useEffect(() => {
     let cancelled = false;
-    testCredentials()
+    testCredentials(false)
       .then(() => {
         if (!cancelled) setState("valid");
       })
