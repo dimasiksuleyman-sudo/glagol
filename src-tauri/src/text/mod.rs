@@ -1,10 +1,12 @@
 //! Text processing utilities.
 //!
-//! Currently exposes [`chunker`] for splitting long UTF-8 text into pieces
-//! small enough for the SaluteSpeech sync API (4000-char limit per request).
+//! - [`preprocessor`] humanises mechanical patterns (URLs, emails,
+//!   common abbreviations) before synthesis so the audio flows naturally.
+//! - [`chunker`] splits long UTF-8 text into pieces small enough for
+//!   the SaluteSpeech sync API (4000-char limit per request).
 //!
-//! A `preprocessor` module (URL replacement, abbreviation expansion, HTML
-//! entity decoding, etc.) is planned for Sprint 3 and will run BEFORE
-//! the chunker on the pipeline.
+//! Pipeline order in `synthesize_document_impl`: `preprocessor` →
+//! `chunker` → loop synthesize → wav_join.
 
 pub mod chunker;
+pub mod preprocessor;

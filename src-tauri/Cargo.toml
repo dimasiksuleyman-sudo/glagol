@@ -51,6 +51,11 @@ tracing = "0.1"
 # Audio (WAV read/write for chunk concatenation)
 hound = "3.5"
 
+# Text preprocessing (URL/email regex; Tier 1 abbreviation expansion uses
+# plain str::replace, not regex). Default Unicode-aware features keep
+# `\b` working correctly around Cyrillic.
+regex = "1"
+
 # Secrets storage via OS-native credential manager (Wincred on Windows).
 # `windows-native` is REQUIRED — without it, production silently uses
 # the mock backend and credentials are not persisted between launches.
