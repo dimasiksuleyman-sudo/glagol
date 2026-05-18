@@ -56,6 +56,12 @@ hound = "3.5"
 # the mock backend and credentials are not persisted between launches.
 keyring = { version = "3", features = ["windows-native"] }
 
+# Local database. `bundled` compiles SQLite statically (zero system deps,
+# critical for the MSI installer). `serde_json` enables JSON column types
+# in case future migrations need them.
+rusqlite = { version = "0.39", features = ["bundled", "serde_json"] }
+rusqlite_migration = "2.5"
+
 [dev-dependencies]
 # HTTP mocking for unit tests
 mockito = "1"

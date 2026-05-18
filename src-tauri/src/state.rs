@@ -13,7 +13,9 @@
 //!   read or replace the `Option` — never across the network calls
 //!   that use the resulting `Arc<SaluteAuth>`.
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
+
+use rusqlite::Connection;
 
 use crate::salute::auth::SaluteAuth;
 
@@ -34,14 +36,24 @@ pub struct AppState {
     /// are `async` and may await with the guard held briefly during
     /// get-or-insert.
     pub salute_auth: tokio::sync::Mutex<Option<Arc<SaluteAuth>>>,
+
+    /// Application database connection.
+    ///
+    /// `std::sync::Mutex` (not `tokio::sync::Mutex`) because rusqlite is
+    /// synchronous — every DB call would have to `.await` the lock for no
+    /// benefit. Single-user app, sub-millisecond operations, no contention.
+    /// Eagerly initialised by the Tauri setup hook (see `lib.rs::run`);
+    /// migrations must succeed at app start or the app refuses to launch.
+    pub db: Mutex<Connection>,
 }
 
 impl AppState {
     /// Construct fresh state with no auth configured.
-    pub fn new(http_client: reqwest::Client) -> Self {
+    pub fn new(http_client: reqwest::Client, db: Connection) -> Self {
         Self {
             http_client,
             salute_auth: tokio::sync::Mutex::new(None),
+            db: Mutex::new(db),
         }
     }
 }
