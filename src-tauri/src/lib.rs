@@ -18,6 +18,9 @@ pub mod db;
 // Filesystem path resolution helpers (audio cache root, database path).
 pub mod paths;
 
+// File parsers for the Synthesize page file picker (TXT/MD/DOCX/PDF).
+pub mod parser;
+
 // Shared Tauri application state.
 pub mod state;
 
@@ -58,6 +61,7 @@ pub fn run() {
             commands::storage::export_audio,
             commands::storage::list_documents,
             commands::storage::delete_document,
+            commands::file::read_and_parse_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

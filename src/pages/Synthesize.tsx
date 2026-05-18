@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { save } from "@tauri-apps/plugin-dialog";
+import { open, save } from "@tauri-apps/plugin-dialog";
 import { toast } from "sonner";
+import { FileUp } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -22,9 +23,11 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
+import { ScannedPdfDialog } from "@/components/ScannedPdfDialog";
 import { useCredentials } from "@/contexts/CredentialsContext";
 import {
   exportAudio,
+  readAndParseFile,
   synthesizeDocument,
   type ProgressEvent,
 } from "@/lib/tauri";
@@ -55,6 +58,11 @@ export function Synthesize() {
   // synthesis kick-off so the button never points at a stale id.
   const [lastDocumentId, setLastDocumentId] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState<boolean>(false);
+  // File picker state. `isLoadingFile` disables the picker button while
+  // the parse IPC is in flight; `scannedPdfOpen` drives the OCR-disclaimer
+  // modal when the PDF parser returns is_scanned_pdf = true.
+  const [isLoadingFile, setIsLoadingFile] = useState<boolean>(false);
+  const [scannedPdfOpen, setScannedPdfOpen] = useState<boolean>(false);
 
   async function handleSynthesize() {
     setIsLoading(true);
@@ -75,6 +83,45 @@ export function Synthesize() {
     } finally {
       setIsLoading(false);
       setProgress(null);
+    }
+  }
+
+  async function handlePickFile() {
+    setIsLoadingFile(true);
+    try {
+      const picked = await open({
+        multiple: false,
+        directory: false,
+        title: "Выберите файл",
+        filters: [
+          { name: "Поддерживаемые", extensions: ["txt", "md", "docx", "pdf"] },
+          { name: "Все файлы", extensions: ["*"] },
+        ],
+      });
+      if (picked === null) return; // user cancelled — preserve current textarea
+
+      // With `multiple: false` the plugin returns a single string; the
+      // array branch is here only to satisfy strict typing for older
+      // Tauri shapes and is unreachable at runtime.
+      const filePath = typeof picked === "string" ? picked : picked[0];
+
+      const parsed = await readAndParseFile(filePath);
+
+      if (parsed.is_scanned_pdf) {
+        setScannedPdfOpen(true);
+        return; // leave the textarea untouched
+      }
+
+      setText(parsed.text);
+      const chars = parsed.text.length;
+      toast.success(`Файл загружен (${chars.toLocaleString("ru-RU")} симв.)`);
+    } catch (err) {
+      // Backend errors come back as Russian-language strings already
+      // (file too big, content too long, parse error). Surface them
+      // directly; the textarea is preserved either way.
+      toast.error(stringifyError(err));
+    } finally {
+      setIsLoadingFile(false);
     }
   }
 
@@ -140,7 +187,19 @@ export function Synthesize() {
       <Card>
         <CardContent className="space-y-4 pt-6">
           <div className="space-y-2">
-            <Label htmlFor="text">Текст</Label>
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="text">Текст</Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handlePickFile}
+                disabled={isLoading || isLoadingFile}
+              >
+                <FileUp className="mr-1 h-4 w-4" />
+                {isLoadingFile ? "Открываем…" : "Выбрать файл"}
+              </Button>
+            </div>
             <Textarea
               id="text"
               rows={12}
@@ -188,6 +247,8 @@ export function Synthesize() {
           {progress !== null && <ProgressIndicator event={progress} />}
         </CardContent>
       </Card>
+
+      <ScannedPdfDialog open={scannedPdfOpen} onOpenChange={setScannedPdfOpen} />
     </div>
   );
 }

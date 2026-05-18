@@ -141,4 +141,41 @@ export async function deleteDocument(documentId: string): Promise<void> {
   await invoke("delete_document", { documentId });
 }
 
+/**
+ * Outcome of a successful file parse. Mirrors `parser::ParsedDocument`
+ * on the Rust side; serde uses field names as-is (snake_case) so the
+ * shape lines up 1:1 over the IPC boundary.
+ *
+ * `is_scanned_pdf` is the only non-obvious field: it is `true` only
+ * when the PDF parser extracted no usable text (typical of image-only
+ * scanned documents). The frontend uses it to show the OCR disclaimer
+ * dialog instead of loading an empty textarea.
+ */
+export interface ParsedDocument {
+  text: string;
+  is_scanned_pdf: boolean;
+  /** `"txt" | "md" | "docx" | "pdf"` */
+  source_format: string;
+}
+
+/**
+ * Read a file from disk and parse it according to its extension
+ * (TXT/MD/DOCX/PDF). Unknown extensions fall through to a try-all
+ * dispatcher (the "Все файлы" escape hatch in the file picker).
+ *
+ * Two server-side limits are enforced before the parsed content is
+ * returned:
+ *
+ * - **10 MB** file size — rejected pre-parse via `fs::metadata`
+ * - **500 000** characters of extracted text — rejected post-parse
+ *   via `chars().count()` (Cyrillic counted per letter, not per byte)
+ *
+ * Failures (file too big, content too long, parse error, missing
+ * file) reject with a Russian-language string suitable for direct
+ * toast display.
+ */
+export async function readAndParseFile(path: string): Promise<ParsedDocument> {
+  return await invoke<ParsedDocument>("read_and_parse_file", { path });
+}
+
 export { Channel };
