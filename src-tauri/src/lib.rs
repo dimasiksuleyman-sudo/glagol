@@ -18,6 +18,9 @@ pub mod db;
 // Filesystem path resolution helpers (audio cache root, database path).
 pub mod paths;
 
+// File parsers for the Synthesize page file picker (TXT/MD/DOCX/PDF).
+pub mod parser;
+
 // Shared Tauri application state.
 pub mod state;
 
