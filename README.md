@@ -46,20 +46,30 @@
 - 🎓 **Студентам и исследователям**, чтобы слушать научные статьи
 - 🎧 **Тем, кто переучивает мозг** воспринимать через аудио
 
-### Возможности
+### Что уже работает (Sprint 1–3a, версии `alpha` / `rc.1` / `rc.2`)
 
-- 🎙️ **6+ нейросетевых голосов** на русском
-- 📁 **4 формата ввода:** TXT, Markdown, Word (.docx), PDF
-- 📚 **Локальная библиотека** прослушанных документов с поиском
-- ▶️ **Возобновление прослушивания** с точки остановки
-- 🎚️ **Скорость воспроизведения** от 0.5x до 3x
-- 🌙 **Темная и светлая темы**
-- 🖱️ **Drag & drop** файлов
-- 🔒 **Безопасность:** API-ключ в Windows Credential Manager, тексты не покидают вашу машину (кроме отправки в SaluteSpeech)
+- 🎙️ **7 нейросетевых голосов** на русском (плюс один англоязычный)
+- 📋 **Вставка текста** для синтеза — paste-and-go
+- 📚 **Локальная библиотека** прослушанных документов с автоматическим сохранением
+- ▶️ **Воспроизведение** через нативный аудио-плеер с потоковой передачей из локального кэша
+- 🎚️ **Скорость воспроизведения** 0.5x–2x (через нативные элементы управления)
+- 💾 **Экспорт аудио** в WAV-файл в любую папку
+- 🗑️ **Управление библиотекой** — удаление документов одним кликом
+- 🧹 **Гуманизация текста** — URL'ы, email-адреса и распространённые аббревиатуры (`т.е.`, `и т.д.`, `т.к.`) произносятся естественно, а не побуквенно
+- 🔒 **Безопасность:** Authorization Key хранится в Windows Credential Manager, тексты не покидают вашу машину (кроме отправки в SaluteSpeech для синтеза)
+
+### Что планируется
+
+- 📁 **4 формата ввода:** TXT, Markdown, Word (.docx), PDF — *Sprint 4*
+- 🖱️ **Drag & drop** файлов — *Sprint 4*
+- ▶️ **Возобновление прослушивания** с точки остановки — *Sprint 5*
+- 🌙 **Тёмная и светлая темы** — *Sprint 5*
+- 🔍 **Поиск по библиотеке** — *Sprint 5+*
+- 📦 **Подписанный MSI-установщик** для публичного релиза — *Sprint 5*
 
 ### Установка
 
-> 🚧 Проект в активной разработке. Установщик появится в [Releases](https://github.com/dimasiksuleyman-sudo/glagol/releases) после первого релиза.
+> 🚧 Проект в активной разработке. Достигнуты внутренние milestone'ы `v0.1.0-alpha` (Sprint 1), `v0.1.0-rc.1` (Sprint 2), `v0.1.0-rc.2` (Sprint 3a). Подписанный установщик появится в [Releases](https://github.com/dimasiksuleyman-sudo/glagol/releases) после Sprint 5 (первый публичный релиз `v0.1.0`).
 
 После релиза:
 
@@ -74,21 +84,22 @@
 - **Rust** — backend (логика, парсинг, аудио)
 - **React 19 + TypeScript** — frontend
 - **Tailwind CSS + shadcn/ui** — стили и компоненты
-- **SQLite** — локальная база данных
+- **SQLite** (через `rusqlite` + `rusqlite_migration`) — локальная база данных
+- **Tauri Asset Protocol** — потоковая передача аудио из локального кэша
 - **SaluteSpeech API** — синтез речи
 
 ### Дорожная карта
 
 - [x] Sprint 0: Setup проекта
-- [ ] Sprint 1: Backend клиент SaluteSpeech
-- [ ] Sprint 2: Локальное хранилище + UI библиотеки
-- [ ] Sprint 3: Парсинг файлов
-- [ ] Sprint 4: Плеер + кэш
-- [ ] Sprint 5: Polish + CI/CD
-- [ ] v0.1.0 Release
+- [x] Sprint 1: Backend клиент SaluteSpeech + минимальный UI (`v0.1.0-alpha`)
+- [x] Sprint 2: Локальное хранилище + UI библиотеки + asset protocol playback (`v0.1.0-rc.1`)
+- [x] Sprint 3a: Препроцессор текста (URL/email/аббревиатуры) (`v0.1.0-rc.2`)
+- [ ] Sprint 4: Парсинг файлов (TXT, MD, DOCX, PDF)
+- [ ] Sprint 5: Плеер + кэш + Polish + CI/CD + первый публичный релиз
+- [ ] **v0.1.0 Release**
 - [ ] Sprint 6: Async синтез для больших документов
 - [ ] Sprint 7: SSML-редактор, EPUB
-- [ ] v1.0.0 Release
+- [ ] **v1.0.0 Release**
 
 ### Вклад в проект
 
@@ -118,20 +129,30 @@ Existing Russian TTS solutions have gaps:
 
 **Glagol combines the best:** quality neural voices from Sber + local library of synthesized documents + resume playback + completely free for most users.
 
-### Features
+### What already works (Sprint 1–3a, `alpha` / `rc.1` / `rc.2` milestones)
 
-- 🎙️ **6+ neural voices** in Russian
-- 📁 **4 input formats:** plain text, Markdown, Word (.docx), PDF
-- 📚 **Local library** of synthesized documents with search
-- ▶️ **Resume playback** from where you stopped
-- 🎚️ **Playback speed** 0.5x–3x
-- 🌙 **Dark and light themes**
-- 🖱️ **Drag & drop** files
-- 🔒 **Security:** API key stored in Windows Credential Manager, your texts never leave your machine (except for synthesis requests to SaluteSpeech)
+- 🎙️ **7 neural voices** in Russian (plus one English voice)
+- 📋 **Paste text** for synthesis — paste-and-go workflow
+- 📚 **Local library** of synthesized documents with automatic saving
+- ▶️ **Playback** via native audio player with streaming from local cache
+- 🎚️ **Playback speed** 0.5x–2x (via native controls)
+- 💾 **Audio export** to WAV file to any folder
+- 🗑️ **Library management** — single-click document deletion
+- 🧹 **Text humanization** — URLs, emails, and common Russian abbreviations (`т.е.`, `и т.д.`, `т.к.`) are spoken naturally, not letter-by-letter
+- 🔒 **Security:** Authorization Key stored in Windows Credential Manager; your texts never leave your machine (except for synthesis requests to SaluteSpeech)
+
+### Planned features
+
+- 📁 **4 input formats:** plain text, Markdown, Word (.docx), PDF — *Sprint 4*
+- 🖱️ **Drag & drop** files — *Sprint 4*
+- ▶️ **Resume playback** from where you stopped — *Sprint 5*
+- 🌙 **Dark and light themes** — *Sprint 5*
+- 🔍 **Library search** — *Sprint 5+*
+- 📦 **Signed MSI installer** for public release — *Sprint 5*
 
 ### Installation
 
-> 🚧 Project is in active development. Installer will appear in [Releases](https://github.com/dimasiksuleyman-sudo/glagol/releases) after the first release.
+> 🚧 Project is in active development. Internal milestones reached: `v0.1.0-alpha` (Sprint 1), `v0.1.0-rc.1` (Sprint 2), `v0.1.0-rc.2` (Sprint 3a). Signed installer will appear in [Releases](https://github.com/dimasiksuleyman-sudo/glagol/releases) after Sprint 5 (first public release `v0.1.0`).
 
 ### Tech Stack
 
@@ -139,7 +160,8 @@ Existing Russian TTS solutions have gaps:
 - **Rust** — backend
 - **React 19 + TypeScript** — frontend
 - **Tailwind CSS + shadcn/ui** — styling
-- **SQLite** — local database
+- **SQLite** (via `rusqlite` + `rusqlite_migration`) — local database
+- **Tauri Asset Protocol** — streaming audio playback from local cache
 - **SaluteSpeech API** — speech synthesis
 
 ### Contributing
