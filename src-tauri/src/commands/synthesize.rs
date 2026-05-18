@@ -109,6 +109,12 @@ pub(crate) async fn synthesize_document_impl(
 
     let voice_id: VoiceId = voice.parse().map_err(|e: UnknownVoiceId| e.to_string())?;
 
+    // Humanise URLs, emails, and common abbreviations before chunking
+    // so the synthesised audio doesn't read them mechanically. The
+    // preprocessed text is what gets persisted to the library as well,
+    // so title + char_count match what was actually narrated.
+    let text = crate::text::preprocessor::preprocess(&text);
+
     let chunks = chunk_text(&text, DEFAULT_MAX_CHARS);
     let total = chunks.len();
     on_progress(ProgressEvent::Chunked { total });
