@@ -1,30 +1,52 @@
 //! Tauri commands driving the synthesis pipeline and the resulting
-//! file write.
+//! persistence to the local library.
 //!
 //! `synthesize_document` runs the full backend pipeline
-//! (`chunker → loop synthesize → wav_join`) and emits progress events
-//! through a [`tauri::ipc::Channel`]. `write_wav_file` is a thin
-//! `tokio::fs::write` wrapper used by the frontend after the user picks
-//! a destination via the `dialog.save()` plugin.
+//! (`chunker → loop synthesize → wav_join`), persists the joined WAV
+//! through a single `rusqlite::Transaction` (INSERT row → write file →
+//! commit, auto-rollback on any failure), and returns the freshly
+//! generated `document_id` to the frontend. Audio bytes never cross
+//! the IPC boundary anymore — that's what `commands::storage::export_audio`
+//! is for when the user explicitly wants a copy on disk.
 //!
 //! Each Tauri command is a thin wrapper over an `*_impl` function that
-//! takes plain `&AppState` and an arbitrary `impl Fn(ProgressEvent)`
-//! callback. Tests target the impls because `tauri::State` and
-//! `tauri::ipc::Channel` cannot be constructed outside a running Tauri
-//! runtime.
+//! takes plain `&AppState` plus the path roots it needs, so tests can
+//! drive the impl directly without a running Tauri runtime.
 
-use std::sync::Arc;
+use std::fs;
+use std::path::Path;
+use std::sync::{Arc, Mutex};
 
+use chrono::Utc;
+use rusqlite::Connection;
 use serde::Serialize;
 use tauri::ipc::Channel;
+use tauri::AppHandle;
+use uuid::Uuid;
 
 use crate::audio::wav_join::join_wav_chunks;
+use crate::db;
+use crate::db::repository::DocumentRecord;
+use crate::paths;
 use crate::salute::auth::SaluteAuth;
 use crate::salute::errors::SaluteError;
 use crate::salute::synthesize::{SynthesisClient, UnknownVoiceId, VoiceId};
 use crate::secrets::keyring;
 use crate::state::AppState;
 use crate::text::chunker::{chunk_text, DEFAULT_MAX_CHARS};
+
+/// Maximum characters of the input text retained as the document title.
+/// 60 keeps Library list rows readable on a typical 1080p window without
+/// truncation, while still being descriptive enough to disambiguate.
+const TITLE_CHAR_LIMIT: usize = 60;
+
+/// Source-type tag written for documents originating from the paste
+/// textarea. Sprint 3 will add `"file"` for parsed uploads.
+const SOURCE_TYPE_PASTE: &str = "paste";
+
+/// Status tag for a fully-synthesised, ready-to-play document. Sprint 4
+/// will introduce `"synthesizing"` and `"error"` rows.
+const STATUS_READY: &str = "ready";
 
 /// Progress events emitted by [`synthesize_document`] over a
 /// [`tauri::ipc::Channel`].
@@ -55,40 +77,32 @@ pub enum ProgressEvent {
 
 #[tauri::command]
 pub async fn synthesize_document(
+    app: AppHandle,
     state: tauri::State<'_, AppState>,
     text: String,
     voice: String,
     on_progress: Channel<ProgressEvent>,
-) -> Result<tauri::ipc::Response, String> {
-    let bytes = synthesize_document_impl(&state, text, voice, move |event| {
+) -> Result<String, String> {
+    let audio_root = paths::audio_cache_root(&app)?;
+    synthesize_document_impl(&state, &audio_root, text, voice, move |event| {
         let _ = on_progress.send(event);
     })
-    .await?;
-
-    // Return as binary `Response` instead of `Vec<u8>` so the WAV bytes
-    // travel through the Tauri IPC bridge as a raw ArrayBuffer rather
-    // than a JSON array of numbers. A 21 MB WAV serialised as JSON
-    // would balloon to ~84 MB on the wire and cost seconds of CPU on
-    // both sides; `Response` skips the serde layer entirely.
-    Ok(tauri::ipc::Response::new(bytes))
-}
-
-#[tauri::command]
-pub async fn write_wav_file(path: String, bytes: Vec<u8>) -> Result<(), String> {
-    write_wav_file_impl(&path, &bytes).await
+    .await
 }
 
 /// Full synthesis pipeline: validate input, ensure auth, synthesize
-/// each chunk sequentially, then join the chunks into one WAV blob.
+/// each chunk sequentially, join the chunks, then persist (DB row +
+/// audio file) inside a single transaction.
 ///
-/// Sequential by design — Sprint 4 will revisit concurrency once a real
-/// playback flow exists.
+/// Sequential synthesis by design — Sprint 4 will revisit concurrency
+/// once a real playback flow exists.
 pub(crate) async fn synthesize_document_impl(
     state: &AppState,
+    audio_root: &Path,
     text: String,
     voice: String,
     on_progress: impl Fn(ProgressEvent) + Send,
-) -> Result<Vec<u8>, String> {
+) -> Result<String, String> {
     if text.trim().is_empty() {
         return Err("text is empty or whitespace-only".to_string());
     }
@@ -134,19 +148,61 @@ pub(crate) async fn synthesize_document_impl(
     }
 
     on_progress(ProgressEvent::Joining);
-    join_wav_chunks(&wav_chunks).map_err(|e| e.to_string())
+    let joined = join_wav_chunks(&wav_chunks).map_err(|e| e.to_string())?;
+
+    persist_synthesis_result(&state.db, audio_root, &text, voice_id, &joined)
 }
 
-/// Write the given bytes to `path` on disk.
+/// Persist a freshly-synthesised document: insert the row, write the WAV
+/// file, commit. The whole thing runs inside a single rusqlite
+/// `Transaction` so any failure auto-rolls back via the `Drop` impl —
+/// users never see a row pointing at a file that was never written, nor
+/// a file with no row referencing it.
 ///
-/// Called from the frontend with a path the user just chose via
-/// `dialog.save()`. We do not validate the path further — the plugin's
-/// scope already gates where the picker can land, and Tauri's IPC is
-/// local-only.
-pub(crate) async fn write_wav_file_impl(path: &str, bytes: &[u8]) -> Result<(), String> {
-    tokio::fs::write(path, bytes)
-        .await
-        .map_err(|e| format!("failed to write {path}: {e}"))
+/// Synchronous from the moment the mutex is acquired through to the
+/// `tx.commit()` call: no `.await` in the critical section. The
+/// `std::sync::MutexGuard` isn't `Send`, so the compiler would refuse
+/// any future change that violated this invariant.
+pub(crate) fn persist_synthesis_result(
+    db: &Mutex<Connection>,
+    audio_root: &Path,
+    text: &str,
+    voice: VoiceId,
+    wav_bytes: &[u8],
+) -> Result<String, String> {
+    let document_id = Uuid::new_v4().to_string();
+    let created_at = Utc::now().timestamp_millis();
+    let relative_audio = format!("{document_id}.wav");
+    let absolute_audio = audio_root.join(&relative_audio);
+
+    let title: String = text
+        .chars()
+        .take(TITLE_CHAR_LIMIT)
+        .collect::<String>()
+        .trim()
+        .to_string();
+
+    let record = DocumentRecord {
+        id: document_id.clone(),
+        title,
+        source_type: SOURCE_TYPE_PASTE.to_string(),
+        char_count: text.chars().count() as i64,
+        voice: voice.as_api_id().to_string(),
+        status: STATUS_READY.to_string(),
+        error_message: None,
+        created_at,
+        audio_path: Some(relative_audio),
+        audio_duration_ms: None,
+    };
+
+    let mut conn = db.lock().expect("db mutex poisoned");
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+    db::repository::insert(&tx, &record).map_err(|e| e.to_string())?;
+    fs::write(&absolute_audio, wav_bytes)
+        .map_err(|e| format!("failed to write audio file: {e}"))?;
+    tx.commit().map_err(|e| e.to_string())?;
+
+    Ok(document_id)
 }
 
 /// Get the cached [`SaluteAuth`] from state, or build a fresh one from
@@ -175,14 +231,17 @@ async fn get_or_init_auth(state: &AppState) -> Result<Arc<SaluteAuth>, String> {
 #[cfg(test)]
 mod tests {
     //! Tests cover the early-validation paths of `synthesize_document`
-    //! and the I/O behaviour of `write_wav_file`. Paths that reach
-    //! SaluteSpeech network calls are not exercised here — those would
-    //! require either a mockito-instrumented `SaluteAuth` (out of scope
-    //! for this PR's command layer; the underlying auth/synthesize
-    //! modules already cover them) or a `tauri::ipc::Channel` mock.
+    //! and the persistence orchestration of `persist_synthesis_result`.
+    //! Paths that reach SaluteSpeech network calls are not exercised
+    //! here — those would require a mockito-instrumented `SaluteAuth`
+    //! (out of scope for this PR's command layer; the underlying
+    //! auth/synthesize modules already cover them).
 
     use super::*;
+    use crate::db::repository;
+    use crate::db::test_connection;
     use crate::salute::http;
+    use std::path::PathBuf;
     use std::sync::Once;
 
     static INIT: Once = Once::new();
@@ -201,15 +260,27 @@ mod tests {
         AppState::new(client, conn)
     }
 
+    fn unique_audio_root(label: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!(
+            "glagol_synth_{}_{}",
+            label,
+            Uuid::new_v4().simple()
+        ));
+        fs::create_dir_all(&dir).expect("create temp audio root");
+        dir
+    }
+
     fn noop_progress(_event: ProgressEvent) {}
 
     #[tokio::test]
     async fn test_synthesize_document_empty_text_rejected() {
         init_mock();
         let state = fresh_state();
+        let audio_root = unique_audio_root("empty");
 
         let err = synthesize_document_impl(
             &state,
+            &audio_root,
             String::new(),
             "Nec_24000".to_string(),
             noop_progress,
@@ -221,15 +292,19 @@ mod tests {
             err.contains("empty") || err.contains("whitespace"),
             "expected empty-text error, got: {err}"
         );
+
+        let _ = fs::remove_dir_all(&audio_root);
     }
 
     #[tokio::test]
     async fn test_synthesize_document_whitespace_text_rejected() {
         init_mock();
         let state = fresh_state();
+        let audio_root = unique_audio_root("whitespace");
 
         let err = synthesize_document_impl(
             &state,
+            &audio_root,
             "   \n\t   ".to_string(),
             "Nec_24000".to_string(),
             noop_progress,
@@ -241,15 +316,19 @@ mod tests {
             err.contains("empty") || err.contains("whitespace"),
             "expected whitespace-text error, got: {err}"
         );
+
+        let _ = fs::remove_dir_all(&audio_root);
     }
 
     #[tokio::test]
     async fn test_synthesize_document_unknown_voice_rejected() {
         init_mock();
         let state = fresh_state();
+        let audio_root = unique_audio_root("badvoice");
 
         let err = synthesize_document_impl(
             &state,
+            &audio_root,
             "Привет, мир!".to_string(),
             "FooBar_9999".to_string(),
             noop_progress,
@@ -265,16 +344,20 @@ mod tests {
             err.contains("FooBar_9999"),
             "error should cite the bad voice name, got: {err}"
         );
+
+        let _ = fs::remove_dir_all(&audio_root);
     }
 
     #[tokio::test]
     async fn test_synthesize_document_no_credentials_errors() {
         init_mock();
         let state = fresh_state();
+        let audio_root = unique_audio_root("nocreds");
 
         // Valid text, valid voice, but keyring is empty under mock backend.
         let err = synthesize_document_impl(
             &state,
+            &audio_root,
             "Привет, мир!".to_string(),
             "Nec_24000".to_string(),
             noop_progress,
@@ -286,46 +369,92 @@ mod tests {
             err.contains("no credentials configured"),
             "expected 'no credentials configured', got: {err}"
         );
+
+        let _ = fs::remove_dir_all(&audio_root);
     }
 
-    #[tokio::test]
-    async fn test_write_wav_file_creates_file() {
-        let tmp_dir = std::env::temp_dir();
-        let path = tmp_dir.join(format!(
-            "glagol_test_wav_{}.wav",
-            uuid::Uuid::new_v4().simple()
-        ));
-        let path_str = path.to_string_lossy().into_owned();
-        let payload: Vec<u8> = (0..256).map(|i| i as u8).collect();
+    #[test]
+    fn persist_synthesis_result_writes_row_and_file_on_success() {
+        let db = Mutex::new(test_connection());
+        let audio_root = unique_audio_root("persist_ok");
+        let payload: Vec<u8> = (0..2048).map(|i| (i % 256) as u8).collect();
 
-        write_wav_file_impl(&path_str, &payload)
-            .await
-            .expect("write should succeed");
+        let id = persist_synthesis_result(
+            &db,
+            &audio_root,
+            "Привет, мир! Это короткий тестовый текст для проверки сохранения.",
+            VoiceId::Natalia,
+            &payload,
+        )
+        .expect("persist succeeds");
 
-        let read_back = tokio::fs::read(&path).await.expect("read back ok");
-        assert_eq!(read_back, payload);
+        let conn = db.lock().unwrap();
+        let row = repository::get(&conn, &id)
+            .expect("query ok")
+            .expect("row exists");
+        assert_eq!(row.status, "ready");
+        assert_eq!(row.source_type, "paste");
+        assert_eq!(row.voice, "Nec_24000");
+        assert!(row.error_message.is_none());
+        let relative = row.audio_path.expect("audio_path set on success");
+        assert_eq!(relative, format!("{id}.wav"));
 
-        let _ = tokio::fs::remove_file(&path).await;
+        let on_disk = fs::read(audio_root.join(&relative)).expect("audio file readable");
+        assert_eq!(on_disk, payload);
+
+        drop(conn);
+        let _ = fs::remove_dir_all(&audio_root);
     }
 
-    #[tokio::test]
-    async fn test_write_wav_file_invalid_path_errors() {
-        // Path inside a non-existent directory under the temp root —
-        // portable across Linux/macOS/Windows test environments.
-        let tmp_dir = std::env::temp_dir();
-        let bad_path = tmp_dir
-            .join(format!(
-                "glagol_does_not_exist_{}",
-                uuid::Uuid::new_v4().simple()
-            ))
-            .join("nested")
-            .join("out.wav");
-        let path_str = bad_path.to_string_lossy().into_owned();
+    #[test]
+    fn persist_synthesis_result_returns_uuid_v4() {
+        let db = Mutex::new(test_connection());
+        let audio_root = unique_audio_root("persist_uuid");
 
-        let err = write_wav_file_impl(&path_str, b"abc").await.unwrap_err();
-        assert!(
-            err.contains("failed to write"),
-            "expected error prefix, got: {err}"
+        let id = persist_synthesis_result(
+            &db,
+            &audio_root,
+            "hello",
+            VoiceId::Natalia,
+            b"fake-wav-bytes",
+        )
+        .expect("persist ok");
+
+        let parsed = Uuid::parse_str(&id).expect("returned id is a valid UUID");
+        assert_eq!(
+            parsed.get_version_num(),
+            4,
+            "command layer must mint v4 UUIDs (got version {})",
+            parsed.get_version_num()
         );
+
+        let _ = fs::remove_dir_all(&audio_root);
+    }
+
+    #[test]
+    fn persist_synthesis_result_writes_single_row_per_call() {
+        // Whatever the input bytes' size, persistence does exactly one
+        // INSERT — the chunking loop above lives outside this function,
+        // so multi-chunk synthesis still results in a single library row.
+        let db = Mutex::new(test_connection());
+        let audio_root = unique_audio_root("persist_single");
+        let big_payload: Vec<u8> = vec![0xAB; 256 * 1024];
+
+        let id = persist_synthesis_result(
+            &db,
+            &audio_root,
+            "длинный текст",
+            VoiceId::Boris,
+            &big_payload,
+        )
+        .expect("persist ok");
+
+        let conn = db.lock().unwrap();
+        let all = repository::list_all(&conn).expect("list ok");
+        assert_eq!(all.len(), 1, "exactly one row per persist call");
+        assert_eq!(all[0].id, id);
+
+        drop(conn);
+        let _ = fs::remove_dir_all(&audio_root);
     }
 }

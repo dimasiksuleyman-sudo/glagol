@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { save } from "@tauri-apps/plugin-dialog";
 import { toast } from "sonner";
 
@@ -23,14 +23,21 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 
 import { useCredentials } from "@/contexts/CredentialsContext";
-import { synthesizeDocument, writeWavFile, type ProgressEvent } from "@/lib/tauri";
+import {
+  exportAudio,
+  synthesizeDocument,
+  type ProgressEvent,
+} from "@/lib/tauri";
 import { DEFAULT_VOICE_ID, VOICES } from "@/lib/voices";
 
 /**
  * Synthesize page — paste text, pick a voice, hit "Озвучить и
- * сохранить". The single button runs the full pipeline (chunker →
- * synthesize → wav_join) and immediately opens a native Save As
- * dialog so the resulting WAV lands wherever the user picks.
+ * сохранить в библиотеку". The backend now persists the result
+ * automatically (DB row + audio file in the local cache), so the
+ * primary action no longer prompts for a save location. A secondary
+ * "Сохранить на диск" button appears beneath the textarea after a
+ * successful synthesis so the user can still export the WAV to a
+ * path of their choosing.
  *
  * Gated by the credentials context: while the mount-time probe is in
  * flight (`"unknown"`) we render nothing distracting; on `"invalid"`
@@ -38,38 +45,57 @@ import { DEFAULT_VOICE_ID, VOICES } from "@/lib/voices";
  */
 export function Synthesize() {
   const { state } = useCredentials();
+  const navigate = useNavigate();
   const [text, setText] = useState<string>("");
   const [voice, setVoice] = useState<string>(DEFAULT_VOICE_ID);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [progress, setProgress] = useState<ProgressEvent | null>(null);
+  // The document_id of the most recent successful synthesis — drives
+  // the secondary "Сохранить на диск" button. Cleared on the next
+  // synthesis kick-off so the button never points at a stale id.
+  const [lastDocumentId, setLastDocumentId] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState<boolean>(false);
 
   async function handleSynthesize() {
     setIsLoading(true);
     setProgress(null);
+    setLastDocumentId(null);
     try {
-      const bytes = await synthesizeDocument(text, voice, setProgress);
-
-      const path = await save({
-        title: "Сохранить WAV",
-        defaultPath: "glagol.wav",
-        filters: [{ name: "WAV audio", extensions: ["wav"] }],
+      const documentId = await synthesizeDocument(text, voice, setProgress);
+      setLastDocumentId(documentId);
+      toast.success("Сохранено в библиотеку", {
+        action: {
+          label: "Открыть библиотеку",
+          onClick: () => navigate("/library"),
+        },
+        duration: 8000,
       });
-
-      if (path === null) {
-        // User cancelled the dialog. WAV bytes are discarded; the
-        // SaluteSpeech character cost has already been paid.
-        return;
-      }
-
-      await writeWavFile(path, bytes);
-
-      const filename = path.split(/[\\/]/).pop() ?? path;
-      toast.success(`Сохранено: ${filename}`);
     } catch (err) {
       toast.error(stringifyError(err));
     } finally {
       setIsLoading(false);
       setProgress(null);
+    }
+  }
+
+  async function handleExportToDisk() {
+    if (lastDocumentId === null) return;
+    setIsExporting(true);
+    try {
+      const dest = await save({
+        title: "Сохранить WAV",
+        defaultPath: `glagol-${lastDocumentId.slice(0, 8)}.wav`,
+        filters: [{ name: "WAV audio", extensions: ["wav"] }],
+      });
+      if (dest === null) return; // user cancelled
+
+      await exportAudio(lastDocumentId, dest);
+      const filename = dest.split(/[\\/]/).pop() ?? dest;
+      toast.success(`Сохранено: ${filename}`);
+    } catch (err) {
+      toast.error(stringifyError(err));
+    } finally {
+      setIsExporting(false);
     }
   }
 
@@ -105,6 +131,7 @@ export function Synthesize() {
 
   const trimmedTextLength = text.trim().length;
   const canSynthesize = !isLoading && trimmedTextLength > 0;
+  const canExport = !isLoading && !isExporting && lastDocumentId !== null;
 
   return (
     <div className="space-y-6">
@@ -144,8 +171,19 @@ export function Synthesize() {
           </div>
 
           <Button onClick={handleSynthesize} disabled={!canSynthesize} className="w-full">
-            {isLoading ? "Озвучиваем…" : "Озвучить и сохранить"}
+            {isLoading ? "Озвучиваем…" : "Озвучить и сохранить в библиотеку"}
           </Button>
+
+          {lastDocumentId !== null && (
+            <Button
+              variant="outline"
+              onClick={handleExportToDisk}
+              disabled={!canExport}
+              className="w-full"
+            >
+              {isExporting ? "Сохраняем…" : "Сохранить на диск"}
+            </Button>
+          )}
 
           {progress !== null && <ProgressIndicator event={progress} />}
         </CardContent>
@@ -159,7 +197,7 @@ function Header() {
     <div>
       <h2 className="text-2xl font-semibold tracking-tight">Озвучить</h2>
       <p className="text-muted-foreground mt-1 text-sm">
-        Текст превратится в WAV-файл с выбранным голосом.
+        Текст превратится в WAV-файл и попадёт в библиотеку.
       </p>
     </div>
   );

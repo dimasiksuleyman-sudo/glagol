@@ -38,6 +38,14 @@ pub fn run() {
             // corrupt every subsequent write.
             let db_path = crate::paths::database_path(app.handle())?;
             let conn = crate::db::init_database(&db_path)?;
+
+            // Ensure the audio cache directory exists. Synthesis writes
+            // straight into it without a per-call mkdir, so the directory
+            // must be present before the first synthesis command lands.
+            let audio_root = crate::paths::audio_cache_root(app.handle())?;
+            std::fs::create_dir_all(&audio_root)
+                .map_err(|e| format!("Failed to create audio cache directory: {e}"))?;
+
             app.manage(state::AppState::new(http_client.clone(), conn));
             Ok(())
         })
@@ -46,7 +54,8 @@ pub fn run() {
             commands::credentials::test_credentials,
             commands::credentials::delete_credentials,
             commands::synthesize::synthesize_document,
-            commands::synthesize::write_wav_file,
+            commands::storage::get_audio_path,
+            commands::storage::export_audio,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
