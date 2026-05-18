@@ -56,6 +56,8 @@ pub fn run() {
             commands::synthesize::synthesize_document,
             commands::storage::get_audio_path,
             commands::storage::export_audio,
+            commands::storage::list_documents,
+            commands::storage::delete_document,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

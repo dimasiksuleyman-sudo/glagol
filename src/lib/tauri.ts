@@ -90,4 +90,44 @@ export async function exportAudio(documentId: string, destPath: string): Promise
   await invoke("export_audio", { documentId, destPath });
 }
 
+/**
+ * A persisted library document. Mirrors `db::repository::DocumentRecord`
+ * on the Rust side; serde uses field names as-is (snake_case) so the
+ * shape lines up 1:1 over the IPC boundary.
+ *
+ * Nullable columns are typed `T | null` (not `T | undefined`) because
+ * that's what `Option::None` serialises to via serde_json.
+ */
+export interface DocumentRecord {
+  id: string;
+  title: string;
+  source_type: string;
+  char_count: number;
+  voice: string;
+  status: string;
+  error_message: string | null;
+  /** Unix epoch milliseconds. */
+  created_at: number;
+  /** File name relative to `audio_cache_root`. `null` for status='error' rows (Sprint 4). */
+  audio_path: string | null;
+  audio_duration_ms: number | null;
+}
+
+/**
+ * List every persisted document, most recently created first.
+ */
+export async function listDocuments(): Promise<DocumentRecord[]> {
+  return await invoke<DocumentRecord[]>("list_documents");
+}
+
+/**
+ * Delete a document from the library: removes the DB row and
+ * best-effort removes the cached audio file from disk. Resolves
+ * even if the file was already missing (Sprint 5 orphan cleanup
+ * will handle stragglers).
+ */
+export async function deleteDocument(documentId: string): Promise<void> {
+  await invoke("delete_document", { documentId });
+}
+
 export { Channel };
