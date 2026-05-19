@@ -1,0 +1,116 @@
+name: CI
+
+# Sprint 5a — release infrastructure (PR #26 logical).
+#
+# Single matrix entry on windows-latest because Glagol's primary target
+# is Windows 10/11 x64; macOS / Linux are stretch goals tracked for
+# post-v1.0. Running `pnpm tauri build` here is the meta-test: it
+# exercises the same NSIS bundle path users will run locally and
+# catches Pdfium-bundling regressions before merge.
+#
+# Frontend linting (ESLint) and a JS test runner (Vitest) are not
+# configured yet — TS strictness is enforced via `pnpm tsc --noEmit`
+# plus `pnpm tauri build` (which runs `tsc && vite build` in strict
+# mode). Setup of ESLint + Vitest is deferred to Sprint 5c when there
+# is frontend logic worth linting/testing.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# Cancel in-flight runs for the same ref when a new push lands.
+# Saves CI minutes on rapid-fire force-pushes during PR review.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality-gates:
+    name: Quality gates (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          # Built-in pnpm-store cache, keyed on pnpm-lock.yaml hash.
+          run_install: false
+
+      - name: Get pnpm store directory
+        id: pnpm-store
+        shell: pwsh
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $env:GITHUB_OUTPUT
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-store.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      # Caches ~/.cargo/registry, ~/.cargo/git, and src-tauri/target,
+      # including OUT_DIR/pdfium/ — so the Pdfium binary downloaded by
+      # build.rs is reused across runs as long as Cargo.lock and
+      # PDFIUM_RELEASE_TAG (in build.rs) stay put.
+      - name: Cache cargo + build artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      # ── Frontend gates ──────────────────────────────────────────
+      - name: TypeScript typecheck
+        run: pnpm tsc --noEmit
+
+      # ── Backend gates ───────────────────────────────────────────
+      - name: cargo fmt
+        run: cargo fmt --check
+        working-directory: src-tauri
+
+      - name: cargo clippy
+        run: cargo clippy --all-targets -- -D warnings
+        working-directory: src-tauri
+
+      - name: cargo test
+        run: cargo test
+        working-directory: src-tauri
+
+      # ── Release build (meta-test) ──────────────────────────────
+      # Runs the full Tauri pipeline including:
+      #   - `tsc && vite build` (frontend)
+      #   - `cargo build --release` (backend)
+      #   - build.rs Pdfium download + mirror to src-tauri/resources/
+      #   - NSIS installer assembly
+      # Catches bundle/resources/Pdfium regressions before merge.
+      - name: pnpm tauri build (NSIS installer)
+        run: pnpm tauri build
+
+      - name: Upload NSIS installer artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: glagol-nsis-installer
+          path: src-tauri/target/release/bundle/nsis/*.exe
+          if-no-files-found: warn
+          retention-days: 14
