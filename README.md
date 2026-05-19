@@ -69,14 +69,30 @@
 
 ### Установка
 
-> 🚧 Проект в активной разработке. Достигнуты внутренние milestone'ы `v0.1.0-alpha` (Sprint 1), `v0.1.0-rc.1` (Sprint 2), `v0.1.0-rc.2` (Sprint 3a). Подписанный установщик появится в [Releases](https://github.com/dimasiksuleyman-sudo/glagol/releases) после Sprint 5 (первый публичный релиз `v0.1.0`).
+> 🚧 Проект в активной разработке. Достигнуты milestone'ы `v0.1.0-alpha` (Sprint 1), `v0.1.0-rc.1` (Sprint 2), `v0.1.0-rc.2` (Sprint 3a), `v0.1.0-rc.3` (Sprint 4). Подписанный установщик с проверенной цифровой подписью появится в [Releases](https://github.com/dimasiksuleyman-sudo/glagol/releases) к публичному релизу `v0.1.0`. До тех пор скачать актуальный неподписанный `.exe` можно из артефактов CI или из release-черновика.
 
-После релиза:
+1. Скачайте `Glagol_x.x.x_x64-setup.exe` из последнего [GitHub Release](https://github.com/dimasiksuleyman-sudo/glagol/releases).
+2. Запустите файл.
 
-1. Скачайте `Glagol-Setup-x.x.x.msi` из последнего релиза
-2. Запустите установщик
-3. При первом запуске введите свой `Authorization Key` от SaluteSpeech (получается бесплатно на [developers.sber.ru](https://developers.sber.ru/studio))
-4. Готово — можно загружать документы
+#### При первом запуске Windows покажет предупреждение SmartScreen
+
+Поскольку установщик пока не подписан сертификатом разработчика, Windows встретит вас синим окном «Система Windows защитила ваш компьютер»:
+
+![Предупреждение SmartScreen](docs/images/smartscreen-warning.png)
+
+Что делать:
+
+1. Нажмите **«Подробнее»** в синем окне.
+2. Появится кнопка **«Выполнить в любом случае»** — нажмите её.
+3. Откроется обычный установщик NSIS, дальше — стандартная установка:
+   - выбрать язык интерфейса установщика (русский или английский);
+   - принять условия лицензии MIT;
+   - выбрать папку установки (по умолчанию `%LOCALAPPDATA%\Programs\Glagol\`);
+   - решить, создавать ли ярлыки в меню «Пуск» и на рабочем столе.
+
+Права администратора не требуются — установка ставится для текущего пользователя.
+
+После установки запустите Glagol из меню «Пуск», в Настройках вставьте свой `Authorization Key` от SaluteSpeech (получается бесплатно на [developers.sber.ru/studio](https://developers.sber.ru/studio)) — и можно загружать документы.
 
 ### Технологический стек
 
@@ -104,6 +120,10 @@
 ### Вклад в проект
 
 Контрибьюторам рады! См. [CONTRIBUTING.md](CONTRIBUTING.md) и [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+
+#### Где Glagol хранит данные
+
+Дев-сборки (через `pnpm tauri dev`) и установленные через NSIS-установщик одинаково используют папку `%LOCALAPPDATA%\app.glagol.desktop\` для базы документов и аудио-кэша. Имя берётся из поля `bundle.identifier` в `src-tauri/tauri.conf.json` (исторически `app.glagol.desktop`; переименование в просто `Glagol` — техдолг, отложенный на будущий Sprint, чтобы не сломать существующие установки). Файл базы — `glagol.db`, аудио — в `audio_cache/{uuid}.wav`.
 
 ### Безопасность
 
@@ -152,7 +172,30 @@ Existing Russian TTS solutions have gaps:
 
 ### Installation
 
-> 🚧 Project is in active development. Internal milestones reached: `v0.1.0-alpha` (Sprint 1), `v0.1.0-rc.1` (Sprint 2), `v0.1.0-rc.2` (Sprint 3a). Signed installer will appear in [Releases](https://github.com/dimasiksuleyman-sudo/glagol/releases) after Sprint 5 (first public release `v0.1.0`).
+> 🚧 Active development. Milestones reached: `v0.1.0-alpha` (Sprint 1), `v0.1.0-rc.1` (Sprint 2), `v0.1.0-rc.2` (Sprint 3a), `v0.1.0-rc.3` (Sprint 4). A code-signed installer will ship in [Releases](https://github.com/dimasiksuleyman-sudo/glagol/releases) with the public `v0.1.0`. Until then the latest unsigned `.exe` is available from CI artifacts or release drafts.
+
+1. Download `Glagol_x.x.x_x64-setup.exe` from the latest [GitHub Release](https://github.com/dimasiksuleyman-sudo/glagol/releases).
+2. Run the file.
+
+#### Windows SmartScreen warning on first launch
+
+Because the installer is not yet signed with a developer certificate, Windows will greet you with a blue "Windows protected your PC" dialog:
+
+![SmartScreen warning](docs/images/smartscreen-warning.png)
+
+What to do:
+
+1. Click **"More info"** in the blue dialog.
+2. A **"Run anyway"** button will appear — click it.
+3. The normal NSIS installer opens — standard install flow from there:
+   - pick the installer UI language (English or Russian);
+   - accept the MIT license terms;
+   - choose an install location (default: `%LOCALAPPDATA%\Programs\Glagol\`);
+   - decide whether to create Start Menu and/or Desktop shortcuts.
+
+No administrator privileges are needed — install is per-user.
+
+After installing, launch Glagol from the Start Menu, paste your SaluteSpeech `Authorization Key` in Settings (free at [developers.sber.ru/studio](https://developers.sber.ru/studio)), and you're ready to load documents.
 
 ### Tech Stack
 
@@ -167,6 +210,10 @@ Existing Russian TTS solutions have gaps:
 ### Contributing
 
 Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+
+#### Where Glagol stores data
+
+Both dev builds (`pnpm tauri dev`) and NSIS-installed builds use `%LOCALAPPDATA%\app.glagol.desktop\` for the document database and audio cache. The folder name comes from `bundle.identifier` in `src-tauri/tauri.conf.json` (historically `app.glagol.desktop`; renaming to plain `Glagol` is tracked as tech debt for a future Sprint so existing installations don't lose their libraries). The database file is `glagol.db`; audio lives under `audio_cache/{uuid}.wav`.
 
 ### Security
 
