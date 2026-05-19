@@ -101,6 +101,18 @@ pub fn delete(conn: &Connection, id: &str) -> Result<usize> {
     conn.execute("DELETE FROM documents WHERE id = ?1", params![id])
 }
 
+/// Update the title of an existing document. Returns the number of
+/// rows affected (0 if the id did not exist, 1 otherwise). The caller
+/// at the command layer translates `0` into a user-facing
+/// "Документ не найден" error — matching the existing `delete`
+/// pattern rather than introducing a separate `DbError::NotFound`.
+pub fn update_title(conn: &Connection, id: &str, title: &str) -> Result<usize> {
+    conn.execute(
+        "UPDATE documents SET title = ?2 WHERE id = ?1",
+        params![id, title],
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -217,5 +229,29 @@ mod tests {
             Some("HTTP 500 from Sberbank".to_string())
         );
         assert_eq!(fetched.status, "error");
+    }
+
+    #[test]
+    fn update_title_returns_one_row_affected_and_persists_change() {
+        let conn = test_connection();
+        let original = sample_record("doc-rename", 1_700_000_000_000);
+        insert(&conn, &original).unwrap();
+
+        let rows = update_title(&conn, &original.id, "Новое имя файла").unwrap();
+        assert_eq!(rows, 1);
+
+        let fetched = get(&conn, &original.id).unwrap().unwrap();
+        assert_eq!(fetched.title, "Новое имя файла");
+        // Other fields are untouched.
+        assert_eq!(fetched.created_at, original.created_at);
+        assert_eq!(fetched.audio_path, original.audio_path);
+        assert_eq!(fetched.voice, original.voice);
+    }
+
+    #[test]
+    fn update_title_returns_zero_rows_affected_for_unknown_id() {
+        let conn = test_connection();
+        let rows = update_title(&conn, "does-not-exist", "any title").unwrap();
+        assert_eq!(rows, 0);
     }
 }

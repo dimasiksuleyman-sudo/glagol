@@ -89,6 +89,7 @@ pub fn run() {
             commands::storage::export_audio,
             commands::storage::list_documents,
             commands::storage::delete_document,
+            commands::storage::update_document_title,
             commands::file::read_and_parse_file,
             commands::config::get_library_path,
             commands::config::set_library_path,

@@ -1,12 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { save } from "@tauri-apps/plugin-dialog";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { toast } from "sonner";
-import { AudioLines, Download, Trash2, TriangleAlert } from "lucide-react";
+import { AudioLines, Download, Pencil, Trash2, TriangleAlert } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 
 import {
@@ -15,6 +16,7 @@ import {
   exportAudio,
   getAudioPath,
   listDocuments,
+  updateDocumentTitle,
 } from "@/lib/tauri";
 import { formatRelativeTime } from "@/lib/format";
 import { getVoiceLabel } from "@/lib/voices";
@@ -75,6 +77,39 @@ export function Library() {
     }
   }
 
+  /**
+   * Optimistic rename: swap the title in local state immediately,
+   * fire the backend command, and on failure revert + toast. Never
+   * throws — DocumentRow can leave edit mode unconditionally on
+   * await completion.
+   */
+  async function handleRename(doc: DocumentRecord, newTitle: string) {
+    if (state.kind !== "ready") return;
+    const original = doc.title;
+    const updated = state.documents.map((d) =>
+      d.id === doc.id ? { ...d, title: newTitle } : d,
+    );
+    setState({ kind: "ready", documents: updated });
+    try {
+      await updateDocumentTitle(doc.id, newTitle);
+    } catch (err) {
+      toast.error(`Не удалось переименовать: ${stringifyError(err)}`);
+      // Revert the optimistic change. Re-read state (it may have
+      // shifted out from under us) before mutating, but the common
+      // path is: still in `ready`, just put the original title back.
+      setState((prev) =>
+        prev.kind === "ready"
+          ? {
+              kind: "ready",
+              documents: prev.documents.map((d) =>
+                d.id === doc.id ? { ...d, title: original } : d,
+              ),
+            }
+          : prev,
+      );
+    }
+  }
+
   async function handleExport(doc: DocumentRecord) {
     const safeStem =
       doc.title.replace(/[\\/:*?"<>|]/g, "_").trim().slice(0, 80) || "glagol";
@@ -109,6 +144,7 @@ export function Library() {
               document={doc}
               onDelete={() => handleDelete(doc)}
               onExport={() => handleExport(doc)}
+              onRename={(next) => handleRename(doc, next)}
             />
           ))}
         </div>
@@ -186,9 +222,13 @@ interface DocumentRowProps {
   document: DocumentRecord;
   onDelete: () => void;
   onExport: () => void;
+  /** Awaited by the row's save handler before exiting edit mode.
+   * Parent does the optimistic update and revert-on-error; this
+   * callback never throws. */
+  onRename: (newTitle: string) => Promise<void>;
 }
 
-function DocumentRow({ document, onDelete, onExport }: DocumentRowProps) {
+function DocumentRow({ document, onDelete, onExport, onRename }: DocumentRowProps) {
   // Asset URL is resolved lazily per row: getAudioPath is a cheap IPC
   // call, and doing it here keeps `list_documents` a thin wrapper.
   // For Sprint 2 row counts (<= a few dozen) parallel resolution is
@@ -214,20 +254,89 @@ function DocumentRow({ document, onDelete, onExport }: DocumentRowProps) {
     };
   }, [document.id, document.audio_path]);
 
+  // ── Inline title edit state ──────────────────────────────────────
+  // `null` = display mode; `string` = edit mode with the current draft.
+  // The `inFlight` ref guards against the Enter-then-Blur double-save
+  // sequence (keyDown triggers commit + clears state; the imminent
+  // blur sees the cleared state and skips, but if the blur fires
+  // *before* React applies the state update the guard still catches
+  // it).
+  const [draft, setDraft] = useState<string | null>(null);
+  const inFlight = useRef<boolean>(false);
+
+  function enterEdit() {
+    setDraft(document.title);
+  }
+
+  async function commit() {
+    if (draft === null || inFlight.current) return;
+    const trimmed = draft.trim();
+    inFlight.current = true;
+    try {
+      // Empty / whitespace-only → silent revert (no backend call,
+      // no toast). Same-value → no-op revert (skip the IPC roundtrip).
+      // Otherwise → fire optimistic rename; parent handles errors.
+      if (trimmed.length > 0 && trimmed !== document.title) {
+        await onRename(trimmed);
+      }
+    } finally {
+      setDraft(null);
+      inFlight.current = false;
+    }
+  }
+
+  function cancel() {
+    setDraft(null);
+  }
+
   const charCountLabel = `${document.char_count.toLocaleString("ru-RU")} симв.`;
+  const isEditing = draft !== null;
 
   return (
     <Card>
       <CardContent className="space-y-3 pt-4">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <p className="truncate font-medium">{document.title}</p>
-            <p className="text-muted-foreground text-sm">
+            {isEditing ? (
+              <Input
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    void commit();
+                  } else if (e.key === "Escape") {
+                    e.preventDefault();
+                    cancel();
+                  }
+                }}
+                onBlur={() => {
+                  void commit();
+                }}
+                autoFocus
+                onFocus={(e) => e.target.select()}
+                aria-label="Название документа"
+                className="h-8"
+              />
+            ) : (
+              <p className="truncate font-medium">{document.title}</p>
+            )}
+            <p className="text-muted-foreground mt-1 text-sm">
               {getVoiceLabel(document.voice)} · {charCountLabel} ·{" "}
               {formatRelativeTime(document.created_at)}
             </p>
           </div>
           <div className="flex shrink-0 gap-1">
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={enterEdit}
+              disabled={isEditing}
+              title="Переименовать"
+              aria-label="Переименовать"
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
             <Button
               size="icon"
               variant="ghost"

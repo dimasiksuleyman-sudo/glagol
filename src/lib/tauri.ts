@@ -142,6 +142,16 @@ export async function deleteDocument(documentId: string): Promise<void> {
 }
 
 /**
+ * Rename a document. The title is trimmed at the IPC boundary; an
+ * empty / whitespace-only value rejects with «Заголовок не может быть
+ * пустым», an unknown document id rejects with «Документ не найден».
+ * Both error strings are Russian and suitable for direct toast display.
+ */
+export async function updateDocumentTitle(documentId: string, title: string): Promise<void> {
+  await invoke("update_document_title", { documentId, title });
+}
+
+/**
  * Outcome of a successful file parse. Mirrors `parser::ParsedDocument`
  * on the Rust side; serde uses field names as-is (snake_case) so the
  * shape lines up 1:1 over the IPC boundary.
