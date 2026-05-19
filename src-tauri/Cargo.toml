@@ -70,6 +70,14 @@ pulldown-cmark = { version = "0.13", default-features = false }
 docx-rust = "0.1"
 pdfium-render = "0.9"
 
+# Path canonicalisation that strips Windows extended-length prefix
+# (`\\?\…`) when the resulting path is still valid. `std::fs::canonicalize`
+# on Windows returns the prefix unconditionally, which contaminates
+# stored config values and breaks Tauri's asset-protocol scope
+# matching. Industry-standard workaround used by Cargo, Rustup, etc.
+# Cross-platform: identity on non-Windows.
+dunce = "1"
+
 # Secrets storage via OS-native credential manager (Wincred on Windows).
 # `windows-native` is REQUIRED — without it, production silently uses
 # the mock backend and credentials are not persisted between launches.

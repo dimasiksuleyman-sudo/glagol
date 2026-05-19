@@ -138,15 +138,26 @@ pub(crate) fn set_library_path_with_paths(
     // of how the user wrote the path (forward / back slashes, trailing
     // separator, relative symlinks). If the canonical result equals
     // the canonical default, store `None` as the semantic equivalent.
+    //
+    // `dunce::canonicalize` instead of `std::fs::canonicalize` because
+    // on Windows the std version unconditionally returns the extended-
+    // length prefix form (`\\?\D:\foo`). That prefix contaminates every
+    // downstream consumer: Tauri's asset-protocol scope glob doesn't
+    // match prefixed paths, dual-root fallback comparison fails,
+    // `fs::write` to a prefixed path lands inconsistently across
+    // Windows API layers. `dunce` returns the clean `D:\foo` form
+    // when the path doesn't actually need the prefix (i.e. fits
+    // MAX_PATH and is valid Win32 syntax). On non-Windows it
+    // delegates to `std::fs::canonicalize` unchanged.
     let canonical =
-        fs::canonicalize(&candidate).map_err(|e| format!("Не удалось разрешить путь: {e}"))?;
+        dunce::canonicalize(&candidate).map_err(|e| format!("Не удалось разрешить путь: {e}"))?;
 
     // The default audio-cache directory may not exist yet on a first
     // launch — `create_dir_all` here so canonicalize won't fail. Mirrors
     // what `setup()` does for the default path at startup.
     fs::create_dir_all(default_root)
         .map_err(|e| format!("Не удалось подготовить путь по умолчанию: {e}"))?;
-    let canonical_default = fs::canonicalize(default_root)
+    let canonical_default = dunce::canonicalize(default_root)
         .map_err(|e| format!("Не удалось разрешить путь по умолчанию: {e}"))?;
 
     let final_value = if canonical == canonical_default {
@@ -256,9 +267,13 @@ mod tests {
         {
             let cfg = state.config.lock().unwrap();
             assert!(cfg.library_path.is_some());
+            // Compare against `dunce::canonicalize` — the same primitive
+            // production uses — so the test stays apples-to-apples on
+            // Windows where `std::fs::canonicalize` would still return
+            // the `\\?\` extended-length form.
             assert_eq!(
                 cfg.library_path.as_ref().unwrap(),
-                &fs::canonicalize(&custom_dir).unwrap()
+                &dunce::canonicalize(&custom_dir).unwrap()
             );
         }
         assert!(
@@ -298,6 +313,52 @@ mod tests {
         assert!(
             state.config.lock().unwrap().library_path.is_none(),
             "default-path input must collapse to library_path: None"
+        );
+
+        let _ = fs::remove_dir_all(&data_dir);
+        let _ = fs::remove_dir_all(&custom_dir);
+    }
+
+    /// Windows-only regression guard for the Sprint 5b post-merge bug:
+    /// `std::fs::canonicalize` returns `\\?\D:\foo` (extended-length
+    /// form) which contaminated `Config.library_path` and broke every
+    /// downstream consumer (asset-protocol scope, dual-root fallback,
+    /// `fs::write` consistency). After the hotfix, `dunce::canonicalize`
+    /// produces the clean Win32 form for paths that fit MAX_PATH.
+    ///
+    /// Linux / macOS don't have this issue — `canonicalize` returns
+    /// clean paths unconditionally there — so the test is gated on
+    /// `cfg(windows)`.
+    #[test]
+    #[cfg(windows)]
+    fn set_library_path_with_paths_does_not_emit_extended_length_prefix_on_windows() {
+        let data_dir = fresh_dir("no_prefix_data");
+        let default_root = paths::default_audio_cache_root_under(&data_dir);
+        fs::create_dir_all(&default_root).unwrap();
+
+        let custom_dir = fresh_dir("no_prefix_custom");
+        let state = state_with_config(Config::default());
+
+        set_library_path_with_paths(
+            &state,
+            &data_dir,
+            &default_root,
+            custom_dir.to_string_lossy().into_owned(),
+        )
+        .expect("save succeeds");
+
+        let stored = state
+            .config
+            .lock()
+            .unwrap()
+            .library_path
+            .clone()
+            .expect("a custom path is stored");
+        let stored_str = stored.to_string_lossy();
+
+        assert!(
+            !stored_str.starts_with(r"\\?\"),
+            "stored library_path must not carry the extended-length prefix, got: {stored_str}"
         );
 
         let _ = fs::remove_dir_all(&data_dir);
