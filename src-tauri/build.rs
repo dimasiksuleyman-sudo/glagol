@@ -3,15 +3,25 @@
 //! to it at runtime.
 //!
 //! The library is downloaded once from <https://github.com/bblanchon/pdfium-binaries>
-//! and cached under `target/.../out/pdfium/`. The absolute path is
-//! propagated to the compiled binary via the `PDFIUM_LIBRARY_PATH`
-//! compile-time env var (read in `src/parser/pdf.rs` via `env!()`).
+//! and cached under `target/.../out/pdfium/`. Two copies are produced
+//! so both `cargo run`/`cargo test` (dev) and the NSIS installer
+//! (release) can find Pdfium:
+//!
+//! 1. **`OUT_DIR/pdfium/<lib_name>`** — absolute path baked into the
+//!    binary via the `PDFIUM_LIBRARY_PATH` compile-time env var,
+//!    consumed by `parser::pdf` through `env!()`. This is what dev
+//!    builds bind to (the absolute path resolves on the build machine).
+//!
+//! 2. **`src-tauri/resources/<lib_name>`** — picked up by Tauri's
+//!    `bundle.resources` and shipped into the NSIS installer. The
+//!    runtime fallback chain in `parser::pdf` looks here when
+//!    `current_exe()` points at the installed location.
 //!
 //! Network is touched on the first build only; subsequent builds reuse
 //! the cached archive. If the download fails (offline build, restricted
-//! network) the env var is still set but the file may not exist —
-//! `pdfium-render` will then fail to bind at runtime and `parse_pdf`
-//! returns a clean error instead of panicking.
+//! network) the env var is still set but the files may not exist —
+//! `pdfium-render` will then fall through to the system library and
+//! `parse_pdf` returns a clean error instead of panicking.
 
 use std::env;
 use std::fs;
@@ -52,6 +62,24 @@ fn ensure_pdfium() -> Result<(), String> {
     }
 
     println!("cargo:rustc-env=PDFIUM_LIBRARY_PATH={}", lib_path.display());
+
+    // Mirror the binary into src-tauri/resources/ so Tauri's bundler
+    // picks it up via `bundle.resources` and lays it out as
+    // `$INSTDIR/resources/<lib_name>` next to the installed .exe.
+    // The runtime fallback chain in `parser::pdf` looks there first
+    // in release builds. .gitignore excludes the binary itself; the
+    // `.gitkeep` keeps the directory shape in tree.
+    let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").map_err(|e| e.to_string())?);
+    let resources_dir = manifest_dir.join("resources");
+    fs::create_dir_all(&resources_dir).map_err(|e| e.to_string())?;
+    let resource_lib_path = resources_dir.join(&lib_name);
+    fs::copy(&lib_path, &resource_lib_path).map_err(|e| {
+        format!(
+            "failed to copy Pdfium to {}: {e}",
+            resource_lib_path.display()
+        )
+    })?;
+
     println!("cargo:rerun-if-changed=build.rs");
     Ok(())
 }

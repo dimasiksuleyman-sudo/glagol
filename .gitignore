@@ -54,6 +54,14 @@ src-tauri/WixTools/
 !src-tauri/assets/russiantrustedca.pem
 tauri-signing-key.json
 
+# Pdfium shared library copied into src-tauri/resources/ by build.rs so the
+# NSIS installer can bundle it next to the .exe. ~6 MB binary downloaded
+# from bblanchon/pdfium-binaries per build; the .gitkeep placeholder is
+# committed so the directory always exists for Tauri's config validation.
+src-tauri/resources/pdfium.dll
+src-tauri/resources/libpdfium.so
+src-tauri/resources/libpdfium.dylib
+
 # ----------------------------------------------------------------------------
 # Secrets, credentials, API keys (CRITICAL)
 # ----------------------------------------------------------------------------
