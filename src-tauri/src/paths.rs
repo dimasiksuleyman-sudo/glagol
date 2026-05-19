@@ -83,7 +83,15 @@ fn app_local_data_dir(app: &AppHandle) -> Result<PathBuf, String> {
 }
 
 fn default_audio_cache_root(app: &AppHandle) -> Result<PathBuf, String> {
-    Ok(app_local_data_dir(app)?.join(AUDIO_CACHE_DIRNAME))
+    Ok(default_audio_cache_root_under(&app_local_data_dir(app)?))
+}
+
+/// Pure helper: compose the default audio-cache path under a given
+/// app-local-data directory. Used by `commands::config` to compute the
+/// "same-as-default → reset to None" canonicalisation without taking
+/// a runtime dependency on the live `AppState`.
+pub(crate) fn default_audio_cache_root_under(data_dir: &Path) -> PathBuf {
+    data_dir.join(AUDIO_CACHE_DIRNAME)
 }
 
 /// Snapshot the configured `library_path` out of [`AppState`].

@@ -5,6 +5,7 @@
 //! are converted to plain strings at this boundary because Tauri's IPC
 //! layer serializes errors to strings on the JavaScript side anyway.
 
+pub mod config;
 pub mod credentials;
 pub mod file;
 pub mod storage;

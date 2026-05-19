@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+import { LibraryPathSection } from "@/components/settings/LibraryPathSection";
 import { useCredentials } from "@/contexts/CredentialsContext";
 import { deleteCredentials, setCredentials, testCredentials } from "@/lib/tauri";
 
@@ -116,6 +117,8 @@ export function Settings() {
           </div>
         </CardContent>
       </Card>
+
+      <LibraryPathSection />
     </div>
   );
 }
