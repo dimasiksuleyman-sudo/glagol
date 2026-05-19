@@ -115,7 +115,21 @@ impl Config {
             }
         };
         match serde_json::from_slice::<Config>(&bytes) {
-            Ok(cfg) => cfg,
+            Ok(mut cfg) => {
+                // Backward-compat for the Sprint 5b release (`v0.1.0-rc.4`
+                // installer): that build saved `fs::canonicalize` output
+                // verbatim, which on Windows includes the `\\?\` extended-
+                // length prefix. `dunce::simplified` strips that prefix
+                // when the path is still a valid Win32 form — pure string
+                // operation, no filesystem access, won't fail. The
+                // on-disk file heals naturally on the next save; if the
+                // user never changes the path, the file stays prefixed
+                // but in-memory state is clean so runtime is correct.
+                if let Some(p) = cfg.library_path.as_ref() {
+                    cfg.library_path = Some(dunce::simplified(p).to_path_buf());
+                }
+                cfg
+            }
             Err(e) => {
                 eprintln!(
                     "[glagol::config] could not parse {}: {e}; using defaults. \
@@ -222,6 +236,47 @@ mod tests {
             dir.join(CONFIG_FILENAME).exists(),
             "config.json should exist after save"
         );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn config_load_normalizes_extended_length_prefix_from_legacy_disk_format() {
+        // Hand-write a config.json that mimics what the Sprint 5b
+        // release (`v0.1.0-rc.4`) wrote on Windows when the user
+        // picked `D:\GlagolLib`: `fs::canonicalize` returned
+        // `\\?\D:\GlagolLib`, and that prefixed form went into the
+        // file verbatim. After hotfix install, `Config::load` must
+        // normalise the value in memory so downstream consumers
+        // (asset-protocol scope, dual-root resolution, fs::write)
+        // see a clean `D:\GlagolLib`.
+        //
+        // The test runs cross-platform because the JSON parser and
+        // `dunce::simplified` both behave deterministically on the
+        // string. On non-Windows, `simplified` is identity for
+        // `\\?\D:\GlagolLib` (it stays as-is because the leading
+        // sequence isn't a recognised non-Windows pattern), so the
+        // assertion is OS-aware: we only require *no* `\\?\` prefix
+        // on Windows.
+        let dir = fresh_dir("legacy_prefix");
+        let legacy_json = br#"{"library_path":"\\\\?\\D:\\GlagolLib","version":1}"#;
+        fs::write(dir.join(CONFIG_FILENAME), legacy_json).unwrap();
+
+        let loaded = Config::load(&dir);
+        let path = loaded.library_path.expect("library_path round-trips");
+
+        #[cfg(windows)]
+        {
+            let s = path.to_string_lossy();
+            assert!(
+                !s.starts_with(r"\\?\"),
+                "load must strip \\\\?\\ prefix on Windows; got {s}"
+            );
+        }
+        // Cross-platform invariant: whatever the prefix-stripping
+        // outcome, `dunce::simplified` is a pure string transform
+        // and never panics, and the field stays Some(_).
+        assert!(!path.as_os_str().is_empty());
 
         let _ = fs::remove_dir_all(&dir);
     }
