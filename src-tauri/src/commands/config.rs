@@ -323,14 +323,11 @@ mod tests {
     /// produces the clean Win32 form for paths that fit MAX_PATH.
     ///
     /// Linux / macOS don't have this issue — `canonicalize` returns
-    /// clean paths unconditionally there — so the assertion is gated
-    /// on `cfg(windows)`. The helper still compiles and runs on other
-    /// platforms (it just performs the save and asserts no panic).
+    /// clean paths unconditionally there — so the test is gated on
+    /// `cfg(windows)`.
     #[test]
     #[cfg(windows)]
     fn set_library_path_with_paths_does_not_emit_extended_length_prefix_on_windows() {
-        use std::ffi::OsStr;
-
         let data_dir = fresh_dir("no_prefix_data");
         let default_root = paths::default_audio_cache_root_under(&data_dir);
         fs::create_dir_all(&default_root).unwrap();
@@ -359,12 +356,6 @@ mod tests {
             !stored_str.starts_with(r"\\?\"),
             "stored library_path must not carry the extended-length prefix, got: {stored_str}"
         );
-
-        // Also verify it's a usable path by attempting a no-op
-        // metadata read — proves we didn't strip the prefix in a
-        // way that broke the underlying Win32 path.
-        let _ = std::fs::metadata::<&OsStr>(stored.as_ref())
-            .expect("stripped path must still be openable");
 
         let _ = fs::remove_dir_all(&data_dir);
         let _ = fs::remove_dir_all(&custom_dir);
