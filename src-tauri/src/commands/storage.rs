@@ -145,6 +145,37 @@ pub(crate) fn delete_document_impl(
     Ok(())
 }
 
+/// Rename a document. Trims the title at the IPC boundary, rejects
+/// empty / whitespace-only titles before touching the DB. Returns a
+/// Russian-language error string suitable for direct toast display
+/// when the document doesn't exist.
+#[tauri::command]
+pub async fn update_document_title(
+    state: State<'_, AppState>,
+    document_id: String,
+    title: String,
+) -> Result<(), String> {
+    update_document_title_impl(&state.db, &document_id, &title)
+}
+
+pub(crate) fn update_document_title_impl(
+    db: &Mutex<Connection>,
+    document_id: &str,
+    title: &str,
+) -> Result<(), String> {
+    let trimmed = title.trim();
+    if trimmed.is_empty() {
+        return Err("Заголовок не может быть пустым".to_string());
+    }
+    let conn = db.lock().expect("db mutex poisoned");
+    let rows =
+        db::repository::update_title(&conn, document_id, trimmed).map_err(|e| e.to_string())?;
+    if rows == 0 {
+        return Err("Документ не найден".to_string());
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -385,5 +416,61 @@ mod tests {
         );
 
         let _ = fs::remove_dir_all(&audio_root);
+    }
+
+    #[test]
+    fn update_document_title_impl_full_validation_chain() {
+        // Four inline sub-scenarios per the kickoff "Edge cases worth
+        // covering inline в test names — не обязательно отдельные tests,
+        // но в test bodies" pattern:
+        //
+        //   A. happy path with whitespace-padded input → trimmed + saved
+        //   B. empty string → Russian-language rejection, DB untouched
+        //   C. whitespace-only → same rejection (trim drives it)
+        //   D. unknown id → "Документ не найден"
+
+        let db = Mutex::new(test_connection());
+        let id = "doc-rename";
+        {
+            let conn = db.lock().unwrap();
+            repository::insert(&conn, &make_record(id, Some("orig.wav".to_string()))).unwrap();
+        }
+
+        // (A) Happy + trim: incoming title has padding which the
+        // command strips before persisting.
+        update_document_title_impl(&db, id, "  Свежий заголовок  ").expect("happy path with trim");
+        {
+            let conn = db.lock().unwrap();
+            let row = repository::get(&conn, id).unwrap().unwrap();
+            assert_eq!(row.title, "Свежий заголовок");
+        }
+
+        // (B) Empty string → reject; DB unchanged.
+        let err_b = update_document_title_impl(&db, id, "").unwrap_err();
+        assert!(
+            err_b.contains("пустым"),
+            "expected empty-title rejection in Russian, got: {err_b}"
+        );
+
+        // (C) Whitespace-only → reject (post-trim).
+        let err_c = update_document_title_impl(&db, id, "   \t  \n  ").unwrap_err();
+        assert!(
+            err_c.contains("пустым"),
+            "expected whitespace-title rejection in Russian, got: {err_c}"
+        );
+
+        // Title from (A) survives the failed (B) and (C) calls.
+        {
+            let conn = db.lock().unwrap();
+            let row = repository::get(&conn, id).unwrap().unwrap();
+            assert_eq!(row.title, "Свежий заголовок");
+        }
+
+        // (D) Unknown id → not-found.
+        let err_d = update_document_title_impl(&db, "ghost-id", "Призрак").unwrap_err();
+        assert!(
+            err_d.contains("не найден"),
+            "expected not-found error in Russian, got: {err_d}"
+        );
     }
 }

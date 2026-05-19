@@ -142,6 +142,16 @@ export async function deleteDocument(documentId: string): Promise<void> {
 }
 
 /**
+ * Rename a document. The title is trimmed at the IPC boundary; an
+ * empty / whitespace-only value rejects with «Заголовок не может быть
+ * пустым», an unknown document id rejects with «Документ не найден».
+ * Both error strings are Russian and suitable for direct toast display.
+ */
+export async function updateDocumentTitle(documentId: string, title: string): Promise<void> {
+  await invoke("update_document_title", { documentId, title });
+}
+
+/**
  * Outcome of a successful file parse. Mirrors `parser::ParsedDocument`
  * on the Rust side; serde uses field names as-is (snake_case) so the
  * shape lines up 1:1 over the IPC boundary.
@@ -176,6 +186,40 @@ export interface ParsedDocument {
  */
 export async function readAndParseFile(path: string): Promise<ParsedDocument> {
   return await invoke<ParsedDocument>("read_and_parse_file", { path });
+}
+
+/**
+ * Snapshot of the user-configured library location for the Settings
+ * page. Mirrors `commands::config::LibraryPathInfo` on the Rust side.
+ *
+ * - `configured` is the raw value stored in `config.json` — `null`
+ *   means "use the default location". UI uses this to decide whether
+ *   to show the "Сбросить" button.
+ * - `effective` is the path actually in use right now (the configured
+ *   one if any, otherwise the default).
+ */
+export interface LibraryPathInfo {
+  configured: string | null;
+  effective: string;
+}
+
+/**
+ * Read the current library-path settings. Called on mount of the
+ * Settings page's "Папка библиотеки" section.
+ */
+export async function getLibraryPath(): Promise<LibraryPathInfo> {
+  return await invoke<LibraryPathInfo>("get_library_path");
+}
+
+/**
+ * Persist a new library path. Pass an empty string to reset to the
+ * default. The backend runs the D4 validation chain (must be absolute,
+ * must be writable, canonicalises) and registers the asset-protocol
+ * scope for the new path on success. Errors come back as
+ * Russian-language strings suitable for direct toast display.
+ */
+export async function setLibraryPath(path: string): Promise<void> {
+  await invoke("set_library_path", { path });
 }
 
 export { Channel };
