@@ -267,9 +267,13 @@ mod tests {
         {
             let cfg = state.config.lock().unwrap();
             assert!(cfg.library_path.is_some());
+            // Compare against `dunce::canonicalize` — the same primitive
+            // production uses — so the test stays apples-to-apples on
+            // Windows where `std::fs::canonicalize` would still return
+            // the `\\?\` extended-length form.
             assert_eq!(
                 cfg.library_path.as_ref().unwrap(),
-                &fs::canonicalize(&custom_dir).unwrap()
+                &dunce::canonicalize(&custom_dir).unwrap()
             );
         }
         assert!(
