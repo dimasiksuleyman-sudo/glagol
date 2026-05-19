@@ -28,13 +28,28 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["nsis"],
+    "category": "Productivity",
+    "shortDescription": "Озвучка русских текстов через SaluteSpeech",
+    "longDescription": "Open source приложение для синтеза речи из длинных русских текстов и документов через SaluteSpeech API от Сбербанка. Локальная библиотека озвученных документов, продолжение воспроизведения, бесплатно для большинства пользователей (200К символов в месяц на free tier SaluteSpeech).",
+    "publisher": "Glagol Contributors",
+    "copyright": "Copyright (c) 2026 Glagol Contributors",
+    "licenseFile": "../LICENSE",
+    "resources": ["resources/*"],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": ["English", "Russian"],
+        "displayLanguageSelector": true,
+        "compression": "lzma"
+      }
+    }
   }
 }

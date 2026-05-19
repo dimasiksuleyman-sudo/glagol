@@ -1,13 +1,28 @@
 //! PDF parser using `pdfium-render`.
 //!
-//! The Pdfium shared library (`libpdfium.so` / `pdfium.dll`) is
-//! downloaded by `build.rs` from <https://github.com/bblanchon/pdfium-binaries>
-//! into `OUT_DIR/pdfium/`, and the absolute path is propagated to the
-//! compiled binary via the `PDFIUM_LIBRARY_PATH` env var (set at build
-//! time). We bind to that path at runtime via
-//! [`Pdfium::bind_to_library`]; if the file is missing (offline
-//! build / restricted CI) we fall back to the system library so a
-//! user-provided Pdfium install still works.
+//! The Pdfium shared library (`pdfium.dll` / `libpdfium.so` /
+//! `libpdfium.dylib`) is downloaded by `build.rs` from
+//! <https://github.com/bblanchon/pdfium-binaries> and laid out in two
+//! places so both dev and release installer builds can find it:
+//!
+//! * `OUT_DIR/pdfium/<lib_name>` — absolute path baked in at compile
+//!   time via the `PDFIUM_LIBRARY_PATH` env var; consumed in dev
+//!   builds where the binary runs from `target/<profile>/`.
+//! * `src-tauri/resources/<lib_name>` — picked up by Tauri's
+//!   `bundle.resources` and shipped into the NSIS installer at
+//!   `$INSTDIR/resources/<lib_name>`; consumed in release builds.
+//!
+//! At runtime we try the locations in order and fall back to the
+//! system library as a last resort:
+//!
+//! 1. `<exe_dir>/resources/<lib_name>` — release installer layout.
+//! 2. `<exe_dir>/<lib_name>` — alternative install layout (user
+//!    relocated, sideloaded build, etc.).
+//! 3. `env!("PDFIUM_LIBRARY_PATH")` — dev build absolute path.
+//! 4. [`Pdfium::bind_to_system_library`] — final fallback if the user
+//!    has Pdfium installed system-wide.
+//!
+//! Failure to bind surfaces as [`ParseError::Format`] — never a panic.
 //!
 //! Scanned PDF detection (Sprint 4 Q7): a PDF whose extracted text is
 //! empty or whitespace-only after trimming is treated as a scanned
@@ -16,25 +31,65 @@
 //! disclaimer dialog instead of loading an empty textarea.
 
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
 
 use pdfium_render::prelude::*;
 
 use super::{ParseError, ParsedDocument};
 
-/// Path to the Pdfium shared library, baked in at build time.
-const PDFIUM_LIBRARY_PATH: &str = env!("PDFIUM_LIBRARY_PATH");
+/// Absolute path baked in at build time. Always points to the
+/// dev-build cache location; used as the third-tier fallback after
+/// the two installer-relative candidates fail.
+const PDFIUM_LIBRARY_PATH_BUILD: &str = env!("PDFIUM_LIBRARY_PATH");
+
+/// Platform-specific filename of the Pdfium shared library.
+#[cfg(target_os = "windows")]
+const PDFIUM_LIB_NAME: &str = "pdfium.dll";
+#[cfg(target_os = "macos")]
+const PDFIUM_LIB_NAME: &str = "libpdfium.dylib";
+#[cfg(all(unix, not(target_os = "macos")))]
+const PDFIUM_LIB_NAME: &str = "libpdfium.so";
 
 /// A single shared `Pdfium` instance, lazily bound on first use.
 /// Cheap to share — `Pdfium` is `Send + Sync` and the dynamic binding
 /// behind it is itself thread-safe.
 static PDFIUM: LazyLock<Result<Pdfium, String>> = LazyLock::new(|| {
-    let bindings = Pdfium::bind_to_library(PDFIUM_LIBRARY_PATH)
-        .or_else(|_| Pdfium::bind_to_system_library())
-        .map_err(|e| format!("не удалось загрузить Pdfium: {e}"))?;
+    let bindings = bind_pdfium().map_err(|e| format!("не удалось загрузить Pdfium: {e}"))?;
     Ok(Pdfium::new(bindings))
 });
+
+/// Try the candidate library locations in order; return the first
+/// successful binding. The error returned only describes the last
+/// attempt — every prior attempt is silently swallowed because the
+/// fallback chain is normal operation, not an error condition.
+fn bind_pdfium() -> Result<Box<dyn PdfiumLibraryBindings>, PdfiumError> {
+    let exe_dir = std::env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(PathBuf::from));
+
+    let mut candidates: Vec<PathBuf> = Vec::with_capacity(3);
+    if let Some(dir) = &exe_dir {
+        candidates.push(dir.join("resources").join(PDFIUM_LIB_NAME));
+        candidates.push(dir.join(PDFIUM_LIB_NAME));
+    }
+    candidates.push(PathBuf::from(PDFIUM_LIBRARY_PATH_BUILD));
+
+    let mut last_err = None;
+    for path in candidates {
+        if !path.exists() {
+            continue;
+        }
+        match Pdfium::bind_to_library(&path) {
+            Ok(b) => return Ok(b),
+            Err(e) => last_err = Some(e),
+        }
+    }
+
+    // Final fallback: a system-wide Pdfium install (e.g. for the user
+    // who packaged Pdfium themselves outside our installer).
+    Pdfium::bind_to_system_library().map_err(|e| last_err.unwrap_or(e))
+}
 
 pub fn parse(path: &Path) -> Result<ParsedDocument, ParseError> {
     let bytes = fs::read(path)?;
