@@ -12,6 +12,13 @@ the per-session master logs under [`docs/day-logs/`](docs/day-logs/).
 ## [Unreleased]
 
 ### Added
+- **Резервное копирование и восстановление библиотеки одним архивом**
+  (Настройки → «Резервное копирование»).
+  - Создание `.zip`-архива с базой данных, всеми аудиофайлами и манифестом.
+  - Восстановление из архива с автоматической резервной копией текущего
+    состояния перед перезаписью.
+  - Поддержка переноса библиотеки между компьютерами без ручной работы с
+    файлами.
 - **Inline title editing on Library rows.** Click the pencil icon next to a
   document's title, type a new name, then Enter to save or click outside to
   commit (Esc cancels). Mirrors Windows Explorer F2-rename feel.
