@@ -19,6 +19,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Progress } from "@/components/ui/progress";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { pluralizeDocuments, pluralizeFiles } from "@/lib/pluralize";
 import {
   BACKUP_PROGRESS_EVENT,
   BACKUP_RESTORE_PROGRESS_EVENT,
@@ -207,7 +208,7 @@ export function BackupSection() {
                   {progressVerb}…{" "}
                   {progress && progress.total > 0 ? (
                     <span className="text-foreground font-medium">
-                      {progress.current} / {progress.total} файлов
+                      {progress.current} / {progress.total} {pluralizeFiles(progress.total)}
                     </span>
                   ) : (
                     <span className="text-muted-foreground">подготовка…</span>
@@ -240,14 +241,14 @@ export function BackupSection() {
                       <span className="text-foreground font-semibold">
                         {pendingRestore.currentCount}
                       </span>{" "}
-                      документов
+                      {pluralizeDocuments(pendingRestore.currentCount)}
                     </li>
                     <li>
                       В резервной копии:{" "}
                       <span className="text-foreground font-semibold">
                         {pendingRestore.manifest.document_count}
                       </span>{" "}
-                      документов
+                      {pluralizeDocuments(pendingRestore.manifest.document_count)}
                     </li>
                   </ul>
                 )}

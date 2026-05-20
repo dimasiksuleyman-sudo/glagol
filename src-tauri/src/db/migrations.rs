@@ -8,8 +8,9 @@
 use rusqlite::Connection;
 use rusqlite_migration::{Migrations, M};
 
-const MIGRATIONS_SLICE: &[M<'static>] = &[M::up(
-    r#"
+const MIGRATIONS_SLICE: &[M<'static>] = &[
+    M::up(
+        r#"
     CREATE TABLE documents (
         id                  TEXT PRIMARY KEY NOT NULL,
         title               TEXT NOT NULL,
@@ -24,7 +25,22 @@ const MIGRATIONS_SLICE: &[M<'static>] = &[M::up(
     );
     CREATE INDEX idx_docs_created ON documents(created_at DESC);
     "#,
-)];
+    ),
+    // Sprint 5d: per-month SaluteSpeech usage ledger for the free-tier
+    // counter on the Settings page. One row per calendar month
+    // (`'YYYY-MM'`, local timezone). `recognitions_seconds` is reserved
+    // for a future STT feature; Sprint 5d only writes `chars_used`.
+    M::up(
+        r#"
+    CREATE TABLE api_usage (
+        month                   TEXT PRIMARY KEY NOT NULL,
+        chars_used              INTEGER NOT NULL DEFAULT 0,
+        recognitions_seconds    INTEGER NOT NULL DEFAULT 0,
+        updated_at              INTEGER NOT NULL
+    );
+    "#,
+    ),
+];
 
 /// Apply every pending migration to `conn`. Idempotent: calling twice on the
 /// same database is a no-op the second time.

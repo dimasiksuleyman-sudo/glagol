@@ -429,6 +429,63 @@ Anti-patterns encountered Sprint 1-2 that should be avoided:
 
 - **Don't over-engineer based on speculation.** Sprint 5 polish items get added when real usage signals demand. Pre-emptive UX upgrades (undo toasts before users complain about misclicks) are friction, not features.
 
+### Conventions banked Sprint 5b–5d
+
+These patterns emerged through Sprint 5b (configurable library + revert), Sprint 5c (backup/restore + hotfix), and Sprint 5d (character counter). They supplement the Sprint 1–2 conventions above and apply project-wide.
+
+**Local-toolchain hygiene**
+
+- **`cargo check` minimum locally before push.** `rustfmt --check` does not catch unused imports, missing imports, or type errors. The Sprint 5c PR #30 fixup commit existed solely because `cargo check` had not been run before push. (Sprint 5c → Sprint 5d.)
+- **Tauri local builds on Linux need GTK + WebKit dev libs.** `sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev` unlocks the full `cargo check`/`test`/`clippy`/`fmt` chain on Linux cloud containers. Without these, Tauri compilation fails at the `gdk-sys` link step and gates fall through to Windows CI. (Sprint 5d Phase 1.)
+- **`cargo test`/`cargo clippy --all-targets -- -D warnings`/`cargo fmt --check` are the four required pre-push gates.** Test count must be reconciled with the kickoff target before commit. (Sprint 5b–5d.)
+
+**Concurrency & resource ownership**
+
+- **Hold AppState `Mutex` only for data extraction, never across IO.** Block-scope the guard around the DB / state read, return the values needed outside the lock, then perform filesystem or network work. Compiler-enforced ordering — no `drop(conn);` explicit pattern, which future refactors can silently inline. (Sprint 5b.)
+- **`std::mem::replace` is the right primitive to close a resource owned by `Mutex<T>` before destructive work.** Releasing the guard alone leaves the value alive inside the `Mutex`; only `mem::replace` (or `mem::take` for `Option<T>`) actually transfers ownership out so the value drops. The Sprint 5c backup-restore hotfix (PR #31) is the canonical example. (Sprint 5c hotfix.)
+- **Explicit `drop(x)` is load-bearing when ordering matters, not stylistic.** Rust NLL is free to extend a binding's lifetime to end-of-function. When a `Drop` impl is the side effect (closing a file handle, releasing a mutex), an explicit `drop()` makes the ordering compiler-checked, and the inline comment must flag why so a future refactor doesn't delete it as "dead code". (Sprint 5c hotfix.)
+- **`spawn_blocking` for sync, fs-heavy work; clone the `AppHandle` across the boundary.** Pattern: `let handle = app.clone(); tauri::async_runtime::spawn_blocking(move || { … handle.emit(…) … })`. The captured `AppHandle` is `Clone + Send + Sync`, so a `Fn(…)` progress closure satisfies both `Fn` and `Send` without ceremony. (Sprint 5c.)
+- **Tauri command return types need `Serialize` only; input-parameter types need `Deserialize` only.** Don't blanket-derive both — keeps event payloads from accidentally becoming command inputs. (Sprint 5d.)
+
+**Path & defensive-coding**
+
+- **TOCTOU defence: re-validate after first check, re-check during extraction.** A zip archive that passed `validate_backup_impl` could in principle be swapped on disk before `restore_backup_impl` reopens it; the extraction loop re-runs the path-traversal check on every entry as defence in depth. Costs nothing, prevents the entire zip-slip class. (Sprint 5c.)
+- **Path-traversal defence rejects `..`, leading `/`, leading `\`, and `[A-Z]:` Windows drive prefix on every archive entry.** Applies even to entries that would otherwise be silently ignored — hostile is hostile. (Sprint 5c.)
+- **`Connection::open(&path)` defaults to `SQLITE_OPEN_CREATE`** and will silently create an empty unmigrated DB if `path` does not exist. Check existence before opening in recovery paths — see `commands::backup::try_restore_real_connection`. (Sprint 5c hotfix.)
+
+**State-machine design**
+
+- **Discriminated `LoadState` union for async UI states.** `{ kind: 'loading' } | { kind: 'ready', data } | { kind: 'error', message }` drives a single `switch` in render. Scales cleanly to new states without rewriting boolean stews. (Sprint 5b → Sprint 5c → Sprint 5d.)
+- **Best-effort error recovery via `let Ok(x) = expr else { return; }`** (let-else, stable since Rust 1.65). Keeps best-effort cleanup helpers flat without nested `match` / `if let` ladders. Used by `commands::backup::try_restore_real_connection`. (Sprint 5c hotfix.)
+- **Defensive `unreachable!()` arms warrant `should_panic` tests.** They document a contract; a `should_panic(expected = "…")` test prevents a future refactor from silently falling back to the wrong branch. (Sprint 5d.)
+- **Advisory writes log to stderr, never error to the user.** When a side-effect (usage counter, telemetry, statistics) is not correctness-critical, swallow DB / IO errors with an `eprintln!` rather than failing the user's primary operation. Used by `commands::synthesize::record_synthesis_usage`. (Sprint 5d.)
+
+**PR & GitHub workflow**
+
+- **Sprint 5d trust convention: CC composes the PR body, posts directly to `mcp__github__create_pull_request`, then strips the auto-injected `_Generated by [Claude Code]_` footer via `mcp__github__update_pull_request`.** No preview-to-chat round trip — validated five consecutive PRs from Sprint 5b through Sprint 5d. (Sprint 5c → Sprint 5d.)
+- **`mcp__github__subscribe_pr_activity` after PR creation** delivers CI failures + review comments back into the conversation as `<github-webhook-activity>` messages, so the session can react without polling. Unsubscribed automatically on merge. (Sprint 5c.)
+- **GitHub PR-body sanitiser strips `<...>` content even inside markdown backticks.** Escape angle-bracket generics as `&lt;...&gt;` when the body references Rust types like `Mutex<Connection>`, `Option<PathBuf>`, etc. (Sprint 5c.)
+- **PR titles avoid literal `#N` references.** Body autolinks are intentional only for the PR being patched / promoted (e.g. Sprint 5c hotfix body references `#30`). Decision tags (`D3`, `D7`, etc.) are kickoff-internal and never appear in PR bodies. (Sprint 5b.)
+- **Forward-only reverts over `git revert` commits** for scope reductions. Sprint 5b's "remove configurable library" PR was a deletion PR with a forward narrative — cleaner history and easier review than a revert + selective re-apply dance. (Sprint 5b.)
+
+**Lockfile & dependency hygiene**
+
+- **Lockfile changes must accompany dependency changes** (`Cargo.lock` for Rust, `pnpm-lock.yaml` for frontend). Sprint 5c shipped `zip = "2"` in Cargo.toml without a matching `Cargo.lock` update — required a follow-up `chore: sync Cargo.lock` commit on `main`. Don't repeat. (Sprint 5c.)
+- **Removing a direct dep from `Cargo.toml` does not remove it from `Cargo.lock`** when it's still a transitive dep of another crate (e.g. Tauri's own deps). Only the package-section listing in the lockfile changes. (Sprint 5b revert.)
+- **Verify cross-component usage before removing a dep.** `tauri-plugin-dialog` was originally slated for removal in the Sprint 5b revert, but a `grep` audit caught its use in `Library.tsx` + `Synthesize.tsx` (Sprint 4 paths). Keep that dep; flag the deviation. (Sprint 5b.)
+
+**Frontend conventions**
+
+- **Inline types in `src/lib/tauri.ts`** — no separate `src/lib/types.ts`. Discovered Sprint 5b; one source of truth for the IPC boundary, fewer files to grep. (Sprint 5b V6.)
+- **`Intl.NumberFormat('ru-RU')` for Russian thousands separators** (non-breaking space, e.g. `12 345`). `toFixed(1).replace('.', ',')` for the Russian decimal comma. Don't ship US-default formatting in user-facing strings. (Sprint 5d Phase 4.)
+- **Russian three-form plural via `src/lib/pluralize.ts`** — `pluralRu(n, one, few, many)` plus typed wrappers (`pluralizeDocuments`, `pluralizeFiles`). The 11–14 exception in the rule is real Russian grammar, not a bug. (Sprint 5d Phase 5.)
+- **Event-driven cross-component refresh over polling.** Backend emits a typed event (e.g. `synthesis-completed`); frontend `listen()`s in the component that needs to refresh and re-fetches authoritative data. Mount-time fetch + event-driven refetch = no stale data, no polling timer. (Sprint 5d Phases 3–4.)
+
+**Error-surface design**
+
+- **Backend error reasons are *just the reason*, not the full sentence.** Frontend wrappers add the user-facing prefix («Этот файл не является корректной резервной копией Glagol: »). If both halves duplicate the prefix, the toast reads it twice — Sprint 5c Scenario 4 caught exactly this, fixed in Sprint 5d Phase 5. (Sprint 5d Phase 5.)
+- **Translate internal error strings to user-facing Russian at the Tauri command boundary**, not at the source. Tests assert on the structured English form (`"no credentials configured"`, `"rate limited"`); the user sees a friendly Russian sentence with a concrete next step. Pattern-match in a `to_user_facing_ru(internal: &str) -> String` helper, fall through with a tagged prefix for unknown strings so bugs stay searchable. (Sprint 5d Phase 5, closes #16.)
+
 ## Working with AI assistants in this repo
 
 ### Claude Code best practices
@@ -488,5 +545,5 @@ By contributing, you agree your contributions are licensed under the same terms.
 
 ---
 
-*Last updated: 2026-05-19 (Sprint 4 entry — file parsers landed)*
+*Last updated: 2026-05-20 (Sprint 5d — character counter + Sprint 5b/5c conventions landed)*
 *Maintained by: Glagol Contributors*

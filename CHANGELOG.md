@@ -12,6 +12,26 @@ the per-session master logs under [`docs/day-logs/`](docs/day-logs/).
 ## [Unreleased]
 
 ### Added
+- **Счётчик использования SaluteSpeech** (Настройки → «Использование
+  SaluteSpeech»). Показывает потраченные символы за текущий месяц на
+  бесплатном тарифе (200 000 символов/месяц) с прогресс-баром и
+  локализованным названием месяца. Обновляется автоматически после
+  каждой успешной озвучки.
+- **Дружественные сообщения об ошибках SaluteSpeech** (closes #16). Сетевые
+  сбои, истёкшие токены, превышение лимита, неверные credentials и
+  ошибки сервера Сбера теперь показываются пользователю на русском с
+  конкретной подсказкой что делать, вместо «`network error: ...`».
+
+### Changed
+- **Ошибка восстановления резервной копии больше не дублируется.**
+  Toast «Этот файл не является корректной резервной копией Glagol»
+  теперь идёт с конкретной причиной один раз, не дважды.
+- **Правильные русские формы множественного числа** в счётчиках
+  диалогов восстановления — «1 документ», «2 документа», «5 документов».
+
+## [v0.1.0-rc.6] — 2026-05-20
+
+### Added
 - **Резервное копирование и восстановление библиотеки одним архивом**
   (Настройки → «Резервное копирование»).
   - Создание `.zip`-архива с базой данных, всеми аудиофайлами и манифестом.
@@ -19,14 +39,31 @@ the per-session master logs under [`docs/day-logs/`](docs/day-logs/).
     состояния перед перезаписью.
   - Поддержка переноса библиотеки между компьютерами без ручной работы с
     файлами.
-- **Inline title editing on Library rows.** Click the pencil icon next to a
-  document's title, type a new name, then Enter to save or click outside to
-  commit (Esc cancels). Mirrors Windows Explorer F2-rename feel.
+
+### Fixed
+- **Восстановление на Windows больше не падает с «file in use».**
+  SQLite-соединение явно закрывается перед удалением `glagol.db` через
+  `std::mem::replace`, что устраняет `ERROR_SHARING_VIOLATION` (os error
+  32) на восстановлении.
+
+## [v0.1.0-rc.5] — 2026-05-20
+
+### Added
+- **Inline-редактирование названий документов в Библиотеке.** Карандаш
+  рядом с заголовком → click → редактирование, Enter сохраняет, Esc
+  отменяет, blur коммитит. Поведение F2-rename из Проводника Windows.
 
 ### Changed
-- **Brand-correct installer filename and Apps & Features label.** The Windows
-  installer is now `Glagol_0.1.0_x64-setup.exe` (was `glagol_…`), and the
-  Apps & Features entry displays "Glagol" with proper capitalisation.
+- **Имя инсталлятора и метка в «Программы и компоненты» с правильным
+  регистром бренда.** Установщик теперь `Glagol_0.1.0_x64-setup.exe`
+  (было `glagol_…`); запись в «Программах и компонентах» отображается
+  как «Glagol».
+
+### Removed
+- **Настраиваемая папка библиотеки удалена.** Sprint 5b dual-root
+  fallback не решал реальную user pain (управление местом на диске —
+  файлы оставались на C: + добавлялись в новой папке). Возможно вернётся
+  в Sprint 5c+ с физической миграцией файлов, если будет реальный сигнал.
 
 ## [v0.1.0-rc.4] — 2026-05-19
 
@@ -126,7 +163,9 @@ the per-session master logs under [`docs/day-logs/`](docs/day-logs/).
   visible progress bar so the user can see «Озвучиваем фрагмент 5 из 12».
 - **System Save As dialog** for choosing where the resulting WAV goes.
 
-[Unreleased]: https://github.com/dimasiksuleyman-sudo/glagol/compare/v0.1.0-rc.4...HEAD
+[Unreleased]: https://github.com/dimasiksuleyman-sudo/glagol/compare/v0.1.0-rc.6...HEAD
+[v0.1.0-rc.6]: https://github.com/dimasiksuleyman-sudo/glagol/compare/v0.1.0-rc.5...v0.1.0-rc.6
+[v0.1.0-rc.5]: https://github.com/dimasiksuleyman-sudo/glagol/compare/v0.1.0-rc.4...v0.1.0-rc.5
 [v0.1.0-rc.4]: https://github.com/dimasiksuleyman-sudo/glagol/compare/v0.1.0-rc.3...v0.1.0-rc.4
 [v0.1.0-rc.3]: https://github.com/dimasiksuleyman-sudo/glagol/compare/v0.1.0-rc.2...v0.1.0-rc.3
 [v0.1.0-rc.2]: https://github.com/dimasiksuleyman-sudo/glagol/compare/v0.1.0-rc.1...v0.1.0-rc.2

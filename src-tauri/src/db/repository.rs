@@ -113,6 +113,73 @@ pub fn update_title(conn: &Connection, id: &str, title: &str) -> Result<usize> {
     )
 }
 
+// ── api_usage table ────────────────────────────────────────────────────
+//
+// Sprint 5d. The `api_usage` table tracks per-month SaluteSpeech
+// consumption so the Settings page can show "X / 200 000 chars used
+// this month". One row per `YYYY-MM` calendar month (local timezone).
+// `recognitions_seconds` is reserved for a future STT feature; Sprint
+// 5d only writes `chars_used`.
+
+/// Add `chars_added` to the running `chars_used` total for `month`,
+/// inserting a fresh row at zero if this is the first synthesis of the
+/// month. `month` is expected to be in `YYYY-MM` form; the function
+/// does not validate the shape (the caller — `commands::usage` — owns
+/// that). `updated_at` is the current Unix millisecond timestamp.
+///
+/// Advisory write: the synthesis pipeline calls this *after* a
+/// successful audio write, so a failure here means the counter is
+/// merely stale, not that the document is missing. Callers should log
+/// rather than surface a user-facing error.
+pub fn record_usage(
+    conn: &Connection,
+    month: &str,
+    chars_added: i64,
+    updated_at: i64,
+) -> Result<usize> {
+    conn.execute(
+        "
+        INSERT INTO api_usage (month, chars_used, recognitions_seconds, updated_at)
+        VALUES (?1, ?2, 0, ?3)
+        ON CONFLICT(month) DO UPDATE SET
+            chars_used = chars_used + excluded.chars_used,
+            updated_at = excluded.updated_at
+        ",
+        params![month, chars_added, updated_at],
+    )
+}
+
+/// Snapshot of a single `api_usage` row. Returned by
+/// [`get_usage_for_month`] as `None` when the month has never been
+/// written — the caller is expected to render that as a zero-state.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UsageRow {
+    pub month: String,
+    pub chars_used: i64,
+    pub recognitions_seconds: i64,
+    pub updated_at: i64,
+}
+
+/// Look up the usage row for a single month. Returns `Ok(None)` when
+/// the month has not been recorded yet — the Settings page treats that
+/// case as `chars_used = 0`.
+pub fn get_usage_for_month(conn: &Connection, month: &str) -> Result<Option<UsageRow>> {
+    conn.query_row(
+        "SELECT month, chars_used, recognitions_seconds, updated_at \
+         FROM api_usage WHERE month = ?1",
+        params![month],
+        |row| {
+            Ok(UsageRow {
+                month: row.get(0)?,
+                chars_used: row.get(1)?,
+                recognitions_seconds: row.get(2)?,
+                updated_at: row.get(3)?,
+            })
+        },
+    )
+    .optional()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -253,5 +320,67 @@ mod tests {
         let conn = test_connection();
         let rows = update_title(&conn, "does-not-exist", "any title").unwrap();
         assert_eq!(rows, 0);
+    }
+
+    // ── api_usage table tests ─────────────────────────────────────
+
+    #[test]
+    fn record_usage_inserts_new_month_row() {
+        let conn = test_connection();
+        let now = 1_700_000_000_000;
+        let affected = record_usage(&conn, "2026-05", 100, now).expect("insert");
+        assert_eq!(affected, 1);
+
+        let row = get_usage_for_month(&conn, "2026-05")
+            .expect("select")
+            .expect("row exists");
+        assert_eq!(row.month, "2026-05");
+        assert_eq!(row.chars_used, 100);
+        assert_eq!(row.recognitions_seconds, 0);
+        assert_eq!(row.updated_at, now);
+    }
+
+    #[test]
+    fn record_usage_increments_existing_month_row() {
+        let conn = test_connection();
+        let first = 1_700_000_000_000;
+        let second = 1_700_000_010_000;
+
+        record_usage(&conn, "2026-05", 50, first).expect("first write");
+        record_usage(&conn, "2026-05", 75, second).expect("second write");
+
+        let row = get_usage_for_month(&conn, "2026-05")
+            .expect("select")
+            .expect("row exists");
+        assert_eq!(row.chars_used, 125, "second call must add, not replace");
+        assert_eq!(
+            row.updated_at, second,
+            "updated_at must reflect the most recent write"
+        );
+        assert_eq!(row.recognitions_seconds, 0);
+    }
+
+    #[test]
+    fn get_usage_for_month_returns_none_for_missing_month() {
+        let conn = test_connection();
+        let row = get_usage_for_month(&conn, "2026-05").expect("query ok");
+        assert!(row.is_none(), "missing month must surface as None");
+    }
+
+    #[test]
+    fn record_usage_isolates_months() {
+        // Two distinct months track independently — incrementing May
+        // does not affect June, and vice versa. Guards the natural
+        // calendar-boundary rollover semantics promised by the
+        // Settings counter.
+        let conn = test_connection();
+        record_usage(&conn, "2026-05", 1_000, 1_700_000_000_000).unwrap();
+        record_usage(&conn, "2026-06", 250, 1_700_000_001_000).unwrap();
+        record_usage(&conn, "2026-05", 500, 1_700_000_002_000).unwrap();
+
+        let may = get_usage_for_month(&conn, "2026-05").unwrap().unwrap();
+        let june = get_usage_for_month(&conn, "2026-06").unwrap().unwrap();
+        assert_eq!(may.chars_used, 1_500);
+        assert_eq!(june.chars_used, 250);
     }
 }

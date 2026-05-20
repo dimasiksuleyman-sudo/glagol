@@ -294,4 +294,54 @@ export async function relaunchApp(): Promise<void> {
   await invoke("relaunch_app");
 }
 
+/**
+ * Snapshot of the current month's SaluteSpeech consumption. Mirrors
+ * `commands::usage::UsageInfo` on the Rust side — serde keeps the
+ * field names as-is (snake_case) so the shape lines up 1:1 over the
+ * IPC boundary, matching the `DocumentRecord` convention.
+ *
+ * `month` is the `YYYY-MM` key (local calendar month); the Settings UI
+ * formats it for display via a local Russian month-name helper that
+ * mirrors `commands::usage::russian_month_genitive`.
+ *
+ * `percent_used` is computed backend-side, capped at 100 so over-quota
+ * paid-tier users still see a pinned bar (never a 125 % overflow).
+ */
+export interface UsageInfo {
+  month: string;
+  chars_used: number;
+  chars_limit: number;
+  percent_used: number;
+}
+
+/**
+ * Read the current calendar month's SaluteSpeech usage. Called on
+ * mount of the Settings page's "Использование SaluteSpeech" section,
+ * and again whenever the backend emits `SYNTHESIS_COMPLETED_EVENT`.
+ *
+ * Rejects with a Russian-language string suitable for direct toast or
+ * inline-error display when the DB read fails.
+ */
+export async function getCurrentMonthUsage(): Promise<UsageInfo> {
+  return await invoke<UsageInfo>("get_current_month_usage");
+}
+
+/**
+ * Payload of the `synthesis-completed` event. The backend emits this
+ * after a successful `synthesize_document` call so the Settings usage
+ * counter (and, optionally, the Library list) can refresh without
+ * polling. Field names are camelCase because the Rust struct uses
+ * `#[serde(rename_all = "camelCase")]`.
+ */
+export interface SynthesisCompletedEvent {
+  documentId: string;
+  charsAdded: number;
+}
+
+/**
+ * Channel name for the post-synthesis broadcast. Kept in lock-step
+ * with `SYNTHESIS_COMPLETED_EVENT` in `src-tauri/src/commands/synthesize.rs`.
+ */
+export const SYNTHESIS_COMPLETED_EVENT = "synthesis-completed";
+
 export { Channel };
