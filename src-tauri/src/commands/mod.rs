@@ -10,3 +10,4 @@ pub mod credentials;
 pub mod file;
 pub mod storage;
 pub mod synthesize;
+pub mod usage;
