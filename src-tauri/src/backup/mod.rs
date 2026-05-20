@@ -21,6 +21,7 @@
 //! the CPU savings (5-10x) outweigh the marginal disk savings on
 //! already-compressed PCM data.
 
+pub mod create;
 pub mod error;
 
 use serde::{Deserialize, Serialize};
