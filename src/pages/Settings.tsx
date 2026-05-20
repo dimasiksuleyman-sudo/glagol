@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 import { BackupSection } from "@/components/settings/BackupSection";
+import { UsageSection } from "@/components/settings/UsageSection";
 import { useCredentials } from "@/contexts/CredentialsContext";
 import { deleteCredentials, setCredentials, testCredentials } from "@/lib/tauri";
 
@@ -117,6 +118,8 @@ export function Settings() {
           </div>
         </CardContent>
       </Card>
+
+      <UsageSection />
 
       <BackupSection />
     </div>
