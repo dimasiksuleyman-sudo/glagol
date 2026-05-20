@@ -103,7 +103,8 @@ pub async fn synthesize_document(
     let outcome = synthesize_document_impl(&state, &audio_root, text, voice, move |event| {
         let _ = on_progress.send(event);
     })
-    .await?;
+    .await
+    .map_err(|e| to_user_facing_ru(&e))?;
 
     // Best-effort: the frontend listens on `synthesis-completed` to
     // refresh the Settings usage counter and (optionally) prepend the
@@ -250,6 +251,93 @@ pub(crate) fn record_synthesis_usage(db: &Mutex<Connection>, chars_added: i64) {
 /// `tx.commit()` call: no `.await` in the critical section. The
 /// `std::sync::MutexGuard` isn't `Send`, so the compiler would refuse
 /// any future change that violated this invariant.
+/// Translate an internal synthesis error string into a user-facing
+/// Russian-language message suitable for a toast. The internal
+/// representation is the Display form of [`crate::salute::errors::SaluteError`]
+/// and friends (English, structured for tests and logs); this helper
+/// pattern-matches on the structured prefixes and rewrites each into a
+/// concrete sentence that tells the user what happened and what to do
+/// next. Closes GitHub issue #16.
+///
+/// Unknown strings fall through unchanged — they bubble up to the
+/// user, but tagged with a generic «Ошибка синтеза» prefix so the
+/// toast still reads as a friendly error rather than a stack trace
+/// fragment.
+fn to_user_facing_ru(internal: &str) -> String {
+    // The `auth.get_token` and `get_or_init_auth` paths bubble up a
+    // plain string with this exact phrase when the keyring slot is
+    // empty. Tests assert on the structured English form, so we
+    // translate at the boundary rather than at the source.
+    if internal.contains("no credentials configured") {
+        return "Ключ SaluteSpeech не сохранён. Откройте Настройки → SaluteSpeech \
+                и сохраните ключ авторизации."
+            .to_string();
+    }
+    if internal.contains("authentication failed") || internal.contains("token expired") {
+        return "Ключ SaluteSpeech отклонён сервером. Проверьте, что ключ актуален, \
+                и пересохраните его в Настройках."
+            .to_string();
+    }
+    if internal.contains("rate limited") {
+        // The SaluteError Display includes "retry after Ns" — surface
+        // the recommendation without parsing the number out (just tell
+        // the user to wait).
+        return "Слишком много запросов к SaluteSpeech. Подождите несколько секунд \
+                и попробуйте снова."
+            .to_string();
+    }
+    if internal.contains("network error") {
+        return "Не удалось связаться с SaluteSpeech. Проверьте подключение к интернету \
+                и попробуйте снова."
+            .to_string();
+    }
+    if internal.contains("certificate error") {
+        return "Ошибка проверки сертификата при обращении к Сбербанку. \
+                Это, скорее всего, дефект сборки — сообщите в issue tracker."
+            .to_string();
+    }
+    if let Some(rest) = internal.strip_prefix("API returned status ") {
+        // `SaluteError::Api { status, body }` Display form. Show the
+        // status code without dumping the raw response body — users
+        // don't need to read XML/JSON from Sber.
+        let status: String = rest.chars().take_while(|c| c.is_ascii_digit()).collect();
+        if status.starts_with('4') {
+            return format!(
+                "SaluteSpeech отклонил запрос (HTTP {status}). \
+                 Возможно, проблема с ключом или с текстом — проверьте Настройки.",
+            );
+        }
+        if status.starts_with('5') {
+            return format!(
+                "Сервер SaluteSpeech временно недоступен (HTTP {status}). \
+                 Попробуйте через минуту.",
+            );
+        }
+    }
+    if internal.contains("invalid response") {
+        return "Сервер SaluteSpeech вернул неожиданный ответ. \
+                Попробуйте ещё раз; если ошибка повторяется — сообщите в issue tracker."
+            .to_string();
+    }
+    if internal.contains("text is empty") || internal.contains("whitespace") {
+        return "Введите текст для озвучивания.".to_string();
+    }
+    if internal.contains("produced no synthesizable chunks") {
+        return "Не удалось разбить текст на фрагменты для озвучивания. \
+                Попробуйте текст без необычных символов."
+            .to_string();
+    }
+    if internal.contains("unknown voice") {
+        return "Выбран неизвестный голос. Перезапустите приложение и выберите голос заново."
+            .to_string();
+    }
+
+    // Fall-through: keep the original English so the bug remains
+    // searchable, but tag it so it reads as a friendly error in a
+    // toast.
+    format!("Ошибка синтеза: {internal}")
+}
+
 pub(crate) fn persist_synthesis_result(
     db: &Mutex<Connection>,
     audio_root: &Path,

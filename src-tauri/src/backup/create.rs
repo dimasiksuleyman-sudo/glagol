@@ -251,10 +251,10 @@ pub(crate) fn read_manifest_from_zip<R: Read + io::Seek>(
     archive: &mut zip::ZipArchive<R>,
 ) -> BackupResult<BackupManifest> {
     let mut entry = archive.by_name(MANIFEST_FILENAME).map_err(|_| {
-        BackupError::ValidationFailed(
-            "Этот файл не является корректной резервной копией Glagol (отсутствует manifest.json)."
-                .to_string(),
-        )
+        // Reason only — the frontend toast adds the "Этот файл не является…"
+        // prefix. Duplicating it here would render as the prefix twice
+        // (Sprint 5d Phase 5 item B fix).
+        BackupError::ValidationFailed("отсутствует manifest.json".to_string())
     })?;
     let mut buf = Vec::with_capacity(entry.size() as usize);
     entry.read_to_end(&mut buf)?;
