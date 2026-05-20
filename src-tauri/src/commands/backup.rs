@@ -15,6 +15,7 @@
 
 use std::path::PathBuf;
 
+use rusqlite::Connection;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
 
@@ -96,24 +97,39 @@ pub async fn restore_backup(app: AppHandle, source_path: String) -> Result<(), S
         .map_err(|e| format!("Не удалось определить папку данных приложения: {e}"))?;
     let app_version = env!("CARGO_PKG_VERSION").to_string();
 
-    // Release the AppState's SQLite connection before we delete the
-    // database file. We acquire the lock, then immediately drop it —
-    // that forces any pending borrow to finish, and because Sprint 5c
-    // does *not* hot-reload the connection after restore (the app
-    // restarts on success), there is no need to put anything back in
-    // its place. The next `glagol.db` open happens on the relaunched
-    // process via the setup hook.
-    {
+    // Swap the real `Connection` out of `AppState` for an in-memory
+    // placeholder. Releasing the `Mutex` guard alone is not enough on
+    // Windows: the underlying SQLite file handle is owned by the
+    // `Connection` value, and `fs::remove_file(glagol.db)` returns
+    // `ERROR_SHARING_VIOLATION` (os error 32) while any handle is
+    // still open — even though SQLite uses `FILE_SHARE_DELETE`. Taking
+    // the `Connection` out by `mem::replace` and dropping it
+    // explicitly closes the handle before the destructive work
+    // starts.
+    //
+    // On success, `app.restart()` replaces the process and the
+    // placeholder is forgotten. On failure, [`try_restore_real_connection`]
+    // best-effort swaps a fresh `Connection` back so the user can keep
+    // using the app from the original (un-destroyed) data without a
+    // forced restart.
+    let placeholder = Connection::open_in_memory()
+        .map_err(|e| format!("Не удалось подготовить временное соединение с базой данных: {e}"))?;
+    let real_conn = {
         let state = app.state::<AppState>();
-        let _guard = state
+        let mut guard = state
             .db
             .lock()
             .map_err(|e| format!("Не удалось получить блокировку базы данных: {e}"))?;
-        // _guard drops at the closing brace, releasing the Mutex.
-    }
+        std::mem::replace(&mut *guard, placeholder)
+    };
+    // Explicit drop documents intent: this is *the* moment the SQLite
+    // file handle closes. Without the explicit drop the compiler is
+    // still free to keep `real_conn` alive until the end of the
+    // function — which is exactly the bug we're fixing.
+    drop(real_conn);
 
     let emit_handle = app.clone();
-    let result: Result<(), String> = tauri::async_runtime::spawn_blocking(move || {
+    let restore_result: Result<(), String> = tauri::async_runtime::spawn_blocking(move || {
         restore_backup_impl(
             &source_zip,
             &target_data_dir,
@@ -130,7 +146,43 @@ pub async fn restore_backup(app: AppHandle, source_path: String) -> Result<(), S
     .await
     .map_err(|e| format!("Задача восстановления прервалась: {e}"))?;
 
-    result
+    if restore_result.is_err() {
+        try_restore_real_connection(&app);
+    }
+
+    restore_result
+}
+
+/// Best-effort recovery after a failed restore. Walks `app_local_data_dir`
+/// and, if `glagol.db` is still present (the failure happened before the
+/// wipe step destroyed it), opens a fresh `Connection` and swaps it back
+/// into `AppState` so the user can keep using the app without a forced
+/// restart.
+///
+/// Any step that fails along the way leaves the placeholder in place —
+/// the error toast already informed the user the restore did not
+/// complete, and their next manual restart picks up a fresh real
+/// connection via the normal `setup()` hook. We deliberately do **not**
+/// panic here; degraded-state is a better failure mode than crashing
+/// the app.
+fn try_restore_real_connection(app: &AppHandle) {
+    let Ok(data_dir) = app.path().app_local_data_dir() else {
+        return;
+    };
+    let db_path = data_dir.join("glagol.db");
+    if !db_path.exists() {
+        // The restore wiped the file before failing on the extract
+        // step. There is no original DB to reopen; the placeholder
+        // stays until the user restarts.
+        return;
+    }
+    let Ok(conn) = Connection::open(&db_path) else {
+        return;
+    };
+    if let Ok(mut guard) = app.state::<AppState>().db.lock() {
+        let _placeholder = std::mem::replace(&mut *guard, conn);
+        // _placeholder (the in-memory throwaway) drops at end of scope.
+    }
 }
 
 /// Restart the application — used after a successful restore to pick
