@@ -264,6 +264,7 @@ pub(crate) fn read_manifest_from_zip<R: Read + io::Seek>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::backup::BACKUP_FILENAME_PREFIX;
     use crate::db;
     use crate::db::repository::{self, DocumentRecord};
     use std::sync::{Arc, Mutex};

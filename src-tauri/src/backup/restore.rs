@@ -20,7 +20,7 @@
 
 use std::fs::{self, File};
 use std::io;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use zip::ZipArchive;
 
@@ -258,6 +258,7 @@ mod tests {
     use crate::db;
     use crate::db::repository::{self, DocumentRecord};
     use std::io::Write;
+    use std::path::PathBuf;
     use uuid::Uuid;
     use zip::write::{SimpleFileOptions, ZipWriter};
     use zip::CompressionMethod;
