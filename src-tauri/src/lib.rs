@@ -21,6 +21,9 @@ pub mod paths;
 // File parsers for the Synthesize page file picker (TXT/MD/DOCX/PDF).
 pub mod parser;
 
+// Library backup/restore via zip archive (Sprint 5c).
+pub mod backup;
+
 // Shared Tauri application state.
 pub mod state;
 
@@ -63,6 +66,10 @@ pub fn run() {
             commands::storage::delete_document,
             commands::storage::update_document_title,
             commands::file::read_and_parse_file,
+            commands::backup::create_backup,
+            commands::backup::validate_backup,
+            commands::backup::restore_backup,
+            commands::backup::relaunch_app,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

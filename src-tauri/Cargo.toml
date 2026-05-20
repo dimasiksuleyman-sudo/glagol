@@ -81,6 +81,12 @@ keyring = { version = "3", features = ["windows-native"] }
 rusqlite = { version = "0.39", features = ["bundled", "serde_json"] }
 rusqlite_migration = "2.5"
 
+# Zip archive support for the backup/restore feature (Sprint 5c).
+# `deflate`-only feature subset: we never need bzip2/lzma/aes/zstd, and
+# keeping the dep tree narrow matters more than the marginal CPU savings.
+# Pure Rust via flate2; no system zlib required for the MSI installer.
+zip = { version = "2", default-features = false, features = ["deflate"] }
+
 [dev-dependencies]
 # HTTP mocking for unit tests
 mockito = "1"
