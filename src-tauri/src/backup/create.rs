@@ -40,6 +40,7 @@ pub fn create_backup_impl<F>(
     source_data_dir: &Path,
     target_folder: &Path,
     app_version: &str,
+    filename_prefix: &str,
     progress_emit: F,
 ) -> BackupResult<PathBuf>
 where
@@ -70,7 +71,7 @@ where
     };
 
     let filename = format!(
-        "glagol-backup-{}.zip",
+        "{filename_prefix}-{}.zip",
         Local::now().format("%Y-%m-%d-%H%M%S")
     );
     let target_path = target_folder.join(&filename);
@@ -323,8 +324,14 @@ mod tests {
         let source = seed_data_dir(2, 2);
         let target = fresh_target_dir();
 
-        let path =
-            create_backup_impl(&source, &target, "0.1.0-test", |_, _| {}).expect("backup succeeds");
+        let path = create_backup_impl(
+            &source,
+            &target,
+            "0.1.0-test",
+            BACKUP_FILENAME_PREFIX,
+            |_, _| {},
+        )
+        .expect("backup succeeds");
         assert!(path.exists(), "zip file must exist on disk");
         assert!(
             path.file_name()
@@ -350,8 +357,14 @@ mod tests {
         let source = seed_data_dir(3, 3);
         let target = fresh_target_dir();
 
-        let path =
-            create_backup_impl(&source, &target, "0.1.0-test", |_, _| {}).expect("backup succeeds");
+        let path = create_backup_impl(
+            &source,
+            &target,
+            "0.1.0-test",
+            BACKUP_FILENAME_PREFIX,
+            |_, _| {},
+        )
+        .expect("backup succeeds");
 
         let file = File::open(&path).expect("open zip");
         let mut archive = zip::ZipArchive::new(file).expect("archive parses");
@@ -387,9 +400,15 @@ mod tests {
         let progress: Arc<Mutex<Vec<(u64, u64)>>> = Arc::new(Mutex::new(Vec::new()));
         let progress_clone = Arc::clone(&progress);
 
-        let path = create_backup_impl(&source, &target, "0.1.0-rc.5", move |c, t| {
-            progress_clone.lock().unwrap().push((c, t));
-        })
+        let path = create_backup_impl(
+            &source,
+            &target,
+            "0.1.0-rc.5",
+            BACKUP_FILENAME_PREFIX,
+            move |c, t| {
+                progress_clone.lock().unwrap().push((c, t));
+            },
+        )
         .expect("backup succeeds");
 
         let file = File::open(&path).expect("open zip");

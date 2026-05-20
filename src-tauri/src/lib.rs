@@ -67,6 +67,9 @@ pub fn run() {
             commands::storage::update_document_title,
             commands::file::read_and_parse_file,
             commands::backup::create_backup,
+            commands::backup::validate_backup,
+            commands::backup::restore_backup,
+            commands::backup::relaunch_app,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

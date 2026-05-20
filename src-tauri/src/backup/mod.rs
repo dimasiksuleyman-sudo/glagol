@@ -23,6 +23,7 @@
 
 pub mod create;
 pub mod error;
+pub mod restore;
 
 use serde::{Deserialize, Serialize};
 
@@ -47,6 +48,17 @@ pub const DB_FILENAME: &str = "glagol.db";
 /// entries live inside the archive. Restore validates that no entry
 /// escapes this prefix via `..` segments — standard zip-slip defence.
 pub const AUDIO_DIR_PREFIX: &str = "audio_cache/";
+
+/// Filename prefix for the user-initiated backups created via the
+/// Settings → «Создать резервную копию» button.
+pub const BACKUP_FILENAME_PREFIX: &str = "glagol-backup";
+
+/// Filename prefix for the automatic safety backup created right
+/// before a restore overwrites the user's library (Sprint 5c D3
+/// Safety Net 2). Distinct from [`BACKUP_FILENAME_PREFIX`] so the
+/// user can tell apart "I made this on purpose" from "the app made
+/// this just in case" when they're staring at a folder full of zips.
+pub const PRE_RESTORE_FILENAME_PREFIX: &str = "glagol-pre-restore";
 
 /// Structured metadata serialised as `manifest.json` at the root of
 /// every Glagol backup archive.
