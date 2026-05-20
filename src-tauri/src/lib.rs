@@ -21,9 +21,6 @@ pub mod paths;
 // File parsers for the Synthesize page file picker (TXT/MD/DOCX/PDF).
 pub mod parser;
 
-// Persistent user configuration (`config.json` next to `glagol.db`).
-pub mod config;
-
 // Shared Tauri application state.
 pub mod state;
 
@@ -39,45 +36,20 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .setup(move |app| {
-            // Sprint 5b ordering note:
-            //   1. Load config from disk (or defaults on first launch).
-            //   2. Open + migrate the DB.
-            //   3. Manage AppState (now holding config + db + http client).
-            //   4. Ensure the audio cache directory exists. The default
-            //      path is always created; a user-configured custom path,
-            //      if any, is the user's responsibility to keep around
-            //      (validated at save-time in `commands::config`).
-            //   5. If config has a custom `library_path`, register it
-            //      with the asset-protocol scope so the webview can
-            //      stream audio from there (the static scope in
-            //      `tauri.conf.json` only covers the default path).
-            let data_dir = app
-                .path()
-                .app_local_data_dir()
-                .map_err(|e| format!("Failed to resolve app_local_data_dir: {e}"))?;
-
-            let config = crate::config::Config::load(&data_dir);
-
+            // Resolve the database path and eagerly initialise the connection.
+            // Failure here is fatal: silently continuing with a broken DB would
+            // corrupt every subsequent write.
             let db_path = crate::paths::database_path(app.handle())?;
             let conn = crate::db::init_database(&db_path)?;
 
-            app.manage(state::AppState::new(http_client.clone(), conn, config.clone()));
-
+            // Ensure the audio cache directory exists. Synthesis writes
+            // straight into it without a per-call mkdir, so the directory
+            // must be present before the first synthesis command lands.
             let audio_root = crate::paths::audio_cache_root(app.handle())?;
             std::fs::create_dir_all(&audio_root)
                 .map_err(|e| format!("Failed to create audio cache directory: {e}"))?;
 
-            if let Some(custom) = config.library_path.as_ref() {
-                app.asset_protocol_scope()
-                    .allow_directory(custom, false)
-                    .map_err(|e| {
-                        format!(
-                            "Failed to register asset-protocol scope for configured library path {}: {e}",
-                            custom.display()
-                        )
-                    })?;
-            }
-
+            app.manage(state::AppState::new(http_client.clone(), conn));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -91,8 +63,6 @@ pub fn run() {
             commands::storage::delete_document,
             commands::storage::update_document_title,
             commands::file::read_and_parse_file,
-            commands::config::get_library_path,
-            commands::config::set_library_path,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

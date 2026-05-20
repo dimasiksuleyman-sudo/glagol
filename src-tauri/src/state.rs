@@ -17,7 +17,6 @@ use std::sync::{Arc, Mutex};
 
 use rusqlite::Connection;
 
-use crate::config::Config;
 use crate::salute::auth::SaluteAuth;
 
 /// Process-wide Tauri state.
@@ -46,23 +45,15 @@ pub struct AppState {
     /// Eagerly initialised by the Tauri setup hook (see `lib.rs::run`);
     /// migrations must succeed at app start or the app refuses to launch.
     pub db: Mutex<Connection>,
-
-    /// User-facing configuration (currently: configurable library path).
-    /// Loaded eagerly from `config.json` at startup and held in memory
-    /// for the lifetime of the process. `std::sync::Mutex` for the same
-    /// reason as `db` — sub-millisecond operations, no contention; the
-    /// guard never crosses a network call.
-    pub config: Mutex<Config>,
 }
 
 impl AppState {
     /// Construct fresh state with no auth configured.
-    pub fn new(http_client: reqwest::Client, db: Connection, config: Config) -> Self {
+    pub fn new(http_client: reqwest::Client, db: Connection) -> Self {
         Self {
             http_client,
             salute_auth: tokio::sync::Mutex::new(None),
             db: Mutex::new(db),
-            config: Mutex::new(config),
         }
     }
 }

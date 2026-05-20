@@ -12,11 +12,6 @@ the per-session master logs under [`docs/day-logs/`](docs/day-logs/).
 ## [Unreleased]
 
 ### Added
-- **Configurable library location.** Settings page gains a "Папка библиотеки"
-  section: pick any folder on any drive via the native picker, or click
-  "Сбросить" to return to the default. Documents synthesised before the
-  move keep playing transparently from their original location — no manual
-  migration step required.
 - **Inline title editing on Library rows.** Click the pencil icon next to a
   document's title, type a new name, then Enter to save or click outside to
   commit (Esc cancels). Mirrors Windows Explorer F2-rename feel.
@@ -25,10 +20,6 @@ the per-session master logs under [`docs/day-logs/`](docs/day-logs/).
 - **Brand-correct installer filename and Apps & Features label.** The Windows
   installer is now `Glagol_0.1.0_x64-setup.exe` (was `glagol_…`), and the
   Apps & Features entry displays "Glagol" with proper capitalisation.
-- **Audio file lookup is now dual-rooted.** When a custom library path is
-  configured, lookups try it first and fall back to the default location
-  for legacy files — old documents stay playable across a library move
-  without a one-time copy step.
 
 ## [v0.1.0-rc.4] — 2026-05-19
 

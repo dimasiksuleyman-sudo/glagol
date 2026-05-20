@@ -152,7 +152,7 @@ mod tests {
     fn fresh_state() -> AppState {
         let client = http::build_client().expect("client builds");
         let conn = crate::db::test_connection();
-        AppState::new(client, conn, crate::config::Config::default())
+        AppState::new(client, conn)
     }
 
     async fn seed_state_with_auth(state: &AppState) {
