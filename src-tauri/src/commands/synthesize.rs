@@ -21,7 +21,7 @@ use chrono::Utc;
 use rusqlite::Connection;
 use serde::Serialize;
 use tauri::ipc::Channel;
-use tauri::AppHandle;
+use tauri::{AppHandle, Emitter};
 use uuid::Uuid;
 
 use crate::audio::wav_join::join_wav_chunks;
@@ -47,6 +47,22 @@ const SOURCE_TYPE_PASTE: &str = "paste";
 /// Status tag for a fully-synthesised, ready-to-play document. Sprint 4
 /// will introduce `"synthesizing"` and `"error"` rows.
 const STATUS_READY: &str = "ready";
+
+/// Tauri event broadcast on the `synthesis-completed` channel after a
+/// successful synthesis + library persist. The Settings page
+/// (`UsageSection`) listens to refresh its character counter without
+/// polling; the Library page can use the same event to optimistically
+/// add the new row instead of re-fetching. Sprint 5d.
+pub const SYNTHESIS_COMPLETED_EVENT: &str = "synthesis-completed";
+
+/// Payload of [`SYNTHESIS_COMPLETED_EVENT`]. Mirrored 1:1 by the
+/// `SynthesisCompletedEvent` interface in `src/lib/tauri.ts`.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SynthesisCompletedEvent {
+    pub document_id: String,
+    pub chars_added: u64,
+}
 
 /// Progress events emitted by [`synthesize_document`] over a
 /// [`tauri::ipc::Channel`].
@@ -84,15 +100,47 @@ pub async fn synthesize_document(
     on_progress: Channel<ProgressEvent>,
 ) -> Result<String, String> {
     let audio_root = paths::audio_cache_root(&app)?;
-    synthesize_document_impl(&state, &audio_root, text, voice, move |event| {
+    let outcome = synthesize_document_impl(&state, &audio_root, text, voice, move |event| {
         let _ = on_progress.send(event);
     })
-    .await
+    .await?;
+
+    // Best-effort: the frontend listens on `synthesis-completed` to
+    // refresh the Settings usage counter and (optionally) prepend the
+    // new row to Library without a full re-fetch. A failure to deliver
+    // the event must never fail the synthesis itself — the user has
+    // their audio either way.
+    let _ = app.emit(
+        SYNTHESIS_COMPLETED_EVENT,
+        SynthesisCompletedEvent {
+            document_id: outcome.document_id.clone(),
+            chars_added: outcome.chars_added,
+        },
+    );
+
+    Ok(outcome.document_id)
+}
+
+/// Successful outcome of [`synthesize_document_impl`]. The Tauri
+/// command wrapper unwraps `document_id` for the IPC return value and
+/// hands the full struct to `app.emit(SYNTHESIS_COMPLETED_EVENT, …)`
+/// so the frontend can refresh the Settings usage counter without
+/// re-fetching.
+#[derive(Debug, Clone)]
+pub(crate) struct SynthesisOutcome {
+    pub document_id: String,
+    pub chars_added: u64,
 }
 
 /// Full synthesis pipeline: validate input, ensure auth, synthesize
 /// each chunk sequentially, join the chunks, then persist (DB row +
 /// audio file) inside a single transaction.
+///
+/// After persistence succeeds, the running monthly SaluteSpeech
+/// character counter (`api_usage`) is incremented best-effort via
+/// [`record_synthesis_usage`]. A DB error on that increment is logged
+/// to stderr but does not fail the synthesis — the counter is
+/// advisory, not correctness-critical.
 ///
 /// Sequential synthesis by design — Sprint 4 will revisit concurrency
 /// once a real playback flow exists.
@@ -102,7 +150,7 @@ pub(crate) async fn synthesize_document_impl(
     text: String,
     voice: String,
     on_progress: impl Fn(ProgressEvent) + Send,
-) -> Result<String, String> {
+) -> Result<SynthesisOutcome, String> {
     if text.trim().is_empty() {
         return Err("text is empty or whitespace-only".to_string());
     }
@@ -156,7 +204,40 @@ pub(crate) async fn synthesize_document_impl(
     on_progress(ProgressEvent::Joining);
     let joined = join_wav_chunks(&wav_chunks).map_err(|e| e.to_string())?;
 
-    persist_synthesis_result(&state.db, audio_root, &text, voice_id, &joined)
+    let document_id = persist_synthesis_result(&state.db, audio_root, &text, voice_id, &joined)?;
+
+    // Count user-perceived characters, matching `DocumentRecord.char_count`
+    // semantics so the Settings counter and Library row agree on what
+    // "one synthesis" cost. The post-preprocessor text is what we
+    // actually sent to SaluteSpeech — that's the quota that was spent.
+    let chars_added = text.chars().count() as u64;
+    record_synthesis_usage(&state.db, chars_added as i64);
+
+    Ok(SynthesisOutcome {
+        document_id,
+        chars_added,
+    })
+}
+
+/// Increment the running `api_usage` counter for the current local
+/// calendar month. **Best-effort, advisory write** — a failure here
+/// means the Settings counter is stale by one synthesis, not that the
+/// just-completed document is in a bad state. Errors log to stderr
+/// and are swallowed so callers can return the user's audio without
+/// surfacing a database hiccup.
+pub(crate) fn record_synthesis_usage(db: &Mutex<Connection>, chars_added: i64) {
+    let now = Utc::now().timestamp_millis();
+    let month = chrono::Local::now().format("%Y-%m").to_string();
+    let conn = match db.lock() {
+        Ok(guard) => guard,
+        Err(e) => {
+            eprintln!("record_synthesis_usage: db mutex poisoned: {e}");
+            return;
+        }
+    };
+    if let Err(e) = db::repository::record_usage(&conn, &month, chars_added, now) {
+        eprintln!("record_synthesis_usage: failed for {month}: {e}");
+    }
 }
 
 /// Persist a freshly-synthesised document: insert the row, write the WAV
@@ -435,6 +516,40 @@ mod tests {
         );
 
         let _ = fs::remove_dir_all(&audio_root);
+    }
+
+    #[test]
+    fn record_synthesis_usage_increments_current_month_counter() {
+        // Surrogate for an end-to-end synthesis-happy-path integration
+        // test (which would require mocking SaluteSpeech's OAuth and
+        // synthesize endpoints — out of scope for Sprint 5d's surface).
+        // The helper is what `synthesize_document_impl` calls after
+        // `persist_synthesis_result` returns Ok, so exercising it
+        // directly validates the increment behaviour the kickoff D2
+        // promises.
+        let db = Mutex::new(test_connection());
+        let month = chrono::Local::now().format("%Y-%m").to_string();
+
+        // First synthesis: 1 234 chars.
+        record_synthesis_usage(&db, 1_234);
+        {
+            let conn = db.lock().unwrap();
+            let row = repository::get_usage_for_month(&conn, &month)
+                .unwrap()
+                .expect("row exists after first synthesis");
+            assert_eq!(row.chars_used, 1_234);
+        }
+
+        // Second synthesis in the same month adds, does not overwrite.
+        record_synthesis_usage(&db, 500);
+        let conn = db.lock().unwrap();
+        let row = repository::get_usage_for_month(&conn, &month)
+            .unwrap()
+            .expect("row still present after second synthesis");
+        assert_eq!(
+            row.chars_used, 1_734,
+            "two synthesis calls in the same month must accumulate"
+        );
     }
 
     #[test]
