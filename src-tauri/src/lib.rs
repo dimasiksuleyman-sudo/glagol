@@ -21,6 +21,9 @@ pub mod paths;
 // File parsers for the Synthesize page file picker (TXT/MD/DOCX/PDF).
 pub mod parser;
 
+// Library backup/restore via zip archive (Sprint 5c).
+pub mod backup;
+
 // Shared Tauri application state.
 pub mod state;
 
