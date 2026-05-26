@@ -234,7 +234,7 @@ Found a vulnerability? Don't open a public issue. See [SECURITY.md](SECURITY.md)
 - ❌ Аффилированным с ПАО Сбербанк, SberDevices, SaluteSpeech или их сотрудниками
 - ❌ Финансируемым, поддерживаемым или одобренным Сбером
 
-**Проект использует** публичный API сервиса SaluteSpeech, доступный любому пользователю на условиях [Лицензионного соглашения](https://developers.sber.ru/docs/ru/policies/eula) и [Политики обработки персональных данных](https://www.sberbank.com/privacy) ПАО Сбербанк. Каждый пользователь Glagol самостоятельно регистрируется на [developers.sber.ru](https://developers.sber.ru) и получает свои собственные авторизационные данные.
+**Проект использует** публичный API сервиса SaluteSpeech, доступный любому пользователю на условиях [Лицензионного соглашения](https://developers.sber.ru/docs/ru/policies/overview) и [Политики обработки персональных данных](https://developers.sber.ru/docs/ru/policies/privacy-policy) ПАО Сбербанк. Каждый пользователь Glagol самостоятельно регистрируется на [developers.sber.ru](https://developers.sber.ru) и получает свои собственные авторизационные данные.
 
 **Товарные знаки.** «SaluteSpeech», «Сбер», «SberDevices» и связанные обозначения являются товарными знаками ПАО Сбербанк или связанных лиц. Упоминание этих знаков в проекте Glagol носит **исключительно информационный характер** в рамках добросовестного использования (fair use) и описания совместимости.
 
@@ -257,7 +257,7 @@ Found a vulnerability? Don't open a public issue. See [SECURITY.md](SECURITY.md)
 - ❌ Affiliated with PJSC Sberbank, SberDevices, SaluteSpeech, or their employees
 - ❌ Funded, supported, or endorsed by Sberbank in any way
 
-**The project uses** the public SaluteSpeech API, available to any user under the terms of [PJSC Sberbank's License Agreement](https://developers.sber.ru/docs/ru/policies/eula). Each Glagol user independently registers at [developers.sber.ru](https://developers.sber.ru) and obtains their own credentials.
+**The project uses** the public SaluteSpeech API, available to any user under the terms of [PJSC Sberbank's License Agreement](https://developers.sber.ru/docs/ru/policies/overview). Each Glagol user independently registers at [developers.sber.ru](https://developers.sber.ru) and obtains their own credentials.
 
 **Trademarks.** "SaluteSpeech", "Sber", "SberDevices", and related marks are trademarks of PJSC Sberbank or affiliated entities. Their use in this project is **for informational and interoperability purposes only** under fair use principles.
 
