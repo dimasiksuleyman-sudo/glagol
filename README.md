@@ -78,8 +78,6 @@
 
 Поскольку установщик пока не подписан сертификатом разработчика, Windows встретит вас синим окном «Система Windows защитила ваш компьютер»:
 
-![Предупреждение SmartScreen](docs/images/smartscreen-warning.png)
-
 Что делать:
 
 1. Нажмите **«Подробнее»** в синем окне.
@@ -110,9 +108,9 @@
 - [x] Sprint 1: Backend клиент SaluteSpeech + минимальный UI (`v0.1.0-alpha`)
 - [x] Sprint 2: Локальное хранилище + UI библиотеки + asset protocol playback (`v0.1.0-rc.1`)
 - [x] Sprint 3a: Препроцессор текста (URL/email/аббревиатуры) (`v0.1.0-rc.2`)
-- [ ] Sprint 4: Парсинг файлов (TXT, MD, DOCX, PDF)
-- [ ] Sprint 5: Плеер + кэш + Polish + CI/CD + первый публичный релиз
-- [ ] **v0.1.0 Release**
+- [x] Sprint 4: Парсинг файлов (TXT, MD, DOCX, PDF)
+- [x] Sprint 5: Плеер + кэш + Polish + CI/CD + первый публичный релиз
+- [x] **v0.1.0 Release**
 - [ ] Sprint 6: Async синтез для больших документов
 - [ ] Sprint 7: SSML-редактор, EPUB
 - [ ] **v1.0.0 Release**
