@@ -13,19 +13,25 @@
 
 [Русский](#-русский) · [English](#-english) · [Disclaimer](#️-disclaimer--юридический-статус)
 
+![Glagol — Библиотека](docs/screenshots/library-page.png)
+
 </div>
 
 > ⚠️ **Glagol — независимый open source проект. Не аффилирован, не связан и не поддерживается ПАО Сбербанк.** Использует публичный API SaluteSpeech на условиях самого пользователя. Подробности — в [секции Disclaimer](#️-disclaimer--юридический-статус).
+
+> 💼 **Доступен для контрактной работы** — десктоп-приложения на Rust/Tauri, voice/TTS/LLM-пайплайны. · **Available for contract work** — Rust/Tauri desktop apps, voice/TTS/LLM pipelines. — `kiss2tri@hotmail.com`
 
 ---
 
 ## 🇷🇺 Русский
 
+📘 **[Руководство пользователя](USER_GUIDE.md)** · 📦 **[Скачать последний релиз](https://github.com/dimasiksuleyman-sudo/glagol/releases)**
+
 ### Что это?
 
 **Glagol** — desktop-приложение для Windows, которое озвучивает длинные тексты и документы качественными русскими голосами и сохраняет аудио в локальную библиотеку, чтобы вы могли вернуться к прослушиванию когда угодно.
 
-Работает поверх **SaluteSpeech API** от Сбера — это бесплатно до 200 000 символов в месяц на персональном тарифе.
+Работает поверх **SaluteSpeech API** от Сбера — бесплатно до 200 000 символов в месяц на персональном тарифе.
 
 ### Зачем?
 
@@ -36,7 +42,7 @@
 - 💻 **SaluteSpeech App от Сбера** — отличные голоса, но без библиотеки документов и кэша
 - 🤖 **Яндекс.Браузер «Прочитать вслух»** — только в браузере, требует Яндекс-аккаунт
 
-**Glagol сочетает лучшее:** качественные нейросетевые голоса Сбера + локальная библиотека прослушанных документов + возможность возобновить прослушивание + полностью бесплатно для большинства пользователей.
+**Glagol сочетает лучшее:** качественные нейросетевые голоса Сбера + локальная библиотека прослушанных документов + резервное копирование + полностью бесплатно для большинства пользователей.
 
 ### Кому это нужно?
 
@@ -46,51 +52,44 @@
 - 🎓 **Студентам и исследователям**, чтобы слушать научные статьи
 - 🎧 **Тем, кто переучивает мозг** воспринимать через аудио
 
-### Что уже работает (Sprint 1–3a, версии `alpha` / `rc.1` / `rc.2`)
+### Что умеет
 
-- 🎙️ **7 нейросетевых голосов** на русском (плюс один англоязычный)
-- 📋 **Вставка текста** для синтеза — paste-and-go
+- 🎙️ **6 нейросетевых голосов** на русском — Наталья, Борис, Марфа, Тарас, Александра, Сергей
+- 📋 **Вставка текста или загрузка файла** — TXT, Markdown, Word (`.docx`), PDF
 - 📚 **Локальная библиотека** прослушанных документов с автоматическим сохранением
-- ▶️ **Воспроизведение** через нативный аудио-плеер с потоковой передачей из локального кэша
-- 🎚️ **Скорость воспроизведения** 0.5x–2x (через нативные элементы управления)
+- ✏️ **Inline-переименование** документов прямо в библиотеке
+- ▶️ **Воспроизведение** через нативный плеер с потоковой передачей из локального кэша
+- 🎚️ **Скорость воспроизведения** 0.5x–2x
 - 💾 **Экспорт аудио** в WAV-файл в любую папку
 - 🗑️ **Управление библиотекой** — удаление документов одним кликом
-- 🧹 **Гуманизация текста** — URL'ы, email-адреса и распространённые аббревиатуры (`т.е.`, `и т.д.`, `т.к.`) произносятся естественно, а не побуквенно
-- 🔒 **Безопасность:** Authorization Key хранится в Windows Credential Manager, тексты не покидают вашу машину (кроме отправки в SaluteSpeech для синтеза)
+- 💼 **Резервное копирование** — вся библиотека (документы + аудио) в один `.zip`-архив, удобно для бэкапа и переноса на другой компьютер
+- 📊 **Счётчик использования** — сколько символов из бесплатного лимита потрачено в текущем месяце
+- 🧹 **Гуманизация текста** — числа, даты, URL'ы, email и распространённые аббревиатуры (`т.е.`, `и т.д.`, `т.к.`) произносятся естественно, а не побуквенно
+- 🔒 **Безопасность** — Authorization Key хранится в Windows Credential Manager, тексты не покидают вашу машину (кроме отправки в SaluteSpeech для синтеза)
+- 🇷🇺 **Только русский.** Латиница и другие языки озвучиваются «на любителя» — это особенность SaluteSpeech
 
 ### Что планируется
 
-- 📁 **4 формата ввода:** TXT, Markdown, Word (.docx), PDF — *Sprint 4*
-- 🖱️ **Drag & drop** файлов — *Sprint 4*
-- ▶️ **Возобновление прослушивания** с точки остановки — *Sprint 5*
-- 🌙 **Тёмная и светлая темы** — *Sprint 5*
-- 🔍 **Поиск по библиотеке** — *Sprint 5+*
-- 📦 **Подписанный MSI-установщик** для публичного релиза — *Sprint 5*
+- 🖱️ **Drag & drop** файлов в окно
+- ▶️ **Возобновление прослушивания** с точки остановки
+- 🌙 **Тёмная и светлая темы**
+- 🔍 **Поиск по библиотеке**
+- 🔊 **Распознавание речи (STT)** и другие движки синтеза — на рассмотрении
 
 ### Установка
 
-> 🚧 Проект в активной разработке. Достигнуты milestone'ы `v0.1.0-alpha` (Sprint 1), `v0.1.0-rc.1` (Sprint 2), `v0.1.0-rc.2` (Sprint 3a), `v0.1.0-rc.3` (Sprint 4). Подписанный установщик с проверенной цифровой подписью появится в [Releases](https://github.com/dimasiksuleyman-sudo/glagol/releases) к публичному релизу `v0.1.0`. До тех пор скачать актуальный неподписанный `.exe` можно из артефактов CI или из release-черновика.
-
-1. Скачайте `Glagol_x.x.x_x64-setup.exe` из последнего [GitHub Release](https://github.com/dimasiksuleyman-sudo/glagol/releases).
+1. Скачайте `Glagol_0.1.0_x64-setup.exe` из последнего [GitHub Release](https://github.com/dimasiksuleyman-sudo/glagol/releases) (~8 МБ, ~26 МБ после установки).
 2. Запустите файл.
 
-#### При первом запуске Windows покажет предупреждение SmartScreen
+**При первом запуске Windows покажет предупреждение SmartScreen.** Поскольку установщик не подписан коммерческим сертификатом, Windows встретит вас синим окном «Система Windows защитила ваш компьютер». Это нормально для новых приложений:
 
-Поскольку установщик пока не подписан сертификатом разработчика, Windows встретит вас синим окном «Система Windows защитила ваш компьютер»:
-
-Что делать:
-
-1. Нажмите **«Подробнее»** в синем окне.
+1. Нажмите **«Подробнее»**.
 2. Появится кнопка **«Выполнить в любом случае»** — нажмите её.
-3. Откроется обычный установщик NSIS, дальше — стандартная установка:
-   - выбрать язык интерфейса установщика (русский или английский);
-   - принять условия лицензии MIT;
-   - выбрать папку установки (по умолчанию `%LOCALAPPDATA%\Programs\Glagol\`);
-   - решить, создавать ли ярлыки в меню «Пуск» и на рабочем столе.
+3. Откроется обычный установщик NSIS — стандартная установка (язык, лицензия MIT, папка, ярлыки). Права администратора не нужны — установка для текущего пользователя.
 
-Права администратора не требуются — установка ставится для текущего пользователя.
+После установки запустите Glagol из меню «Пуск», в Настройках вставьте свой `Authorization Key` от SaluteSpeech (бесплатно на [developers.sber.ru/studio](https://developers.sber.ru/studio)) — и можно загружать документы.
 
-После установки запустите Glagol из меню «Пуск», в Настройках вставьте свой `Authorization Key` от SaluteSpeech (получается бесплатно на [developers.sber.ru/studio](https://developers.sber.ru/studio)) — и можно загружать документы.
+Подробности — в **[Руководстве пользователя](USER_GUIDE.md)**.
 
 ### Технологический стек
 
@@ -107,13 +106,15 @@
 - [x] Sprint 0: Setup проекта
 - [x] Sprint 1: Backend клиент SaluteSpeech + минимальный UI (`v0.1.0-alpha`)
 - [x] Sprint 2: Локальное хранилище + UI библиотеки + asset protocol playback (`v0.1.0-rc.1`)
-- [x] Sprint 3a: Препроцессор текста (URL/email/аббревиатуры) (`v0.1.0-rc.2`)
-- [x] Sprint 4: Парсинг файлов (TXT, MD, DOCX, PDF)
-- [x] Sprint 5: Плеер + кэш + Polish + CI/CD + первый публичный релиз
-- [x] **v0.1.0 Release**
-- [ ] Sprint 6: Async синтез для больших документов
-- [ ] Sprint 7: SSML-редактор, EPUB
-- [ ] **v1.0.0 Release**
+- [x] Sprint 3a: Препроцессор текста — URL/email/аббревиатуры/числа/даты (`v0.1.0-rc.2`)
+- [x] Sprint 4: Парсинг файлов — TXT, MD, DOCX, PDF (`v0.1.0-rc.3`)
+- [x] Sprint 5b: Inline-переименование + фокус MVP (`v0.1.0-rc.5`)
+- [x] Sprint 5c: Резервное копирование и восстановление (`v0.1.0-rc.6`)
+- [x] Sprint 5d: Счётчик символов + русские сообщения об ошибках (`v0.1.0-rc.7`)
+- [x] **Первый публичный релиз — `v0.1.0-rc.7`**
+- [ ] Стабильный `v0.1.0`
+- [ ] Async-синтез для очень больших документов
+- [ ] **`v1.0.0`**
 
 ### Вклад в проект
 
@@ -128,11 +129,14 @@
 Нашли уязвимость? Не открывайте публичный issue. См. [SECURITY.md](SECURITY.md).
 
 ---
+
 ## 🇬🇧 English
+
+📘 **[User Guide](USER_GUIDE.md)** · 📦 **[Download latest release](https://github.com/dimasiksuleyman-sudo/glagol/releases)**
 
 ### What is it?
 
-**Glagol** (Russian for "to speak", "verb") is a Windows desktop app that reads long texts and documents aloud using high-quality Russian neural voices, and saves audio to a local library so you can resume listening anytime.
+**Glagol** (Russian for "verb", "to speak") is a Windows desktop app that reads long texts and documents aloud using high-quality Russian neural voices, and saves audio to a local library so you can resume listening anytime.
 
 Powered by **SaluteSpeech API** from Sberbank — free up to 200,000 characters/month on the personal tier.
 
@@ -145,55 +149,54 @@ Existing Russian TTS solutions have gaps:
 - 💻 **SaluteSpeech App by Sber** — great voices, no document library or cache
 - 🤖 **Yandex Browser TTS** — only in the browser, requires a Yandex account
 
-**Glagol combines the best:** quality neural voices from Sber + local library of synthesized documents + resume playback + completely free for most users.
+**Glagol combines the best:** quality neural voices from Sber + a local library of synthesized documents + backup/restore + completely free for most users.
 
-### What already works (Sprint 1–3a, `alpha` / `rc.1` / `rc.2` milestones)
+### Who is it for?
 
-- 🎙️ **7 neural voices** in Russian (plus one English voice)
-- 📋 **Paste text** for synthesis — paste-and-go workflow
+- 📚 **Readers** who'd rather listen than read off a screen
+- 💼 **Managers and lawyers** with long documents and reports
+- 👁️ **People with reduced vision** who need an alternative to reading
+- 🎓 **Students and researchers** listening to papers
+- 🎧 **Anyone retraining their brain** to absorb via audio
+
+### What it does
+
+- 🎙️ **6 Russian neural voices** — Natalya, Boris, Marfa, Taras, Aleksandra, Sergey
+- 📋 **Paste text or load a file** — TXT, Markdown, Word (`.docx`), PDF
 - 📚 **Local library** of synthesized documents with automatic saving
-- ▶️ **Playback** via native audio player with streaming from local cache
-- 🎚️ **Playback speed** 0.5x–2x (via native controls)
-- 💾 **Audio export** to WAV file to any folder
-- 🗑️ **Library management** — single-click document deletion
-- 🧹 **Text humanization** — URLs, emails, and common Russian abbreviations (`т.е.`, `и т.д.`, `т.к.`) are spoken naturally, not letter-by-letter
-- 🔒 **Security:** Authorization Key stored in Windows Credential Manager; your texts never leave your machine (except for synthesis requests to SaluteSpeech)
+- ✏️ **Inline rename** of documents right in the library
+- ▶️ **Playback** via native player streaming from a local cache
+- 🎚️ **Playback speed** 0.5x–2x
+- 💾 **Audio export** to a WAV file in any folder
+- 🗑️ **Library management** — single-click deletion
+- 💼 **Backup/restore** — the entire library (documents + audio) in one `.zip`, handy for backups and moving to another computer
+- 📊 **Usage counter** — how many characters of your free monthly tier you've used
+- 🧹 **Text humanization** — numbers, dates, URLs, emails, and common Russian abbreviations are spoken naturally, not letter-by-letter
+- 🔒 **Security** — Authorization Key stored in Windows Credential Manager; your texts never leave your machine (except synthesis requests to SaluteSpeech)
+- 🇷🇺 **Russian only.** Latin script and other languages come out "hit or miss" — that's a SaluteSpeech trait
 
-### Planned features
+### Planned
 
-- 📁 **4 input formats:** plain text, Markdown, Word (.docx), PDF — *Sprint 4*
-- 🖱️ **Drag & drop** files — *Sprint 4*
-- ▶️ **Resume playback** from where you stopped — *Sprint 5*
-- 🌙 **Dark and light themes** — *Sprint 5*
-- 🔍 **Library search** — *Sprint 5+*
-- 📦 **Signed MSI installer** for public release — *Sprint 5*
+- 🖱️ **Drag & drop** files
+- ▶️ **Resume playback** from where you stopped
+- 🌙 **Dark and light themes**
+- 🔍 **Library search**
+- 🔊 **Speech-to-text (STT)** and additional synthesis engines — under consideration
 
 ### Installation
 
-> 🚧 Active development. Milestones reached: `v0.1.0-alpha` (Sprint 1), `v0.1.0-rc.1` (Sprint 2), `v0.1.0-rc.2` (Sprint 3a), `v0.1.0-rc.3` (Sprint 4). A code-signed installer will ship in [Releases](https://github.com/dimasiksuleyman-sudo/glagol/releases) with the public `v0.1.0`. Until then the latest unsigned `.exe` is available from CI artifacts or release drafts.
-
-1. Download `Glagol_x.x.x_x64-setup.exe` from the latest [GitHub Release](https://github.com/dimasiksuleyman-sudo/glagol/releases).
+1. Download `Glagol_0.1.0_x64-setup.exe` from the latest [GitHub Release](https://github.com/dimasiksuleyman-sudo/glagol/releases) (~8 MB, ~26 MB installed).
 2. Run the file.
 
-#### Windows SmartScreen warning on first launch
+**Windows SmartScreen warning on first launch.** Because the installer isn't signed with a commercial certificate, Windows shows a blue "Windows protected your PC" dialog. This is normal for new apps:
 
-Because the installer is not yet signed with a developer certificate, Windows will greet you with a blue "Windows protected your PC" dialog:
-
-![SmartScreen warning](docs/images/smartscreen-warning.png)
-
-What to do:
-
-1. Click **"More info"** in the blue dialog.
-2. A **"Run anyway"** button will appear — click it.
-3. The normal NSIS installer opens — standard install flow from there:
-   - pick the installer UI language (English or Russian);
-   - accept the MIT license terms;
-   - choose an install location (default: `%LOCALAPPDATA%\Programs\Glagol\`);
-   - decide whether to create Start Menu and/or Desktop shortcuts.
-
-No administrator privileges are needed — install is per-user.
+1. Click **"More info"**.
+2. A **"Run anyway"** button appears — click it.
+3. The normal NSIS installer opens — standard flow (language, MIT license, folder, shortcuts). No administrator privileges needed — per-user install.
 
 After installing, launch Glagol from the Start Menu, paste your SaluteSpeech `Authorization Key` in Settings (free at [developers.sber.ru/studio](https://developers.sber.ru/studio)), and you're ready to load documents.
+
+Details in the **[User Guide](USER_GUIDE.md)**.
 
 ### Tech Stack
 
@@ -271,10 +274,14 @@ Found a vulnerability? Don't open a public issue. See [SECURITY.md](SECURITY.md)
 
 <div align="center">
 
-**Made with ♥ by Glagol Contributors**
+**Создано Дмитрием в паре с Claude (Anthropic) — ИИ как инструмент под человеческим контролем**
+**Built by Dmitriy together with Claude (Anthropic) — AI as a tool under human control**
 
-[Report a bug](https://github.com/dimasiksuleyman-sudo/glagol/issues/new) ·
-[Request a feature](https://github.com/dimasiksuleyman-sudo/glagol/issues/new) ·
-[Discussions](https://github.com/dimasiksuleyman-sudo/glagol/discussions)
+[Сообщить о баге](https://github.com/dimasiksuleyman-sudo/glagol/issues/new) ·
+[Предложить фичу](https://github.com/dimasiksuleyman-sudo/glagol/issues/new) ·
+[Обсуждения](https://github.com/dimasiksuleyman-sudo/glagol/discussions)
+
+💼 **Доступен для контрактной работы / Available for contract work** — `kiss2tri@hotmail.com`
+Rust/Tauri desktop · voice/TTS/LLM pipelines
 
 </div>
