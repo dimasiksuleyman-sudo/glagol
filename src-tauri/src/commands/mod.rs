@@ -7,6 +7,7 @@
 
 pub mod backup;
 pub mod credentials;
+pub mod dictation;
 pub mod file;
 pub mod storage;
 pub mod synthesize;

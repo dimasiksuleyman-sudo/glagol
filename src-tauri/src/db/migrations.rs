@@ -40,6 +40,20 @@ const MIGRATIONS_SLICE: &[M<'static>] = &[
     );
     "#,
     ),
+    // Sprint 6 PR1 (Dictation): generic key-value settings store. Holds the
+    // non-secret STT configuration (`stt_base_url`, `stt_model`, `stt_proxy`,
+    // `stt_language`); the STT API key itself lives in the OS keyring, never
+    // here. One row per setting key. Append-only — never edit a shipped
+    // migration.
+    M::up(
+        r#"
+    CREATE TABLE app_settings (
+        key         TEXT PRIMARY KEY NOT NULL,
+        value       TEXT NOT NULL,
+        updated_at  INTEGER NOT NULL
+    );
+    "#,
+    ),
 ];
 
 /// Apply every pending migration to `conn`. Idempotent: calling twice on the
@@ -90,6 +104,18 @@ mod tests {
             "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='documents'",
         );
         assert_eq!(n, 1, "documents table should still exist exactly once");
+    }
+
+    #[test]
+    fn apply_migrations_creates_app_settings_table() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        apply_migrations(&mut conn).expect("apply succeeds");
+
+        let n = count(
+            &conn,
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='app_settings'",
+        );
+        assert_eq!(n, 1, "app_settings table should be created by migration v3");
     }
 
     #[test]

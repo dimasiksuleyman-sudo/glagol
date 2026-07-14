@@ -45,6 +45,15 @@ pub struct AppState {
     /// Eagerly initialised by the Tauri setup hook (see `lib.rs::run`);
     /// migrations must succeed at app start or the app refuses to launch.
     pub db: Mutex<Connection>,
+
+    /// Process-lifetime "the STT key checked out against the provider" flag
+    /// (Sprint 6 PR1). Mirrors the cache-first contract of
+    /// [`salute_auth`](Self::salute_auth): the mount-time probe
+    /// (`test_stt_key` with `force = false`) trusts a prior success and skips
+    /// the network, while the user-initiated Test button (`force = true`)
+    /// always revalidates. Reset to `false` whenever the key is set or
+    /// deleted. `tokio::sync::Mutex` because dictation commands are `async`.
+    pub stt_key_validated: tokio::sync::Mutex<bool>,
 }
 
 impl AppState {
@@ -54,6 +63,7 @@ impl AppState {
             http_client,
             salute_auth: tokio::sync::Mutex::new(None),
             db: Mutex::new(db),
+            stt_key_validated: tokio::sync::Mutex::new(false),
         }
     }
 }

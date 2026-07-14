@@ -30,6 +30,13 @@ const SERVICE: &str = "Glagol";
 /// constants, NOT a profile system.
 const USERNAME_AUTH_KEY: &str = "salutespeech_auth_key";
 
+/// Username slot for the Dictation (STT) provider API key (Sprint 6 PR1). A
+/// second, independent credential living beside [`USERNAME_AUTH_KEY`] under
+/// the same `Glagol` service. Optional at the app level — a local whisper
+/// server needs no key — but when present it is a secret and belongs here,
+/// never in `app_settings`.
+const USERNAME_STT_KEY: &str = "stt_api_key";
+
 /// Errors that can occur when reading or writing secrets.
 #[derive(Error, Debug)]
 pub enum KeyringError {
@@ -94,6 +101,46 @@ pub fn get_auth_key() -> KeyringResult<Option<String>> {
 pub fn delete_auth_key() -> KeyringResult<()> {
     let entry = auth_key_entry()?;
     delete_with(&entry)
+}
+
+// ───────────────────────────────────────────────────────────────
+// Dictation (STT) provider API key — second credential, Sprint 6 PR1.
+// ───────────────────────────────────────────────────────────────
+
+/// Store the Dictation (STT) provider API key in the OS keyring. Overwrites
+/// any existing value.
+///
+/// # Errors
+/// - [`KeyringError::Internal`] if `key` is empty or whitespace-only
+/// - [`KeyringError::Backend`] on platform failure
+pub fn set_stt_key(key: &str) -> KeyringResult<()> {
+    let entry = stt_key_entry()?;
+    set_with(&entry, key)
+}
+
+/// Retrieve the Dictation (STT) provider API key. Returns `Ok(None)` if none
+/// has been stored — a keyless local server is a valid configuration, so
+/// callers must not treat `None` as an error.
+///
+/// # Errors
+/// - [`KeyringError::Backend`] on platform failure
+pub fn get_stt_key() -> KeyringResult<Option<String>> {
+    let entry = stt_key_entry()?;
+    get_with(&entry)
+}
+
+/// Remove the Dictation (STT) provider API key from the OS keyring.
+///
+/// # Errors
+/// - [`KeyringError::NotFound`] if no key was stored
+/// - [`KeyringError::Backend`] on platform failure
+pub fn delete_stt_key() -> KeyringResult<()> {
+    let entry = stt_key_entry()?;
+    delete_with(&entry)
+}
+
+fn stt_key_entry() -> KeyringResult<Entry> {
+    Entry::new(SERVICE, USERNAME_STT_KEY).map_err(|e| KeyringError::Backend(e.to_string()))
 }
 
 // ───────────────────────────────────────────────────────────────
@@ -233,6 +280,17 @@ mod tests {
             matches!(err, KeyringError::Internal(_)),
             "whitespace-only should be rejected, got {err:?}"
         );
+    }
+
+    #[test]
+    fn test_stt_key_entry_uses_distinct_username() {
+        // The STT entry must resolve to a different credential slot than the
+        // SaluteSpeech key so the two secrets never collide. Under the mock
+        // backend each fresh Entry starts empty, so `get_stt_key` on a clean
+        // install returns None (a keyless local server is a valid state).
+        init_mock();
+        assert_ne!(USERNAME_AUTH_KEY, USERNAME_STT_KEY);
+        assert_eq!(get_stt_key().unwrap(), None);
     }
 
     #[test]

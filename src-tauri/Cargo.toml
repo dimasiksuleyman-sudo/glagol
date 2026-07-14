@@ -30,8 +30,10 @@ tauri-plugin-dialog = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
-# HTTP client (with pure-Rust TLS for embedded certificate pinning)
-reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json", "stream"] }
+# HTTP client (with pure-Rust TLS for embedded certificate pinning).
+# `multipart` (Sprint 6 PR1) is required by the OpenAI-compatible STT
+# client — `POST /audio/transcriptions` sends the WAV as a multipart form.
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json", "stream", "multipart", "socks"] }
 
 # Async runtime
 tokio = { version = "1", features = ["full"] }

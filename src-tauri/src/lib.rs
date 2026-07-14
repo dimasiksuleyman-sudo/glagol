@@ -3,6 +3,9 @@ use tauri::Manager;
 // SaluteSpeech API client (OAuth + sync synthesis).
 pub mod salute;
 
+// Speech-to-text (STT) client for the Dictation feature (Sprint 6).
+pub mod stt;
+
 // Text processing utilities (chunking, future: preprocessing).
 pub mod text;
 
@@ -71,6 +74,12 @@ pub fn run() {
             commands::backup::restore_backup,
             commands::backup::relaunch_app,
             commands::usage::get_current_month_usage,
+            commands::dictation::get_stt_settings,
+            commands::dictation::save_stt_settings,
+            commands::dictation::set_stt_key,
+            commands::dictation::delete_stt_key,
+            commands::dictation::has_stt_key,
+            commands::dictation::test_stt_key,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

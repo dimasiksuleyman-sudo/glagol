@@ -180,6 +180,65 @@ pub fn get_usage_for_month(conn: &Connection, month: &str) -> Result<Option<Usag
     .optional()
 }
 
+/// Add `seconds_added` to the running `recognitions_seconds` total for
+/// `month`, inserting a fresh row (with `chars_used = 0`) if this is the first
+/// activity of the month. Mirrors [`record_usage`] but writes the STT column
+/// reserved back in Sprint 5d.
+///
+/// `month` is `YYYY-MM`; `updated_at` is a Unix millisecond timestamp. Both
+/// are supplied by the command layer so this function stays deterministic
+/// (no clock access). Advisory write — the dictation pipeline calls it after a
+/// successful transcription and logs rather than surfaces a failure.
+pub fn record_recognition_usage(
+    conn: &Connection,
+    month: &str,
+    seconds_added: i64,
+    updated_at: i64,
+) -> Result<usize> {
+    conn.execute(
+        "
+        INSERT INTO api_usage (month, chars_used, recognitions_seconds, updated_at)
+        VALUES (?1, 0, ?2, ?3)
+        ON CONFLICT(month) DO UPDATE SET
+            recognitions_seconds = recognitions_seconds + excluded.recognitions_seconds,
+            updated_at = excluded.updated_at
+        ",
+        params![month, seconds_added, updated_at],
+    )
+}
+
+// ── app_settings table ─────────────────────────────────────────────────
+//
+// Sprint 6 PR1 (Dictation). Generic key-value store for non-secret
+// configuration. The STT feature persists `stt_base_url`, `stt_model`,
+// `stt_proxy` and `stt_language` here; the API key stays in the OS keyring.
+
+/// Upsert a single setting. `updated_at` is a Unix millisecond timestamp
+/// supplied by the caller (deterministic — no clock access here).
+pub fn set_setting(conn: &Connection, key: &str, value: &str, updated_at: i64) -> Result<usize> {
+    conn.execute(
+        "
+        INSERT INTO app_settings (key, value, updated_at)
+        VALUES (?1, ?2, ?3)
+        ON CONFLICT(key) DO UPDATE SET
+            value = excluded.value,
+            updated_at = excluded.updated_at
+        ",
+        params![key, value, updated_at],
+    )
+}
+
+/// Read a single setting's value. Returns `Ok(None)` when the key has never
+/// been written — the caller substitutes its default.
+pub fn get_setting(conn: &Connection, key: &str) -> Result<Option<String>> {
+    conn.query_row(
+        "SELECT value FROM app_settings WHERE key = ?1",
+        params![key],
+        |row| row.get(0),
+    )
+    .optional()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -382,5 +441,80 @@ mod tests {
         let june = get_usage_for_month(&conn, "2026-06").unwrap().unwrap();
         assert_eq!(may.chars_used, 1_500);
         assert_eq!(june.chars_used, 250);
+    }
+
+    #[test]
+    fn record_recognition_usage_inserts_and_increments() {
+        let conn = test_connection();
+        let first = 1_700_000_000_000;
+        let second = 1_700_000_005_000;
+
+        let affected = record_recognition_usage(&conn, "2026-07", 12, first).expect("insert");
+        assert_eq!(affected, 1);
+
+        let row = get_usage_for_month(&conn, "2026-07").unwrap().unwrap();
+        assert_eq!(row.recognitions_seconds, 12);
+        assert_eq!(row.chars_used, 0, "STT write must not touch chars_used");
+        assert_eq!(row.updated_at, first);
+
+        record_recognition_usage(&conn, "2026-07", 8, second).expect("increment");
+        let row = get_usage_for_month(&conn, "2026-07").unwrap().unwrap();
+        assert_eq!(
+            row.recognitions_seconds, 20,
+            "second call must add, not replace"
+        );
+        assert_eq!(row.chars_used, 0);
+        assert_eq!(row.updated_at, second);
+    }
+
+    #[test]
+    fn record_recognition_and_chars_usage_are_independent_columns() {
+        // A TTS char write and an STT seconds write to the same month must
+        // each land in their own column without clobbering the other.
+        let conn = test_connection();
+        record_usage(&conn, "2026-07", 500, 1_700_000_000_000).unwrap();
+        record_recognition_usage(&conn, "2026-07", 30, 1_700_000_001_000).unwrap();
+
+        let row = get_usage_for_month(&conn, "2026-07").unwrap().unwrap();
+        assert_eq!(row.chars_used, 500);
+        assert_eq!(row.recognitions_seconds, 30);
+    }
+
+    // ── app_settings tests ────────────────────────────────────────
+
+    #[test]
+    fn set_setting_then_get_returns_value() {
+        let conn = test_connection();
+        let affected = set_setting(
+            &conn,
+            "stt_model",
+            "whisper-large-v3-turbo",
+            1_700_000_000_000,
+        )
+        .unwrap();
+        assert_eq!(affected, 1);
+        assert_eq!(
+            get_setting(&conn, "stt_model").unwrap(),
+            Some("whisper-large-v3-turbo".to_string())
+        );
+    }
+
+    #[test]
+    fn get_setting_returns_none_for_unset_key() {
+        let conn = test_connection();
+        assert_eq!(get_setting(&conn, "stt_base_url").unwrap(), None);
+    }
+
+    #[test]
+    fn set_setting_upserts_on_conflict() {
+        let conn = test_connection();
+        set_setting(&conn, "stt_language", "ru", 1_700_000_000_000).unwrap();
+        set_setting(&conn, "stt_language", "en", 1_700_000_010_000).unwrap();
+
+        assert_eq!(
+            get_setting(&conn, "stt_language").unwrap(),
+            Some("en".to_string()),
+            "second write must replace the value"
+        );
     }
 }
