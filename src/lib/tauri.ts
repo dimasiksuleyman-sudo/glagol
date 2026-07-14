@@ -344,4 +344,88 @@ export interface SynthesisCompletedEvent {
  */
 export const SYNTHESIS_COMPLETED_EVENT = "synthesis-completed";
 
+/**
+ * Non-secret Dictation (STT) provider configuration. Mirrors
+ * `commands::dictation::SttSettings` on the Rust side — serde keeps the
+ * field names as-is (snake_case) so the shape lines up 1:1 over the IPC
+ * boundary, matching the `DocumentRecord` / `UsageInfo` convention.
+ *
+ * The API key is deliberately NOT part of this shape: it lives in the OS
+ * keyring and never crosses IPC on a read. Use {@link hasSttKey} to learn
+ * whether a key is stored, {@link setSttKey} to store one.
+ */
+export interface SttSettings {
+  base_url: string;
+  model: string;
+  /** Empty string when no proxy is configured. */
+  proxy: string;
+  /** `"ru" | "en" | "auto"`. */
+  language: string;
+}
+
+/**
+ * Read the persisted STT settings, with backend defaults substituted for any
+ * key that has never been saved (first run → AITunnel preset).
+ */
+export async function getSttSettings(): Promise<SttSettings> {
+  return await invoke<SttSettings>("get_stt_settings");
+}
+
+/**
+ * Validate and persist the STT settings. Rejects with a Russian-language
+ * string (suitable for a toast) when `baseUrl`/`proxy`/`language` are
+ * malformed — external `http://` endpoints, a proxy without a port, an
+ * unknown language, etc. Nothing is written unless every field validates.
+ */
+export async function saveSttSettings(settings: SttSettings): Promise<void> {
+  await invoke("save_stt_settings", {
+    baseUrl: settings.base_url,
+    model: settings.model,
+    proxy: settings.proxy,
+    language: settings.language,
+  });
+}
+
+/**
+ * Store the STT provider API key in the OS keyring. Resets the backend-side
+ * "key validated" flag so the next {@link testSttKey} re-checks. Rejects for
+ * an empty/whitespace-only key.
+ */
+export async function setSttKey(key: string): Promise<void> {
+  await invoke("set_stt_key", { key });
+}
+
+/**
+ * Remove the stored STT API key. Idempotent on the backend — resolves cleanly
+ * even if there was nothing to delete (a keyless local server is valid).
+ */
+export async function deleteSttKey(): Promise<void> {
+  await invoke("delete_stt_key");
+}
+
+/**
+ * Whether an STT API key is currently stored in the keyring. Used to render
+ * the key field's «сохранён» / «не задан» hint on mount.
+ */
+export async function hasSttKey(): Promise<boolean> {
+  return await invoke<boolean>("has_stt_key");
+}
+
+/**
+ * Validate the whole STT chain — key + endpoint + proxy — against the live
+ * provider (persist settings first with {@link saveSttSettings}).
+ *
+ * - `force = false` (mount-time probe): returns immediately if the backend
+ *   already validated the key this process lifetime.
+ * - `force = true` (the Test button): bypass the cache and hit the provider.
+ *   Runs the cheap `GET /models` probe, falling back to a tiny silent
+ *   transcription for providers that do not expose `/models`.
+ *
+ * Rejects with a Russian-language string on any failure (bad key, no balance,
+ * unreachable endpoint/proxy, …).
+ */
+export async function testSttKey(force = false): Promise<void> {
+  await invoke("test_stt_key", { force });
+}
+
 export { Channel };
