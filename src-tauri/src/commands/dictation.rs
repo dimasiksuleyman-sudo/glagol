@@ -87,11 +87,7 @@ pub async fn save_stt_settings(
     language: String,
 ) -> Result<(), String> {
     let updated_at = chrono::Utc::now().timestamp_millis();
-    let conn = state
-        .db
-        .lock()
-        .map_err(|e| format!("Не удалось получить блокировку базы данных: {e}"))?;
-    save_stt_settings_impl(&conn, &base_url, &model, &proxy, &language, updated_at)
+    save_stt_settings_impl(&state, &base_url, &model, &proxy, &language, updated_at).await
 }
 
 #[tauri::command]
@@ -129,10 +125,40 @@ pub(crate) fn get_stt_settings_impl(conn: &Connection) -> rusqlite::Result<SttSe
     })
 }
 
-/// Validate and persist the STT settings. Returns a user-facing Russian error
-/// on any invalid field; nothing is written unless every field validates.
-pub(crate) fn save_stt_settings_impl(
-    conn: &Connection,
+/// Validate + persist the STT settings, then invalidate the process-lifetime
+/// "key validated" flag — a new endpoint/proxy/model must be re-checked, so a
+/// stale `true` would otherwise let the mount-time probe report a config it
+/// never actually validated. The persistence itself is transaction-wrapped in
+/// [`persist_stt_settings`].
+pub(crate) async fn save_stt_settings_impl(
+    state: &AppState,
+    base_url: &str,
+    model: &str,
+    proxy: &str,
+    language: &str,
+    updated_at: i64,
+) -> Result<(), String> {
+    {
+        let mut conn = state
+            .db
+            .lock()
+            .map_err(|e| format!("Не удалось получить блокировку базы данных: {e}"))?;
+        persist_stt_settings(&mut conn, base_url, model, proxy, language, updated_at)?;
+        // Guard drops here before the async lock below — a `std` MutexGuard
+        // must never be held across an `.await`.
+    }
+
+    let mut validated = state.stt_key_validated.lock().await;
+    *validated = false;
+    Ok(())
+}
+
+/// Validate the STT settings and write all four keys **atomically**. Returns a
+/// user-facing Russian error on any invalid field; nothing is written unless
+/// every field validates, and the four UPSERTs commit together (transaction —
+/// invariant «multi-step writes transaction-wrapped»).
+pub(crate) fn persist_stt_settings(
+    conn: &mut Connection,
     base_url: &str,
     model: &str,
     proxy: &str,
@@ -156,15 +182,20 @@ pub(crate) fn save_stt_settings_impl(
         return Err("Недопустимый язык распознавания (ожидается ru, en или auto).".to_string());
     }
 
-    let write = |key: &str, value: &str| -> Result<(), String> {
-        repository::set_setting(conn, key, value, updated_at)
-            .map(|_| ())
-            .map_err(|e| format!("Не удалось сохранить настройки диктовки: {e}"))
-    };
-    write(KEY_BASE_URL, base_url)?;
-    write(KEY_MODEL, model)?;
-    write(KEY_PROXY, proxy)?;
-    write(KEY_LANGUAGE, language)?;
+    let tx = conn
+        .transaction()
+        .map_err(|e| format!("Не удалось открыть транзакцию: {e}"))?;
+    for (key, value) in [
+        (KEY_BASE_URL, base_url),
+        (KEY_MODEL, model),
+        (KEY_PROXY, proxy),
+        (KEY_LANGUAGE, language),
+    ] {
+        repository::set_setting(&tx, key, value, updated_at)
+            .map_err(|e| format!("Не удалось сохранить настройки диктовки: {e}"))?;
+    }
+    tx.commit()
+        .map_err(|e| format!("Не удалось сохранить настройки диктовки: {e}"))?;
     Ok(())
 }
 
@@ -259,9 +290,9 @@ async fn check_provider(provider: &OpenAiCompatStt, language: &str) -> Result<()
     match provider.list_models().await {
         Ok(_) => Ok(()),
         Err(SttError::RateLimited(_)) => Ok(()),
-        Err(e @ (SttError::Auth | SttError::Balance | SttError::Network(_))) => {
-            Err(stt_error_to_user_facing_ru(&e))
-        }
+        Err(
+            e @ (SttError::Auth | SttError::Balance | SttError::Network(_) | SttError::TooLarge),
+        ) => Err(stt_error_to_user_facing_ru(&e)),
         Err(SttError::Api(_) | SttError::InvalidResponse(_)) => {
             micro_transcription_check(provider, language).await
         }
@@ -312,6 +343,7 @@ pub(crate) fn stt_error_to_user_facing_ru(err: &SttError) -> String {
         SttError::Auth => {
             "Ключ недействителен: провайдер отклонил авторизацию (401). Проверьте ключ.".to_string()
         }
+        SttError::TooLarge => "Аудиофайл слишком большой для провайдера (413).".to_string(),
         SttError::Balance => {
             "Недостаточно средств на балансе у провайдера (402). Пополните счёт.".to_string()
         }
@@ -362,9 +394,9 @@ mod tests {
 
     #[test]
     fn save_then_get_round_trips() {
-        let conn = crate::db::test_connection();
-        save_stt_settings_impl(
-            &conn,
+        let mut conn = crate::db::test_connection();
+        persist_stt_settings(
+            &mut conn,
             "https://api.groq.com/openai/v1",
             "whisper-large-v3",
             "user:pass@proxy.example.com:8080",
@@ -382,9 +414,9 @@ mod tests {
 
     #[test]
     fn save_trims_and_allows_empty_proxy() {
-        let conn = crate::db::test_connection();
-        save_stt_settings_impl(
-            &conn,
+        let mut conn = crate::db::test_connection();
+        persist_stt_settings(
+            &mut conn,
             "  https://api.aitunnel.ru/v1  ",
             "  whisper-1  ",
             "   ",
@@ -400,8 +432,8 @@ mod tests {
 
     #[test]
     fn save_rejects_external_http_base_url() {
-        let conn = crate::db::test_connection();
-        let err = save_stt_settings_impl(&conn, "http://evil.example.com/v1", "m", "", "ru", 1)
+        let mut conn = crate::db::test_connection();
+        let err = persist_stt_settings(&mut conn, "http://evil.example.com/v1", "m", "", "ru", 1)
             .unwrap_err();
         assert!(err.contains("https"), "got: {err}");
         // Nothing persisted → still defaults.
@@ -413,24 +445,74 @@ mod tests {
 
     #[test]
     fn save_rejects_empty_model() {
-        let conn = crate::db::test_connection();
-        let err = save_stt_settings_impl(&conn, "https://x/v1", "   ", "", "ru", 1).unwrap_err();
+        let mut conn = crate::db::test_connection();
+        let err = persist_stt_settings(&mut conn, "https://x/v1", "   ", "", "ru", 1).unwrap_err();
         assert!(err.contains("модель"), "got: {err}");
     }
 
     #[test]
     fn save_rejects_bad_proxy() {
-        let conn = crate::db::test_connection();
-        let err = save_stt_settings_impl(&conn, "https://x/v1", "m", "no-port-here", "ru", 1)
+        let mut conn = crate::db::test_connection();
+        let err = persist_stt_settings(&mut conn, "https://x/v1", "m", "no-port-here", "ru", 1)
             .unwrap_err();
         assert!(err.contains("порт") || err.contains("прокси"), "got: {err}");
     }
 
     #[test]
     fn save_rejects_bad_language() {
-        let conn = crate::db::test_connection();
-        let err = save_stt_settings_impl(&conn, "https://x/v1", "m", "", "fr", 1).unwrap_err();
+        let mut conn = crate::db::test_connection();
+        let err = persist_stt_settings(&mut conn, "https://x/v1", "m", "", "fr", 1).unwrap_err();
         assert!(err.contains("язык"), "got: {err}");
+    }
+
+    #[tokio::test]
+    async fn save_stt_settings_impl_resets_validated_flag() {
+        // Changing the endpoint/proxy/model must invalidate the process-lifetime
+        // "key validated" cache, or a later force=false probe would report a
+        // config that was never actually checked.
+        init_mock();
+        let state = fresh_state();
+        *state.stt_key_validated.lock().await = true;
+
+        save_stt_settings_impl(
+            &state,
+            "https://api.groq.com/openai/v1",
+            "whisper-large-v3",
+            "",
+            "en",
+            1_700_000_000_000,
+        )
+        .await
+        .expect("valid settings save");
+
+        assert!(
+            !*state.stt_key_validated.lock().await,
+            "saving settings must reset the validated flag"
+        );
+        // And the values actually persisted.
+        let conn = state.db.lock().unwrap();
+        assert_eq!(
+            get_stt_settings_impl(&conn).unwrap().base_url,
+            "https://api.groq.com/openai/v1"
+        );
+    }
+
+    #[tokio::test]
+    async fn save_stt_settings_impl_rejects_and_leaves_flag_untouched() {
+        // A validation failure must not write anything AND must not flip the
+        // flag (nothing was validated).
+        init_mock();
+        let state = fresh_state();
+        *state.stt_key_validated.lock().await = true;
+
+        let err = save_stt_settings_impl(&state, "http://evil.example.com/v1", "m", "", "ru", 1)
+            .await
+            .unwrap_err();
+        assert!(err.contains("https"), "got: {err}");
+        assert!(
+            *state.stt_key_validated.lock().await,
+            "a rejected save must leave the flag as it was"
+        );
     }
 
     // ── helpers ──
@@ -466,6 +548,7 @@ mod tests {
         assert!(stt_error_to_user_facing_ru(&SttError::Auth).contains("401"));
         assert!(stt_error_to_user_facing_ru(&SttError::Balance).contains("402"));
         assert!(stt_error_to_user_facing_ru(&SttError::RateLimited(None)).contains("429"));
+        assert!(stt_error_to_user_facing_ru(&SttError::TooLarge).contains("413"));
         assert!(stt_error_to_user_facing_ru(&SttError::Api("boom".into())).contains("boom"));
         assert!(
             stt_error_to_user_facing_ru(&SttError::InvalidResponse("x".into()))
@@ -540,9 +623,9 @@ mod tests {
 
         let state = fresh_state();
         {
-            let conn = state.db.lock().unwrap();
+            let mut conn = state.db.lock().unwrap();
             // base_url = mock root so models_url resolves to `{root}/models`.
-            save_stt_settings_impl(&conn, &server.url(), "whisper-1", "", "ru", 1)
+            persist_stt_settings(&mut conn, &server.url(), "whisper-1", "", "ru", 1)
                 .expect("seed settings");
         }
 
@@ -568,8 +651,8 @@ mod tests {
 
         let state = fresh_state();
         {
-            let conn = state.db.lock().unwrap();
-            save_stt_settings_impl(&conn, &server.url(), "whisper-1", "", "ru", 1).unwrap();
+            let mut conn = state.db.lock().unwrap();
+            persist_stt_settings(&mut conn, &server.url(), "whisper-1", "", "ru", 1).unwrap();
         }
 
         let err = test_stt_key_impl(&state, true).await.unwrap_err();
@@ -603,8 +686,8 @@ mod tests {
 
         let state = fresh_state();
         {
-            let conn = state.db.lock().unwrap();
-            save_stt_settings_impl(&conn, &server.url(), "whisper-1", "", "ru", 1).unwrap();
+            let mut conn = state.db.lock().unwrap();
+            persist_stt_settings(&mut conn, &server.url(), "whisper-1", "", "ru", 1).unwrap();
         }
 
         test_stt_key_impl(&state, true)

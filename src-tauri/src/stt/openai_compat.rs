@@ -19,6 +19,13 @@ use crate::stt::{SttError, SttProvider, Transcript};
 /// spike, so we leave generous headroom. Not user-configurable.
 const TRANSCRIBE_TIMEOUT: Duration = Duration::from_secs(90);
 
+/// Request timeout for the `GET /models` liveness probe. Much shorter than
+/// [`TRANSCRIBE_TIMEOUT`] — there is no upload, so a slow answer means a dead
+/// endpoint or proxy, and the Settings «Проверить» button must fail fast
+/// rather than hang. The reqwest client built for STT has no default timeout,
+/// so this per-request cap is what bounds the probe.
+const LIST_MODELS_TIMEOUT: Duration = Duration::from_secs(20);
+
 /// How many bytes of an error response body to keep in an [`SttError::Api`]
 /// message — enough to be diagnostic without dumping a whole HTML error page.
 const ERROR_BODY_SNIPPET_LEN: usize = 500;
@@ -157,7 +164,11 @@ impl OpenAiCompatStt {
         debug!(url = %self.models_url(), "stt list_models request");
 
         let response = self
-            .with_auth(self.client.get(self.models_url()))
+            .with_auth(
+                self.client
+                    .get(self.models_url())
+                    .timeout(LIST_MODELS_TIMEOUT),
+            )
             .send()
             .await
             .map_err(|e| {
@@ -246,9 +257,7 @@ fn map_error_status(status: StatusCode, retry_after: &Option<Duration>, body: St
         StatusCode::UNAUTHORIZED => SttError::Auth,
         StatusCode::PAYMENT_REQUIRED => SttError::Balance,
         StatusCode::TOO_MANY_REQUESTS => SttError::RateLimited(*retry_after),
-        StatusCode::PAYLOAD_TOO_LARGE => {
-            SttError::Api("файл слишком большой для провайдера (413)".to_string())
-        }
+        StatusCode::PAYLOAD_TOO_LARGE => SttError::TooLarge,
         other => {
             let mut snippet = body;
             if snippet.chars().count() > ERROR_BODY_SNIPPET_LEN {
@@ -420,7 +429,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn transcribe_413_maps_to_api_too_large() {
+    async fn transcribe_413_maps_to_too_large() {
         let mut server = mockito::Server::new_async().await;
         let _m = server
             .mock("POST", "/audio/transcriptions")
@@ -431,8 +440,8 @@ mod tests {
 
         let client = client_for(&server);
         match client.transcribe(vec![1], Some("ru")).await.unwrap_err() {
-            SttError::Api(msg) => assert!(msg.contains("413"), "got: {msg}"),
-            other => panic!("expected Api, got {other:?}"),
+            SttError::TooLarge => {}
+            other => panic!("expected TooLarge, got {other:?}"),
         }
     }
 

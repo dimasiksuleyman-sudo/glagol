@@ -73,9 +73,15 @@ pub enum SttError {
     #[error("rate limited (429)")]
     RateLimited(Option<Duration>),
 
-    /// Any other non-success status (413, 4xx, 5xx). Carries a
-    /// human-readable description including the status and a snippet of the
-    /// response body.
+    /// HTTP 413 — the audio payload exceeds the provider's size limit. A
+    /// dedicated variant (rather than a stringly-typed `Api`) so the
+    /// command layer renders the user-facing Russian message at the
+    /// translation boundary, keeping this taxonomy English/structured.
+    #[error("payload too large (413)")]
+    TooLarge,
+
+    /// Any other non-success status (4xx, 5xx). Carries a human-readable
+    /// description including the status and a snippet of the response body.
     #[error("API error: {0}")]
     Api(String),
 
