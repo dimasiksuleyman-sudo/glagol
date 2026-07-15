@@ -267,6 +267,15 @@ impl Default for CpalSource {
     }
 }
 
+/// Human-readable device name via the non-deprecated `description()` API (cpal
+/// 0.17 deprecated `Device::name()`). Identity stays name-based per D10.
+fn device_name(device: &cpal::Device) -> String {
+    device
+        .description()
+        .map(|d| d.name().to_string())
+        .unwrap_or_else(|_| "default".to_string())
+}
+
 /// Resolve the requested device (`None` = system default). A named-but-missing
 /// device falls back to the default with `fell_back_to_default = true` — not an
 /// error (D10): an unplugged USB headset must not kill dictation.
@@ -274,11 +283,10 @@ fn resolve_device(
     host: &cpal::Host,
     requested: Option<&str>,
 ) -> Result<(cpal::Device, StartedInfo), RecorderError> {
-    // cpal 0.18 exposes the device name via `Display`, not a `name()` method.
     if let Some(name) = requested {
         if let Ok(devices) = host.input_devices() {
             for device in devices {
-                if device.to_string() == name {
+                if device_name(&device) == name {
                     return Ok((
                         device,
                         StartedInfo {
@@ -291,7 +299,7 @@ fn resolve_device(
         }
         // Requested device is gone — fall back to the system default (D10).
         let device = host.default_input_device().ok_or(RecorderError::NoDevice)?;
-        let device_name = device.to_string();
+        let device_name = device_name(&device);
         return Ok((
             device,
             StartedInfo {
@@ -302,7 +310,7 @@ fn resolve_device(
     }
 
     let device = host.default_input_device().ok_or(RecorderError::NoDevice)?;
-    let device_name = device.to_string();
+    let device_name = device_name(&device);
     Ok((
         device,
         StartedInfo {
@@ -324,7 +332,7 @@ fn choose_stream_config(
         .map_err(|e| RecorderError::UnsupportedConfig(e.to_string()))?
         .collect();
 
-    // In cpal 0.18 `SampleRate` is a plain `u32` type alias.
+    // `SampleRate` is a plain `u32` type alias in cpal 0.17.
     let candidates: Vec<ConfigCandidate> = ranges
         .iter()
         .map(|r| ConfigCandidate {
@@ -352,7 +360,7 @@ fn choose_stream_config(
 // build failure. Since we only reach here after devices enumerated, we surface
 // PermissionDenied so the UI (PR3/PR5) can point at Параметры → Конфиденциальность
 // → Микрофон. A reliable winreg ConsentStore detector is deferred to PR5.
-fn build_stream_error(_e: cpal::Error) -> RecorderError {
+fn build_stream_error(_e: cpal::BuildStreamError) -> RecorderError {
     RecorderError::PermissionDenied
 }
 
@@ -366,8 +374,8 @@ impl SampleSource for CpalSource {
         let (dev, info) = resolve_device(&host, device)?;
         let chosen = choose_stream_config(&dev)?;
 
-        // cpal 0.18: `sample_rate()` is a `u32`; `build_input_stream` takes the
-        // `StreamConfig` by value.
+        // cpal 0.17: `sample_rate()` is a `u32`; `build_input_stream` borrows
+        // the `StreamConfig`.
         let sample_rate = chosen.sample_rate();
         let channels = chosen.channels();
         let fmt = chosen.sample_format();
@@ -378,7 +386,7 @@ impl SampleSource for CpalSource {
                 let data_tx = tx.clone();
                 let err_tx = tx;
                 dev.build_input_stream(
-                    config,
+                    &config,
                     move |data: &[f32], _: &cpal::InputCallbackInfo| {
                         // NOTE (kickoff D5 callback): sending a Vec<f32> allocates
                         // (the Vec + a channel node). Acceptable for dictation —
@@ -398,7 +406,7 @@ impl SampleSource for CpalSource {
                 let data_tx = tx.clone();
                 let err_tx = tx;
                 dev.build_input_stream(
-                    config,
+                    &config,
                     move |data: &[i16], _: &cpal::InputCallbackInfo| {
                         let mono: Vec<f32> = data.iter().map(|&s| s as f32 / 32768.0).collect();
                         let _ = data_tx.send(RecorderMsg::Samples(mono));

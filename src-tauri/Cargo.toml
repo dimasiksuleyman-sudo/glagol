@@ -95,16 +95,23 @@ zip = { version = "2", default-features = false, features = ["deflate"] }
 # resamples the device's native rate down to Whisper's 16 kHz, offline, on
 # finalization.
 #
-# NOTE (kickoff D1 deviation): the kickoff pinned `rubato = 3.0.0`, but its
-# implementation plan (D8) is written against the `FftFixedIn` +
-# `process_partial` + `output_delay` API, which rubato replaced in 1.0.0 with
-# a single `Fft` struct over the `audioadapter`/`audioadapter-buffers` buffer
-# traits. `0.16.2` (Mar 2025, latest 0.x, ~2.2M downloads) is the newest
-# release that still carries that API, so it makes D8 correct verbatim while
-# keeping the dependency tree narrow (no audioadapter companion crates) and
-# still satisfies D1's stated reason for the pin — avoiding the six-day-old
-# rubato 4.0.0. See the PR body «Deviations from spec».
-cpal = "0.18.1"
+# NOTE (kickoff D1 deviations):
+#  * rubato: D1 pinned `3.0.0`, but D8's implementation plan uses the
+#    `FftFixedIn` + `process_partial` + `output_delay` API, which rubato
+#    replaced in 1.0.0 with a single `Fft` struct over the
+#    `audioadapter`/`audioadapter-buffers` buffer traits. `0.16.2` (Mar 2025,
+#    latest 0.x) is the newest release that still carries that API, keeps the
+#    dep tree narrow (no audioadapter companion crates), and satisfies D1's
+#    stated reason for the pin — avoiding the six-day-old rubato 4.0.0.
+#  * cpal: D1 pinned `0.18.1`, but it declares `windows`/`windows-core` as the
+#    loose `>=0.61, <=0.62`; alongside Tauri 2 the resolver splits that into
+#    `windows 0.61.3` (COM types) + `windows-core 0.62.2` (impl macro), and
+#    cpal's own `#[implement]` macro then fails its trait bounds on Windows
+#    (green on Linux/ALSA, red on Windows/WASAPI — Windows CI caught it).
+#    `0.17.3` (D1's explicit runner-up) has the identical public API and no
+#    separate `windows-core` dep, so its macro + types come from one `windows`
+#    crate and it builds cleanly with Tauri. See the PR body «Deviations».
+cpal = "0.17.3"
 rubato = "0.16.2"
 
 [dev-dependencies]

@@ -19,7 +19,7 @@
 //! the webview never talks to the provider directly. External endpoints are
 //! https-only (see [`crate::stt::validation`]).
 
-use cpal::traits::HostTrait;
+use cpal::traits::{DeviceTrait, HostTrait};
 use reqwest::{Client, Proxy};
 use rusqlite::Connection;
 use serde::Serialize;
@@ -379,8 +379,11 @@ pub(crate) fn list_audio_input_devices_impl() -> Result<Vec<String>, RecorderErr
     let devices = host
         .input_devices()
         .map_err(|e| RecorderError::UnsupportedConfig(e.to_string()))?;
-    // cpal 0.18 exposes the device name via `Display`.
-    Ok(devices.map(|d| d.to_string()).collect())
+    // cpal 0.17 deprecated `Device::name()` in favour of `description()`;
+    // devices whose description can't be read are skipped rather than failing.
+    Ok(devices
+        .filter_map(|d| d.description().ok().map(|desc| desc.name().to_string()))
+        .collect())
 }
 
 /// Translate a [`RecorderError`] into a concrete, actionable Russian sentence
