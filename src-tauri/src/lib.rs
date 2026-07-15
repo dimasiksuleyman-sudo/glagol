@@ -1,4 +1,4 @@
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 
 // SaluteSpeech API client (OAuth + sync synthesis).
 pub mod salute;
@@ -30,8 +30,35 @@ pub mod backup;
 // Shared Tauri application state.
 pub mod state;
 
+// Dictation microphone recorder (Sprint 6 PR2): capture → 16 kHz mono S16LE.
+pub mod dictation;
+
 // Tauri commands exposed to the frontend.
 pub mod commands;
+
+/// Broadcast event name for microphone RMS levels (D11). Kept in lock-step with
+/// `DICTATION_LEVEL_EVENT` in `src/lib/tauri.ts`. Emitted at ~20 Hz while
+/// recording; the overlay (PR3) subscribes. kebab-case per project convention
+/// (`synthesis-completed`, `backup-progress`).
+const DICTATION_LEVEL_EVENT: &str = "dictation-level";
+
+/// Payload of the [`DICTATION_LEVEL_EVENT`] broadcast: one linear RMS value in
+/// `0.0..=1.0`. Scaling/smoothing is the overlay's job (D6/D11).
+#[derive(Clone, serde::Serialize)]
+struct LevelPayload {
+    level: f32,
+}
+
+/// Emit RMS levels as a Tauri broadcast. `AppHandle` is `Clone + Send + Sync +
+/// 'static`, so it satisfies [`dictation::LevelSink`] directly and can be moved
+/// onto the recorder thread. We use `app.emit()` (broadcast), not
+/// `ipc::Channel`, because the level consumer is a separate overlay window that
+/// never `invoke`s — there is no call to bind a channel to (see the PR body).
+impl dictation::LevelSink for tauri::AppHandle {
+    fn level(&self, rms: f32) {
+        let _ = self.emit(DICTATION_LEVEL_EVENT, LevelPayload { level: rms });
+    }
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -55,7 +82,17 @@ pub fn run() {
             std::fs::create_dir_all(&audio_root)
                 .map_err(|e| format!("Failed to create audio cache directory: {e}"))?;
 
-            app.manage(state::AppState::new(http_client.clone(), conn));
+            // Spawn the dedicated recorder thread (Sprint 6 PR2). `CpalSource`
+            // is built on the recorder thread itself (the factory closure) — its
+            // `cpal::Stream` is not `Send` on WASAPI and must never cross a
+            // thread boundary. The `AppHandle` is the level sink. No stream is
+            // opened until a `Start` arrives, so this is idle (≈0% CPU) at rest.
+            let recorder = crate::dictation::recorder::spawn_recorder(
+                crate::dictation::recorder::CpalSource::new,
+                app.handle().clone(),
+            );
+
+            app.manage(state::AppState::new(http_client.clone(), conn, recorder));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -80,7 +117,15 @@ pub fn run() {
             commands::dictation::delete_stt_key,
             commands::dictation::has_stt_key,
             commands::dictation::test_stt_key,
+            commands::dictation::list_audio_input_devices,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app_handle, event| {
+            // Drain and stop the recorder thread on exit so it is not left as a
+            // detached zombie (D2/lib.rs). Best-effort — the process is leaving.
+            if let tauri::RunEvent::Exit = event {
+                app_handle.state::<state::AppState>().recorder.shutdown();
+            }
+        });
 }

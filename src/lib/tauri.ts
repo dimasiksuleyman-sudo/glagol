@@ -428,4 +428,24 @@ export async function testSttKey(force = false): Promise<void> {
   await invoke("test_stt_key", { force });
 }
 
+/**
+ * List the names of the system's audio input devices, for the dictation device
+ * picker. `[]` on a machine with no microphone. Rejects with a Russian-language
+ * string on an enumeration failure.
+ *
+ * Placed here now (Sprint 6 PR2) to keep `tauri.ts` the single typed IPC point;
+ * the consumer — the device picker on the Dictation page — arrives in PR5.
+ */
+export async function listAudioInputDevices(): Promise<string[]> {
+  return await invoke<string[]>("list_audio_input_devices");
+}
+
+/**
+ * Broadcast event carrying microphone RMS levels while dictation is recording.
+ * Payload: `{ level: number }`, a linear RMS in `0..1`. Keep this string in
+ * lock-step with `DICTATION_LEVEL_EVENT` in `src-tauri/src/lib.rs`. The overlay
+ * (PR3) `listen()`s for it; PR2 only establishes the channel name.
+ */
+export const DICTATION_LEVEL_EVENT = "dictation-level";
+
 export { Channel };

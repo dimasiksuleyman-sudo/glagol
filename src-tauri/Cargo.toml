@@ -89,6 +89,34 @@ rusqlite_migration = "2.5"
 # Pure Rust via flate2; no system zlib required for the MSI installer.
 zip = { version = "2", default-features = false, features = ["deflate"] }
 
+# Microphone capture for the Dictation recorder (Sprint 6 PR2). `cpal` wraps
+# WASAPI on the target platform (Windows); the Linux build (ALSA, needs
+# `libasound2-dev`) exists only to run the CI/quality gates. `rubato`
+# resamples the device's native rate down to Whisper's 16 kHz, offline, on
+# finalization.
+#
+# NOTE (kickoff D1 deviations):
+#  * rubato: D1 pinned `3.0.0`, but D8's implementation plan uses the
+#    `FftFixedIn` + `process_partial` + `output_delay` API, which rubato
+#    replaced in 1.0.0 with a single `Fft` struct over the
+#    `audioadapter`/`audioadapter-buffers` buffer traits. `0.16.2` (Mar 2025,
+#    latest 0.x) is the newest release that still carries that API, keeps the
+#    dep tree narrow (no audioadapter companion crates), and satisfies D1's
+#    stated reason for the pin — avoiding the six-day-old rubato 4.0.0.
+#  * cpal: amendment D1-B (15.07.2026, ratified after CI). D1 pinned `0.18.1`,
+#    but it declares `windows` and `windows-core` as two independent loose
+#    ranges (`>=0.61, <=0.62` each); alongside Tauri 2 the resolver splits them
+#    (`windows 0.61.3` COM types + `windows-core 0.62.2` `#[implement]` macro),
+#    so cpal's macro from 0.62 fails its trait bounds against the 0.61 COM types
+#    — red on Windows/WASAPI while green on Linux/ALSA. 0.18.1 is reachable via a
+#    lockfile pin, but that fights Tauri's transitive resolution and re-splits
+#    silently. `0.17.3` (D1's runner-up) declares a single `windows` dep, so the
+#    split is structurally impossible. API delta: `name()` → `description()`,
+#    split `BuildStreamError`/`StreamError`, config by reference; `SampleRate`
+#    stays `u32`, so the D3 ladder is unchanged.
+cpal = "0.17.3"    # NOT 0.18.x — see D1-B
+rubato = "0.16.2"
+
 [dev-dependencies]
 # HTTP mocking for unit tests
 mockito = "1"
