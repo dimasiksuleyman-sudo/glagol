@@ -89,6 +89,24 @@ rusqlite_migration = "2.5"
 # Pure Rust via flate2; no system zlib required for the MSI installer.
 zip = { version = "2", default-features = false, features = ["deflate"] }
 
+# Microphone capture for the Dictation recorder (Sprint 6 PR2). `cpal` wraps
+# WASAPI on the target platform (Windows); the Linux build (ALSA, needs
+# `libasound2-dev`) exists only to run the CI/quality gates. `rubato`
+# resamples the device's native rate down to Whisper's 16 kHz, offline, on
+# finalization.
+#
+# NOTE (kickoff D1 deviation): the kickoff pinned `rubato = 3.0.0`, but its
+# implementation plan (D8) is written against the `FftFixedIn` +
+# `process_partial` + `output_delay` API, which rubato replaced in 1.0.0 with
+# a single `Fft` struct over the `audioadapter`/`audioadapter-buffers` buffer
+# traits. `0.16.2` (Mar 2025, latest 0.x, ~2.2M downloads) is the newest
+# release that still carries that API, so it makes D8 correct verbatim while
+# keeping the dependency tree narrow (no audioadapter companion crates) and
+# still satisfies D1's stated reason for the pin — avoiding the six-day-old
+# rubato 4.0.0. See the PR body «Deviations from spec».
+cpal = "0.18.1"
+rubato = "0.16.2"
+
 [dev-dependencies]
 # HTTP mocking for unit tests
 mockito = "1"

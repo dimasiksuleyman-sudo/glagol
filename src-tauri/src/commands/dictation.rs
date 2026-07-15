@@ -19,11 +19,13 @@
 //! the webview never talks to the provider directly. External endpoints are
 //! https-only (see [`crate::stt::validation`]).
 
+use cpal::traits::HostTrait;
 use reqwest::{Client, Proxy};
 use rusqlite::Connection;
 use serde::Serialize;
 
 use crate::db::repository;
+use crate::dictation::RecorderError;
 use crate::secrets::keyring::{self, KeyringError};
 use crate::state::AppState;
 use crate::stt::openai_compat::OpenAiCompatStt;
@@ -358,6 +360,54 @@ pub(crate) fn stt_error_to_user_facing_ru(err: &SttError) -> String {
     }
 }
 
+// ── Audio input devices (Sprint 6 PR2) ─────────────────────────────────
+
+/// List the names of the system's audio input devices for the (future) device
+/// picker. Enumeration needs no capture stream, so this runs directly on the
+/// host without involving the recorder thread. `None`-or-missing selection in
+/// settings means "system default"; this list populates the UI that lets the
+/// user pin a specific device (the picker itself lands in PR5).
+#[tauri::command]
+pub async fn list_audio_input_devices() -> Result<Vec<String>, String> {
+    list_audio_input_devices_impl().map_err(|e| recorder_error_to_user_facing_ru(&e))
+}
+
+/// Enumerate input-device names. Returns them in host order; an empty machine
+/// yields an empty list rather than an error (the UI shows "нет устройств").
+pub(crate) fn list_audio_input_devices_impl() -> Result<Vec<String>, RecorderError> {
+    let host = cpal::default_host();
+    let devices = host
+        .input_devices()
+        .map_err(|e| RecorderError::UnsupportedConfig(e.to_string()))?;
+    // cpal 0.18 exposes the device name via `Display`.
+    Ok(devices.map(|d| d.to_string()).collect())
+}
+
+/// Translate a [`RecorderError`] into a concrete, actionable Russian sentence
+/// for the UI (the `Display` forms stay English so tests assert on them —
+/// mirrors [`stt_error_to_user_facing_ru`]).
+pub(crate) fn recorder_error_to_user_facing_ru(err: &RecorderError) -> String {
+    match err {
+        RecorderError::NoDevice => {
+            "Микрофон не найден. Подключите устройство ввода звука.".to_string()
+        }
+        RecorderError::PermissionDenied => {
+            "Нет доступа к микрофону. Проверьте Параметры → Конфиденциальность → Микрофон."
+                .to_string()
+        }
+        RecorderError::UnsupportedConfig(details) => {
+            format!("Микрофон не поддерживает нужный формат записи: {details}.")
+        }
+        RecorderError::BuildStream(details) => {
+            format!("Не удалось запустить запись с микрофона: {details}.")
+        }
+        RecorderError::DeviceLost(details) => {
+            format!("Связь с микрофоном потеряна: {details}.")
+        }
+        RecorderError::Busy => "Запись уже идёт.".to_string(),
+    }
+}
+
 // ── Tests ──────────────────────────────────────────────────────────────
 
 #[cfg(test)]
@@ -377,7 +427,11 @@ mod tests {
     fn fresh_state() -> AppState {
         let client = http::build_client().expect("client builds");
         let conn = crate::db::test_connection();
-        AppState::new(client, conn)
+        AppState::new(
+            client,
+            conn,
+            crate::dictation::RecorderHandle::disconnected(),
+        )
     }
 
     // ── settings ──
@@ -694,5 +748,36 @@ mod tests {
             .await
             .expect("404 on /models falls back to a successful micro-transcription");
         assert!(*state.stt_key_validated.lock().await);
+    }
+
+    // ── audio input devices ──
+
+    #[test]
+    fn list_audio_input_devices_impl_does_not_panic() {
+        // On a headless CI box this may return Ok(vec![]) or an enumeration
+        // error; either is fine. The contract under test is "never panics".
+        let _ = list_audio_input_devices_impl();
+    }
+
+    #[test]
+    fn recorder_error_ru_is_actionable_for_every_variant() {
+        assert!(recorder_error_to_user_facing_ru(&RecorderError::NoDevice).contains("Микрофон"));
+        assert!(
+            recorder_error_to_user_facing_ru(&RecorderError::PermissionDenied)
+                .contains("Конфиденциальность")
+        );
+        assert!(
+            recorder_error_to_user_facing_ru(&RecorderError::UnsupportedConfig("F64".to_string()))
+                .contains("F64")
+        );
+        assert!(
+            recorder_error_to_user_facing_ru(&RecorderError::BuildStream("x".to_string()))
+                .contains("запись")
+        );
+        assert!(
+            recorder_error_to_user_facing_ru(&RecorderError::DeviceLost("y".to_string()))
+                .contains("потеряна")
+        );
+        assert!(recorder_error_to_user_facing_ru(&RecorderError::Busy).contains("уже идёт"));
     }
 }

@@ -17,6 +17,7 @@ use std::sync::{Arc, Mutex};
 
 use rusqlite::Connection;
 
+use crate::dictation::{DictationPhase, RecorderHandle};
 use crate::salute::auth::SaluteAuth;
 
 /// Process-wide Tauri state.
@@ -54,16 +55,30 @@ pub struct AppState {
     /// always revalidates. Reset to `false` whenever the key is set or
     /// deleted. `tokio::sync::Mutex` because dictation commands are `async`.
     pub stt_key_validated: tokio::sync::Mutex<bool>,
+
+    /// Handle to the dedicated microphone recorder thread (Sprint 6 PR2). Just
+    /// the send side of the recorder's command queue — cheap to clone. The
+    /// thread itself is spawned in `lib.rs::run`'s setup hook and owns the
+    /// non-`Send` `cpal::Stream`.
+    pub recorder: RecorderHandle,
+
+    /// App-level dictation phase (D13). `std::sync::Mutex` and **never** held
+    /// across an `.await` (project convention); the guard is block-scoped
+    /// around each transition. PR2 only establishes the field — the state
+    /// machine is driven by the pipeline in PR3.
+    pub dictation: Mutex<DictationPhase>,
 }
 
 impl AppState {
     /// Construct fresh state with no auth configured.
-    pub fn new(http_client: reqwest::Client, db: Connection) -> Self {
+    pub fn new(http_client: reqwest::Client, db: Connection, recorder: RecorderHandle) -> Self {
         Self {
             http_client,
             salute_auth: tokio::sync::Mutex::new(None),
             db: Mutex::new(db),
             stt_key_validated: tokio::sync::Mutex::new(false),
+            recorder,
+            dictation: Mutex::new(DictationPhase::Idle),
         }
     }
 }
