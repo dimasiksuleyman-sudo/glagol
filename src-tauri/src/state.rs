@@ -67,6 +67,23 @@ pub struct AppState {
     /// around each transition. PR2 only establishes the field — the state
     /// machine is driven by the pipeline in PR3.
     pub dictation: Mutex<DictationPhase>,
+
+    /// The release signal for the in-flight dictation (Sprint 6 PR3). The
+    /// hotkey `Pressed` handler stores a `oneshot::Sender` here and spawns the
+    /// pipeline with the matching `Receiver`; the `Released` handler `take()`s
+    /// and fires it, ending the recording. `take()` semantics make a second
+    /// `Released` (or a lost `Pressed`/`Released` ordering) a no-op. Block-scoped
+    /// `std::sync::Mutex`, never held across an `.await`.
+    pub dictation_stop: Mutex<Option<tokio::sync::oneshot::Sender<()>>>,
+
+    /// Monotonic dictation-session counter (Sprint 6 PR3). Each `Pressed`
+    /// increments it and captures the new value as its session token; a
+    /// session's teardown only resets the shared tray/phase/sender state if the
+    /// counter still matches its token. This defuses the composition mine where
+    /// a fresh `Pressed` lands in the microsecond gap after the pipeline set
+    /// `Idle` but before the previous session's cleanup ran — without the guard,
+    /// the stale cleanup would clobber the new session (D10-class hazard).
+    pub dictation_generation: std::sync::atomic::AtomicU64,
 }
 
 impl AppState {
@@ -79,6 +96,8 @@ impl AppState {
             stt_key_validated: tokio::sync::Mutex::new(false),
             recorder,
             dictation: Mutex::new(DictationPhase::Idle),
+            dictation_stop: Mutex::new(None),
+            dictation_generation: std::sync::atomic::AtomicU64::new(0),
         }
     }
 }

@@ -21,10 +21,20 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-# Tauri framework
-tauri = { version = "2", features = ["protocol-asset"] }
+# Tauri framework.
+#   * `tray-icon` + `image-png` (Sprint 6 PR3): the dictation feature runs from
+#     the tray — the main window closes to the tray so the global hotkey keeps
+#     working, and the tray icon swaps between idle/recording states. `image-png`
+#     lets `Image::from_bytes` decode the embedded PNG tray icons.
+tauri = { version = "2", features = ["protocol-asset", "tray-icon", "image-png"] }
 tauri-plugin-opener = "2"
 tauri-plugin-dialog = "2"
+# Global hotkey for push-to-talk dictation (Sprint 6 PR3). Registered from Rust
+# only — the webview never binds shortcuts, so no JS-side permission is needed.
+# Exact `=`-pin (D1): both this and `arboard` are leaf deps sitting on raw
+# `windows-sys` FFI, so a hard pin makes any transitive-neighbour conflict loud
+# instead of a silent patch bump.
+tauri-plugin-global-shortcut = "=2.3.2"
 
 # Serialization
 serde = { version = "1", features = ["derive"] }
@@ -116,6 +126,15 @@ zip = { version = "2", default-features = false, features = ["deflate"] }
 #    stays `u32`, so the D3 ladder is unchanged.
 cpal = "0.17.3"    # NOT 0.18.x — see D1-B
 rubato = "0.16.2"
+
+# Clipboard delivery for dictation (Sprint 6 PR3). `default-features = false`
+# drops the `image-data` feature — dictation only ever writes text, and the
+# default pulls in the heavy `image` crate we would never call (D1/D2). Exact
+# `=`-pin for the same leaf-dep reason as the global-shortcut plugin. `arboard`
+# is blocking, so every call is issued behind the `TextSink` seam inside
+# `spawn_blocking` (D9); a `FakeSink` keeps the pipeline tests hardware-free and
+# lets the Linux CI box stay headless (no live clipboard in unit tests).
+arboard = { version = "=3.6.1", default-features = false }
 
 [dev-dependencies]
 # HTTP mocking for unit tests
