@@ -65,10 +65,17 @@ where
 }
 
 /// Resample the captured mono buffer to 16 kHz and convert to `i16` (D7).
-fn finalize_buffer(mono: &[f32], native_rate: u32, truncated: bool) -> PcmAudio {
-    let resampled = resample_to_16k(mono, native_rate);
+///
+/// Propagates the resampler's loud error (D8-A) rather than fabricating a clip
+/// at the wrong rate — the `Result` plumbing carries it up to `Stop` / the cap.
+fn finalize_buffer(
+    mono: &[f32],
+    native_rate: u32,
+    truncated: bool,
+) -> Result<PcmAudio, RecorderError> {
+    let resampled = resample_to_16k(mono, native_rate)?;
     let samples = f32_to_i16(&resampled);
-    PcmAudio::from_samples_16k(samples, truncated)
+    Ok(PcmAudio::from_samples_16k(samples, truncated))
 }
 
 /// Run the recorder loop until `Shutdown` (or the command channel disconnects).
@@ -141,10 +148,15 @@ pub fn run_recorder<S: SampleSource, L: LevelSink>(
                 if buffer.len() >= max_samples {
                     buffer.truncate(max_samples);
                     source.stop();
-                    let pcm = finalize_buffer(&buffer, rate, true);
+                    phase = match finalize_buffer(&buffer, rate, true) {
+                        Ok(pcm) => Phase::Capped(pcm),
+                        // Unreachable for a real device (native rate is never 0),
+                        // but propagated loudly rather than degrading silently
+                        // (D8-A); the pending `Stop` surfaces it.
+                        Err(e) => Phase::Faulted(e.to_string()),
+                    };
                     buffer.clear();
                     level_acc.clear();
-                    phase = Phase::Capped(pcm);
                 }
             }
 
@@ -162,7 +174,7 @@ pub fn run_recorder<S: SampleSource, L: LevelSink>(
                 let result = match std::mem::replace(&mut phase, Phase::Idle) {
                     Phase::Recording { rate, .. } => {
                         source.stop();
-                        Ok(finalize_buffer(&buffer, rate, false))
+                        finalize_buffer(&buffer, rate, false)
                     }
                     Phase::Capped(pcm) => Ok(pcm),
                     Phase::Faulted(msg) => Err(RecorderError::DeviceLost(msg)),
@@ -219,6 +231,7 @@ struct ConfigCandidate {
     channels: u16,
     min_rate: u32,
     max_rate: u32,
+    format: SampleFormat,
 }
 
 impl ConfigCandidate {
@@ -227,22 +240,66 @@ impl ConfigCandidate {
     }
 }
 
-/// The config ladder (D3): prefer a mono range that already covers 16 kHz
-/// (no downmix, no resample), then any multi-channel range covering 16 kHz
-/// (downmix only), else `None` → the caller falls back to the device default
-/// (downmix + resample). Matching is by **range containment**, not exact
-/// equality, because some drivers report a `[min, max]` span rather than a
-/// discrete list.
+/// Preference rank of a sample format the recorder can canonicalize to `f32`
+/// directly (D4): `F32` (0) outranks `I16` (1). Any other format
+/// (`U8`/`I8`/`I32`/`F64`/…) returns `None` and is **skipped** by the ladder
+/// (D3-A) — not treated as an error.
+///
+/// Rationale: 8-bit capture is ~48 dB of dynamic range; choosing `U8@16k` over
+/// `F32@48k`+resample would degrade STT more than the resample costs. **Format
+/// outranks sample rate** in the selection order.
+fn format_rank(format: SampleFormat) -> Option<u8> {
+    match format {
+        SampleFormat::F32 => Some(0),
+        SampleFormat::I16 => Some(1),
+        _ => None,
+    }
+}
+
+/// The config ladder (D3, amended by D3-A). `sample_format` is part of the
+/// **selection predicate**, not a post-check: steps 1–2 consider only ranges in
+/// a format the recorder supports ([`format_rank`]), preferring `F32` over
+/// `I16`. A range in an unsupported format is skipped so the ladder falls
+/// through to a working config rather than picking, say, `U8@16k` and then
+/// failing the build with `UnsupportedConfig("U8")`.
+///
+/// 1. mono range covering 16 kHz — no downmix, no resample;
+/// 2. multi-channel range covering 16 kHz — downmix only.
+///
+/// Both failing → `None`, and the caller falls back to the device default
+/// (downmix + resample).
+///
+/// Matching is by **range containment**, not exact equality, because some
+/// drivers report a `[min, max]` span rather than a discrete list.
 fn choose_ladder(candidates: &[ConfigCandidate], target: u32) -> Option<usize> {
-    if let Some(i) = candidates
-        .iter()
-        .position(|c| c.channels == 1 && c.contains(target))
-    {
+    // Step 1: mono, supported format, covers target — prefer F32 over I16.
+    if let Some(i) = best_supported(candidates, target, |c| c.channels == 1) {
         return Some(i);
     }
+    // Step 2: multi-channel, supported format, covers target.
+    best_supported(candidates, target, |c| c.channels >= 2)
+}
+
+/// Index of the best-ranked **supported** candidate matching `channel_pred` and
+/// covering `target`. Lower [`format_rank`] wins (F32 before I16); ties keep the
+/// first occurrence. `None` when no candidate qualifies.
+fn best_supported(
+    candidates: &[ConfigCandidate],
+    target: u32,
+    channel_pred: impl Fn(&ConfigCandidate) -> bool,
+) -> Option<usize> {
     candidates
         .iter()
-        .position(|c| c.channels >= 2 && c.contains(target))
+        .enumerate()
+        .filter_map(|(i, c)| {
+            if channel_pred(c) && c.contains(target) {
+                format_rank(c.format).map(|rank| (i, rank))
+            } else {
+                None
+            }
+        })
+        .min_by_key(|&(_, rank)| rank)
+        .map(|(i, _)| i)
 }
 
 // ── CpalSource: the real capture backend ────────────────────────────────
@@ -339,6 +396,7 @@ fn choose_stream_config(
             channels: r.channels(),
             min_rate: r.min_sample_rate(),
             max_rate: r.max_sample_rate(),
+            format: r.sample_format(),
         })
         .collect();
 
@@ -354,14 +412,31 @@ fn choose_stream_config(
         .map_err(|e| RecorderError::UnsupportedConfig(e.to_string()))
 }
 
-/// Map a cpal build failure to the recorder taxonomy.
-// NOTE: best-effort heuristic, see kickoff D12. cpal/WASAPI give no clean
-// "denied in Privacy settings" signal — a permission refusal surfaces as a
-// build failure. Since we only reach here after devices enumerated, we surface
-// PermissionDenied so the UI (PR3/PR5) can point at Параметры → Конфиденциальность
-// → Микрофон. A reliable winreg ConsentStore detector is deferred to PR5.
-fn build_stream_error(_e: cpal::BuildStreamError) -> RecorderError {
-    RecorderError::PermissionDenied
+/// Map a cpal build failure to the recorder taxonomy (D12, refined by D12-A).
+///
+/// The variant carrying a microphone-permission denial matters. On WASAPI a
+/// denied mic (`E_ACCESSDENIED` from `IAudioClient::Initialize`) is **not** one
+/// of cpal 0.17's specially-handled HRESULTs (`AUDCLNT_E_DEVICE_INVALIDATED` /
+/// `_IN_USE` → `DeviceNotAvailable`); it falls through to `BackendSpecific`
+/// (verified in `cpal-0.17.3/src/host/wasapi/mod.rs::windows_err_to_cpal_err`).
+/// So the "check Privacy settings" hint maps from `BackendSpecific` and must not
+/// leak onto `DeviceNotAvailable`, which is a genuine disconnect (→ DeviceLost).
+// NOTE: still best-effort (kickoff D12): `BackendSpecific` also carries any
+// other unclassified backend HRESULT, so `PermissionDenied` can be a false
+// positive. A reliable winreg ConsentStore detector is deferred to PR5.
+fn build_stream_error(e: cpal::BuildStreamError) -> RecorderError {
+    use cpal::BuildStreamError as E;
+    let detail = e.to_string();
+    match e {
+        // Device disconnected / invalidated / in use.
+        E::DeviceNotAvailable => RecorderError::DeviceLost(detail),
+        // The picked config isn't actually supported (a driver lied about a range).
+        E::StreamConfigNotSupported => RecorderError::UnsupportedConfig(detail),
+        // Where E_ACCESSDENIED lands — surface the permission hint here.
+        E::BackendSpecific { .. } => RecorderError::PermissionDenied,
+        // Technical build failures — neither a permission nor a device-loss issue.
+        E::InvalidArgument | E::StreamIdOverflow => RecorderError::BuildStream(detail),
+    }
 }
 
 impl SampleSource for CpalSource {
@@ -408,8 +483,12 @@ impl SampleSource for CpalSource {
                 dev.build_input_stream(
                     &config,
                     move |data: &[i16], _: &cpal::InputCallbackInfo| {
-                        let mono: Vec<f32> = data.iter().map(|&s| s as f32 / 32768.0).collect();
-                        let _ = data_tx.send(RecorderMsg::Samples(mono));
+                        // Format conversion only — the data is still interleaved;
+                        // downmix happens later in the recorder loop via
+                        // `downmix_to_mono`.
+                        let interleaved: Vec<f32> =
+                            data.iter().map(|&s| s as f32 / 32768.0).collect();
+                        let _ = data_tx.send(RecorderMsg::Samples(interleaved));
                     },
                     move |e| {
                         let _ = err_tx.send(RecorderMsg::StreamError(e.to_string()));
@@ -666,49 +745,80 @@ mod tests {
     }
 
     // ── config ladder ──
+    //
+    // Ladder-test fakes MUST include hostile sample formats (D3-A / lesson): a
+    // fake that only ever offers F32 tests our optimism, not the code.
+
+    /// Terse `ConfigCandidate` constructor for the ladder tests.
+    fn cand(channels: u16, min_rate: u32, max_rate: u32, format: SampleFormat) -> ConfigCandidate {
+        ConfigCandidate {
+            channels,
+            min_rate,
+            max_rate,
+            format,
+        }
+    }
 
     #[test]
     fn ladder_prefers_mono_covering_target() {
         let candidates = [
-            ConfigCandidate {
-                channels: 2,
-                min_rate: 44_100,
-                max_rate: 48_000,
-            },
-            ConfigCandidate {
-                channels: 1,
-                min_rate: 8_000,
-                max_rate: 48_000,
-            },
+            cand(2, 44_100, 48_000, SampleFormat::F32),
+            cand(1, 8_000, 48_000, SampleFormat::F32),
         ];
         assert_eq!(choose_ladder(&candidates, 16_000), Some(1));
     }
 
     #[test]
+    fn ladder_prefers_f32_over_i16_within_a_step() {
+        // Two mono ranges cover 16 kHz — F32 must win over I16 (D3-A).
+        let candidates = [
+            cand(1, 8_000, 48_000, SampleFormat::I16),
+            cand(1, 8_000, 48_000, SampleFormat::F32),
+        ];
+        assert_eq!(choose_ladder(&candidates, 16_000), Some(1));
+    }
+
+    #[test]
+    fn ladder_skips_unsupported_format_for_a_working_step() {
+        // D3-A negative cycle: a device offering mono@16k ONLY in U8, plus
+        // stereo@48k in F32. Format is part of the predicate, so the U8 mono
+        // range is skipped and the F32 stereo range is chosen — the build never
+        // sees UnsupportedConfig("U8"). Remove the format filter (drop the
+        // `format_rank` guard in `best_supported`) and this returns Some(0) (the
+        // U8 mono), so the assertion fails.
+        let candidates = [
+            cand(1, 16_000, 16_000, SampleFormat::U8),
+            cand(2, 8_000, 48_000, SampleFormat::F32),
+        ];
+        assert_eq!(choose_ladder(&candidates, 16_000), Some(1));
+        assert_eq!(candidates[1].format, SampleFormat::F32);
+    }
+
+    #[test]
     fn ladder_falls_back_to_multichannel_when_no_mono_covers_target() {
         let candidates = [
-            ConfigCandidate {
-                channels: 2,
-                min_rate: 8_000,
-                max_rate: 48_000,
-            },
-            ConfigCandidate {
-                // Mono exists but its range excludes 16 kHz.
-                channels: 1,
-                min_rate: 44_100,
-                max_rate: 48_000,
-            },
+            cand(2, 8_000, 48_000, SampleFormat::F32),
+            // Mono exists but its range excludes 16 kHz.
+            cand(1, 44_100, 48_000, SampleFormat::F32),
         ];
         assert_eq!(choose_ladder(&candidates, 16_000), Some(0));
     }
 
     #[test]
+    fn ladder_none_when_only_unsupported_format_covers_target() {
+        // The one range covering 16 kHz is U8 → skipped → None, so the caller
+        // falls through to the device default (D3-A), not an error here.
+        let candidates = [
+            cand(1, 8_000, 48_000, SampleFormat::U8),
+            // F32 exists but its range excludes 16 kHz.
+            cand(2, 44_100, 48_000, SampleFormat::F32),
+        ];
+        assert_eq!(choose_ladder(&candidates, 16_000), None);
+    }
+
+    #[test]
     fn ladder_none_when_target_out_of_every_range() {
-        let candidates = [ConfigCandidate {
-            channels: 2,
-            min_rate: 44_100,
-            max_rate: 48_000,
-        }];
+        let candidates = [cand(2, 44_100, 48_000, SampleFormat::F32)];
         assert_eq!(choose_ladder(&candidates, 16_000), None);
     }
 

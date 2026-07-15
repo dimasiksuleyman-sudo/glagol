@@ -28,7 +28,7 @@
 
 use rubato::{FftFixedIn, Resampler};
 
-use super::TARGET_SAMPLE_RATE;
+use super::{RecorderError, TARGET_SAMPLE_RATE};
 
 /// Fixed input chunk size fed to the resampler, in frames.
 const CHUNK_SIZE_IN: usize = 1024;
@@ -43,39 +43,47 @@ const MAX_FLUSH_ROUNDS: usize = 16;
 /// Resample a **mono** `f32` buffer captured at `from_rate` down to
 /// [`TARGET_SAMPLE_RATE`] (16 kHz).
 ///
-/// Returns samples in `[-1.0, 1.0]` at 16 kHz. The identity path (source
-/// already 16 kHz) returns a copy without touching rubato. On the (practically
-/// impossible) resampler-construction failure the input is returned unresampled
-/// rather than dropping the recording.
-pub fn resample_to_16k(mono: &[f32], from_rate: u32) -> Vec<f32> {
-    // Identity path: already at the target rate (D8).
+/// Returns samples in `[-1.0, 1.0]` at 16 kHz. Every fallible step is audited
+/// (D8-A): the constructor, each `process` / `process_partial`, and flush
+/// convergence surface a **loud [`RecorderError`]** — there is no silent
+/// degradation path. In particular the old "constructor failed → return the
+/// native-rate buffer" fallback is gone: returning native-rate samples labelled
+/// 16 kHz would feed Whisper slowed audio, which is worse than failing.
+///
+/// The identity path (source already 16 kHz) and an empty buffer are infallible
+/// in fact; they still return `Ok` so the signature is uniform.
+pub fn resample_to_16k(mono: &[f32], from_rate: u32) -> Result<Vec<f32>, RecorderError> {
+    // Identity path: already at the target rate — infallible (D8).
     if from_rate == TARGET_SAMPLE_RATE {
-        return mono.to_vec();
+        return Ok(mono.to_vec());
     }
+    // Empty input — infallible.
     if mono.is_empty() {
-        return Vec::new();
+        return Ok(Vec::new());
     }
 
     // Ideal converted length — the trim target that strips the zero-pad tail.
     let expected_len =
         (mono.len() as f64 * TARGET_SAMPLE_RATE as f64 / from_rate as f64).ceil() as usize;
 
-    let mut resampler = match FftFixedIn::<f32>::new(
+    // Constructor: fails only on a nonsensical rate (e.g. 0). Loud Err — a clip
+    // left at the native rate but tagged 16 kHz would silently slow STT (D8-A).
+    let mut resampler = FftFixedIn::<f32>::new(
         from_rate as usize,
         TARGET_SAMPLE_RATE as usize,
         CHUNK_SIZE_IN,
         SUB_CHUNKS,
         1, // mono
-    ) {
-        Ok(r) => r,
-        // Construction only fails on nonsensical rates. Degrade to the
-        // unresampled buffer rather than losing the recording.
-        Err(_) => return mono.to_vec(),
-    };
+    )
+    .map_err(|e| {
+        RecorderError::UnsupportedConfig(format!("resampler init failed for {from_rate} Hz: {e}"))
+    })?;
 
     let mut out: Vec<f32> = Vec::with_capacity(expected_len + CHUNK_SIZE_IN);
 
-    // 1. Every full fixed-size input chunk.
+    // 1. Every full fixed-size input chunk. `process` errors only on a wrong
+    //    channel/frame count, which we control — surface it rather than emit a
+    //    silently short clip (D8-A).
     let mut pos = 0usize;
     loop {
         let need = resampler.input_frames_next();
@@ -84,7 +92,7 @@ pub fn resample_to_16k(mono: &[f32], from_rate: u32) -> Vec<f32> {
         }
         let processed = resampler
             .process(&[&mono[pos..pos + need]], None)
-            .expect("resampler.process on a full chunk is infallible for valid rates");
+            .map_err(resample_err)?;
         out.extend_from_slice(&processed[0]);
         pos += need;
     }
@@ -98,26 +106,47 @@ pub fn resample_to_16k(mono: &[f32], from_rate: u32) -> Vec<f32> {
         last[..remaining.len()].copy_from_slice(remaining);
         let processed = resampler
             .process(&[last.as_slice()], None)
-            .expect("resampler.process on the zero-padded tail is infallible");
+            .map_err(resample_err)?;
         out.extend_from_slice(&processed[0]);
     }
 
     // 3. Flush the filter's delay line — without this the end of the last word
-    //    is eaten (trap 2). `process_partial(None)` drains remaining frames.
+    //    is eaten (trap 2). `process_partial(None)` keeps emitting the delayed
+    //    frames; for `FftFixedIn` it does not signal "done" with an empty batch,
+    //    so the empty-break is only an early-out and exhausting MAX_FLUSH_ROUNDS
+    //    is harmless — step 4 trims the surplus. Each call is still fallible and
+    //    surfaced loudly (D8-A).
     for _ in 0..MAX_FLUSH_ROUNDS {
         let processed = resampler
             .process_partial::<&[f32]>(None, None)
-            .expect("resampler flush is infallible");
+            .map_err(resample_err)?;
         if processed[0].is_empty() {
             break;
         }
         out.extend_from_slice(&processed[0]);
     }
 
-    // 4. Trim to the ideal length: drops the zero-pad-induced tail while
+    // 4. Guard against a silently short clip (D8-A): fewer than the ideal number
+    //    of frames means the tail was lost (e.g. the flush was removed). That is
+    //    a loud Err, never a quiet truncation.
+    if out.len() < expected_len {
+        return Err(RecorderError::UnsupportedConfig(format!(
+            "resample produced {} of {expected_len} frames at {from_rate} Hz (tail lost)",
+            out.len()
+        )));
+    }
+
+    // 5. Trim to the ideal length: drops the zero-pad-induced tail while
     //    keeping the flushed real frames that complete the final word.
     out.truncate(expected_len);
-    out
+    Ok(out)
+}
+
+/// Map a rubato per-chunk failure to the recorder taxonomy (D8-A). Reachable
+/// only on an internal contract violation (wrong channel/frame count), which we
+/// do not produce — but it is surfaced loudly rather than swallowed.
+fn resample_err(e: rubato::ResampleError) -> RecorderError {
+    RecorderError::UnsupportedConfig(format!("resample failed: {e}"))
 }
 
 #[cfg(test)]
@@ -144,20 +173,33 @@ mod tests {
     #[test]
     fn identity_path_returns_copy_unchanged() {
         let input = sine(1000.0, 16_000, 16_000);
-        let out = resample_to_16k(&input, 16_000);
+        let out = resample_to_16k(&input, 16_000).unwrap();
         assert_eq!(out, input, "16 kHz input must pass through untouched");
     }
 
     #[test]
     fn empty_input_returns_empty() {
-        assert!(resample_to_16k(&[], 48_000).is_empty());
+        assert!(resample_to_16k(&[], 48_000).unwrap().is_empty());
+    }
+
+    #[test]
+    fn zero_from_rate_is_a_loud_error() {
+        // D8-A negative cycle: from_rate = 0 makes the resampler constructor
+        // fail, which must surface as a loud Err — never a native-rate clip
+        // silently tagged 16 kHz. Real rates succeed.
+        assert!(matches!(
+            resample_to_16k(&[0.1, 0.2, 0.3], 0),
+            Err(RecorderError::UnsupportedConfig(_))
+        ));
+        assert!(resample_to_16k(&[0.1; 48_000], 48_000).is_ok());
+        assert!(resample_to_16k(&[0.1; 44_100], 44_100).is_ok());
     }
 
     #[test]
     fn resamples_48k_to_16k_expected_length() {
         // 1.0 s at 48 kHz -> exactly 16 000 frames at 16 kHz.
         let input = sine(1000.0, 48_000, 48_000);
-        let out = resample_to_16k(&input, 48_000);
+        let out = resample_to_16k(&input, 48_000).unwrap();
         assert_eq!(out.len(), 16_000, "48k->16k of 1.0 s must be 16 000 frames");
     }
 
@@ -165,7 +207,7 @@ mod tests {
     fn resamples_44100_to_16k_expected_length() {
         // 1.0 s at 44.1 kHz -> 16 000 frames (ceil).
         let input = sine(1000.0, 44_100, 44_100);
-        let out = resample_to_16k(&input, 44_100);
+        let out = resample_to_16k(&input, 44_100).unwrap();
         assert_eq!(
             out.len(),
             16_000,
@@ -180,7 +222,7 @@ mod tests {
         // near-zero noise crossings that would blur the check. 14 400 samples at
         // 16 kHz = 900 cycles of 1 kHz → exactly 1800 crossings.
         let input = sine(1000.0, 48_000, 48_000);
-        let out = resample_to_16k(&input, 48_000);
+        let out = resample_to_16k(&input, 48_000).unwrap();
         let steady = &out[800..15_200];
         let zc = zero_crossings(steady);
         assert!(
@@ -196,16 +238,18 @@ mod tests {
     /// 1. Fix in place (flush present).
     /// 2. This test asserts (a) the output is exactly 16 000 frames and (c) the
     ///    last 50 ms still carries the tone.
-    /// 3. Comment out the `for _ in 0..MAX_FLUSH_ROUNDS { … }` flush block.
-    /// 4. Re-run: the resampler withholds its ~`output_delay()` trailing frames,
-    ///    so `out` is ~128 frames short of 16 000 and assertion (a) fails.
+    /// 3. Set `MAX_FLUSH_ROUNDS` to `0` (or delete the flush block).
+    /// 4. Re-run: the delayed frames are never drained, so `out` is short of
+    ///    `expected_len` and the D8-A length guard returns `Err` (tail lost) —
+    ///    `unwrap` panics and the test fails. (Before D8-A this was a silently
+    ///    short buffer; now it is a loud error.)
     /// 5. Restore the flush; the test passes again.
     ///
-    /// Verified manually via that comment-out cycle during PR2 development.
+    /// Verified manually via that comment-out cycle.
     #[test]
     fn flush_keeps_the_tail_of_the_last_word() {
         let input = sine(1000.0, 48_000, 48_000);
-        let out = resample_to_16k(&input, 48_000);
+        let out = resample_to_16k(&input, 48_000).unwrap();
 
         // (a) full length — this is what breaks when the flush is removed.
         assert_eq!(
