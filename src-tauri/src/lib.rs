@@ -1,4 +1,5 @@
-use tauri::{Emitter, Manager};
+use tauri::{Emitter, Manager, WebviewUrl, WebviewWindowBuilder, WindowEvent};
+use tauri_plugin_global_shortcut::GlobalShortcutExt;
 
 // SaluteSpeech API client (OAuth + sync synthesis).
 pub mod salute;
@@ -60,6 +61,17 @@ impl dictation::LevelSink for tauri::AppHandle {
     }
 }
 
+/// Emit dictation state-machine transitions (D7) as a `dictation-state`
+/// broadcast. `AppHandle` is the production [`dictation::pipeline::DictationEmitter`];
+/// the overlay window `listen()`s and drives the pill. Broadcast (not
+/// `ipc::Channel`) for the same reason as the level meter: the consumer is a
+/// separate window that never `invoke`s, so there is no channel to bind.
+impl dictation::pipeline::DictationEmitter for tauri::AppHandle {
+    fn emit_state(&self, state: dictation::pipeline::DictationState) {
+        let _ = self.emit(dictation::pipeline::DICTATION_STATE_EVENT, state);
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let http_client = salute::http::build_client()
@@ -68,6 +80,16 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        // Global push-to-talk hotkey (Sprint 6 PR3). One handler dispatches the
+        // single registered shortcut's Pressed/Released to the dictation session
+        // (D3/D4). Registered from Rust in `setup`; the webview binds nothing.
+        .plugin(
+            tauri_plugin_global_shortcut::Builder::new()
+                .with_handler(|app, _shortcut, event| {
+                    dictation::session::handle_shortcut(app, event.state);
+                })
+                .build(),
+        )
         .setup(move |app| {
             // Resolve the database path and eagerly initialise the connection.
             // Failure here is fatal: silently continuing with a broken DB would
@@ -93,6 +115,60 @@ pub fn run() {
             );
 
             app.manage(state::AppState::new(http_client.clone(), conn, recorder));
+
+            // ── Dictation surface (Sprint 6 PR3) ──────────────────────────
+            //
+            // Create the overlay window once, hidden (D5): building a WebView
+            // costs hundreds of ms, which would be a stall at the exact moment
+            // the user starts speaking. From here it is only show/hide +
+            // reposition. `transparent` + always-on-top + `skipTaskbar` +
+            // `focused(false)` so the pill floats over the target app without
+            // stealing its keyboard focus.
+            WebviewWindowBuilder::new(
+                app,
+                dictation::session::OVERLAY_LABEL,
+                WebviewUrl::App("index.html".into()),
+            )
+            .title("Glagol overlay")
+            .inner_size(
+                dictation::session::OVERLAY_WIDTH,
+                dictation::session::OVERLAY_HEIGHT,
+            )
+            .transparent(true)
+            .decorations(false)
+            .always_on_top(true)
+            .skip_taskbar(true)
+            .focused(false)
+            .resizable(false)
+            .shadow(false)
+            .visible(false)
+            .build()?;
+
+            // System tray with the idle icon + «Показать / Выход» menu (D11).
+            dictation::session::build_tray(app.handle())?;
+
+            // Register the global push-to-talk hotkey (D3). A failure here (some
+            // other app already owns Ctrl+Shift+Space) is logged, not fatal —
+            // the rest of Glagol (TTS) must still run.
+            if let Err(e) = app
+                .global_shortcut()
+                .register(dictation::session::dictation_hotkey())
+            {
+                tracing::warn!("failed to register dictation hotkey Ctrl+Shift+Space: {e}");
+            }
+
+            // Close-to-tray (D12): intercept the main window's close so the
+            // hotkey keeps working after the user "closes" the window.
+            if let Some(main) = app.get_webview_window("main") {
+                let handle = app.handle().clone();
+                main.on_window_event(move |event| {
+                    if let WindowEvent::CloseRequested { api, .. } = event {
+                        api.prevent_close();
+                        dictation::session::hide_main_to_tray(&handle);
+                    }
+                });
+            }
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

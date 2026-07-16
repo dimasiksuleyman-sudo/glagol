@@ -30,8 +30,10 @@
 //! [`LevelSink`] seams keep the whole path testable without hardware; a live
 //! `#[ignore]` microphone test (see `recorder`) is the manual gate (D14).
 
+pub mod pipeline;
 pub mod recorder;
 pub mod resample;
+pub mod session;
 
 use thiserror::Error;
 use tokio::sync::oneshot;

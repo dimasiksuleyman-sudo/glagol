@@ -161,6 +161,19 @@ fn is_local_host(host: &str) -> bool {
     LOCAL_HOSTS.contains(&host)
 }
 
+/// Whether `base_url` points at a local server (`localhost`/`127.0.0.1`/`::1`).
+/// The dictation session (PR3) uses this to decide whether a missing API key is
+/// fatal: a remote provider needs a Bearer key, a local whisper server does not.
+/// A URL that does not parse is treated as non-local (fail safe — require a key).
+pub(crate) fn is_local_endpoint(base_url: &str) -> bool {
+    match reqwest::Url::parse(base_url.trim()) {
+        Ok(url) => normalized_host(&url)
+            .map(|h| is_local_host(&h))
+            .unwrap_or(false),
+        Err(_) => false,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

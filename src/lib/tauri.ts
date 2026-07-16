@@ -444,8 +444,45 @@ export async function listAudioInputDevices(): Promise<string[]> {
  * Broadcast event carrying microphone RMS levels while dictation is recording.
  * Payload: `{ level: number }`, a linear RMS in `0..1`. Keep this string in
  * lock-step with `DICTATION_LEVEL_EVENT` in `src-tauri/src/lib.rs`. The overlay
- * (PR3) `listen()`s for it; PR2 only establishes the channel name.
+ * `listen()`s for it to drive the live level bars.
  */
 export const DICTATION_LEVEL_EVENT = "dictation-level";
+
+/** Payload of {@link DICTATION_LEVEL_EVENT}: one linear RMS value in `0..1`. */
+export interface DictationLevelPayload {
+  level: number;
+}
+
+/**
+ * How the recognised text was delivered (Sprint 6 PR3). Mirrors the Rust
+ * `Disposition` enum (`#[serde(rename_all = "camelCase")]`). `"discarded"` means
+ * nothing was delivered — an accidental tap, a silent clip, or an empty
+ * transcript — so the overlay hides with no "Скопировано". `"pasted"` is added
+ * by PR4 (auto-insertion).
+ */
+export type DictationDisposition = "clipboard" | "discarded";
+
+/**
+ * The dictation state machine broadcast on {@link DICTATION_STATE_EVENT}.
+ * Mirrors the Rust `DictationState` enum tagged with
+ * `#[serde(tag = "kind", rename_all = "camelCase")]` in
+ * `src-tauri/src/dictation/pipeline.rs` — narrow with `switch (event.kind)`.
+ *
+ * `done.truncated` is `true` only when the 60 s cap forced finalization, so the
+ * pill can surface «обрезано по 60 с» rather than truncating silently.
+ */
+export type DictationState =
+  | { kind: "recording" }
+  | { kind: "processing" }
+  | { kind: "done"; disposition: DictationDisposition; truncated: boolean }
+  | { kind: "error"; message: string };
+
+/**
+ * Broadcast event carrying dictation state-machine transitions. Keep in
+ * lock-step with `DICTATION_STATE_EVENT` in
+ * `src-tauri/src/dictation/pipeline.rs`. The overlay `listen()`s for it and
+ * drives the pill content.
+ */
+export const DICTATION_STATE_EVENT = "dictation-state";
 
 export { Channel };

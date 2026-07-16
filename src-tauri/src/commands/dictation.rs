@@ -269,7 +269,7 @@ pub(crate) async fn test_stt_key_impl(state: &AppState, force: bool) -> Result<(
 /// Build a dedicated STT HTTP client. Separate from the SaluteSpeech
 /// (`AppState.http_client`) client so a proxy applies to STT traffic only
 /// (kickoff D5). Uses rustls; standard public CAs (no Sber cert needed).
-fn build_stt_client(proxy: Option<&str>) -> Result<Client, String> {
+pub(crate) fn build_stt_client(proxy: Option<&str>) -> Result<Client, String> {
     let mut builder = Client::builder().use_rustls_tls();
     if let Some(raw) = proxy {
         let normalized = validation::normalize_proxy(raw)?;
