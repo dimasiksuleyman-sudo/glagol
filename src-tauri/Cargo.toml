@@ -57,8 +57,18 @@ uuid = { version = "1", features = ["v4"] }
 base64 = "0.22"
 chrono = "0.4"
 
-# Structured logging (subscriber added in Sprint 5)
+# Structured logging. `tracing` provides the macros; the subscriber that
+# actually routes them was missing until Sprint 6 PR3.1 — every `tracing::*!`
+# call dispatched into the void, and `RUST_LOG` did nothing (no `EnvFilter`).
+#   * tracing-subscriber (=0.3.23, 13.03.2026, ~505M downloads) — `env-filter`
+#     for `RUST_LOG` / a default directive; drives both the dev stdout layer and
+#     the prod file layer.
+#   * tracing-appender (=0.2.5, 17.04.2026, ~9.1M downloads) — daily-rolling file
+#     writer for release builds (no console under `windows_subsystem = "windows"`).
+# Exact `=`-pins: pure-Rust, no `windows` graph, so the D1-B class is impossible.
 tracing = "0.1"
+tracing-subscriber = { version = "=0.3.23", features = ["env-filter"] }
+tracing-appender = "=0.2.5"
 
 # Audio (WAV read/write for chunk concatenation)
 hound = "3.5"
