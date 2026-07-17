@@ -208,16 +208,41 @@ pub trait ClipboardAccess: Clone + Send + 'static {
     fn set_text(&self, text: &str) -> Result<(), String>;
 }
 
+// ── No-restore reasons (D7) ─────────────────────────────────────────────
+
+/// Why a restore did not happen. Each maps to a **distinct** trace line (D7), so
+/// when a week of logs is read the three cases are three different signals, not
+/// one. Single source of truth for the strings — the executor emits
+/// [`NoRestoreReason::message`], never a bare literal, so a message cannot drift
+/// away from the `no_restore_reason_messages_are_exact` test that pins it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum NoRestoreReason {
+    /// The clipboard snapshot was non-text (image/files) — nothing to restore.
+    NonTextSnapshot,
+    /// The clipboard was overwritten between our `SetText` and the verify read.
+    BufferChanged,
+    /// The paste keystroke failed — the transcript is left for a manual `Ctrl+V`.
+    PasteFailed,
+}
+
+impl NoRestoreReason {
+    /// The exact, distinct Russian trace line for this reason (D7).
+    const fn message(self) -> &'static str {
+        match self {
+            NoRestoreReason::NonTextSnapshot => "рестор пропущен: снапшот не-текст",
+            NoRestoreReason::BufferChanged => "рестор отменён: буфер изменился",
+            NoRestoreReason::PasteFailed => "рестор не выполнялся: вставка провалилась",
+        }
+    }
+}
+
 // ── Executor (D6) ───────────────────────────────────────────────────────
 
 /// Take the clipboard snapshot, plan, and run one insertion end-to-end (D6/D7).
 ///
 /// This is the single function the pipeline calls inside `spawn_blocking`. It
-/// owns the three "no restore" log reasons (D7) so each shows a *distinct*
-/// message when the logs are read after a week of use:
-/// - `рестор пропущен: снапшот не-текст` — the clipboard held an image/files;
-/// - `рестор отменён: буфер изменился` — someone overwrote our transcript;
-/// - `рестор не выполнялся: вставка провалилась` — the paste keystroke failed.
+/// owns the three "no restore" log reasons (D7, [`NoRestoreReason`]) so each
+/// shows a *distinct* message when the logs are read after a week of use.
 pub fn insert_transcript<I: TextInserter, C: ClipboardAccess>(
     inserter: &I,
     clipboard: &C,
@@ -231,7 +256,7 @@ pub fn insert_transcript<I: TextInserter, C: ClipboardAccess>(
     };
     if mode == InsertionMode::Paste && snapshot.is_err() {
         // D7 reason 1 + D9 scenario 4: continue the paste, restore nothing.
-        tracing::warn!("рестор пропущен: снапшот не-текст");
+        tracing::warn!("{}", NoRestoreReason::NonTextSnapshot.message());
     }
 
     let plan = plan_insertion(snapshot, transcript, mode);
@@ -280,7 +305,7 @@ pub fn execute_insertion<I: TextInserter, C: ClipboardAccess>(
                     // the clipboard, so leave it there for a manual Ctrl+V and do
                     // not restore. Every step after Paste is paste-dependent, so
                     // returning here is equivalent to skipping them.
-                    tracing::warn!(error = %e, "рестор не выполнялся: вставка провалилась");
+                    tracing::warn!(error = %e, "{}", NoRestoreReason::PasteFailed.message());
                     log_timing(start, InsertOutcome::ClipboardOnly);
                     return InsertOutcome::ClipboardOnly;
                 }
@@ -302,8 +327,11 @@ pub fn execute_insertion<I: TextInserter, C: ClipboardAccess>(
                     }
                 } else {
                     // D7 reason 2 / race #2: someone wrote the clipboard between
-                    // our SetText and now — do not clobber their content.
-                    tracing::debug!("рестор отменён: буфер изменился");
+                    // our SetText and now — do not clobber their content. `warn`
+                    // like the other two no-restore reasons, so all three land in
+                    // the release log under the base `warn` directive (D14), not
+                    // only via the dictation=debug clause.
+                    tracing::warn!("{}", NoRestoreReason::BufferChanged.message());
                 }
             }
         }
@@ -917,6 +945,116 @@ mod tests {
         assert_eq!(
             execute_insertion(&[], &inserter, &clipboard),
             InsertOutcome::ClipboardOnly
+        );
+    }
+
+    // ── the three "no restore" reasons are distinct AND correctly wired (D7) ──
+
+    #[test]
+    fn no_restore_reason_messages_are_exact_and_distinct() {
+        // Pins the exact D7 strings so a refactor cannot silently reword one, and
+        // asserts all three differ — the whole point is three separate signals.
+        assert_eq!(
+            NoRestoreReason::NonTextSnapshot.message(),
+            "рестор пропущен: снапшот не-текст"
+        );
+        assert_eq!(
+            NoRestoreReason::BufferChanged.message(),
+            "рестор отменён: буфер изменился"
+        );
+        assert_eq!(
+            NoRestoreReason::PasteFailed.message(),
+            "рестор не выполнялся: вставка провалилась"
+        );
+        let set: std::collections::HashSet<&str> = [
+            NoRestoreReason::NonTextSnapshot.message(),
+            NoRestoreReason::BufferChanged.message(),
+            NoRestoreReason::PasteFailed.message(),
+        ]
+        .into_iter()
+        .collect();
+        assert_eq!(set.len(), 3, "the three reasons must be distinct messages");
+    }
+
+    /// Run `f` under a thread-local capturing subscriber and return the `message`
+    /// of every event it emitted. Thread-local (`with_default`), so it is
+    /// parallel-safe with the rest of the suite.
+    fn capture_messages(f: impl FnOnce()) -> Vec<String> {
+        use std::sync::{Arc, Mutex};
+        use tracing::field::{Field, Visit};
+        use tracing::subscriber::with_default;
+        use tracing_subscriber::layer::{Context, Layer};
+        use tracing_subscriber::prelude::*;
+
+        #[derive(Default)]
+        struct MsgVisitor(Arc<Mutex<Vec<String>>>);
+        impl Visit for MsgVisitor {
+            fn record_debug(&mut self, field: &Field, value: &dyn std::fmt::Debug) {
+                if field.name() == "message" {
+                    self.0.lock().unwrap().push(format!("{value:?}"));
+                }
+            }
+        }
+        struct CaptureLayer(Arc<Mutex<Vec<String>>>);
+        impl<S: tracing::Subscriber> Layer<S> for CaptureLayer {
+            fn on_event(&self, event: &tracing::Event<'_>, _: Context<'_, S>) {
+                event.record(&mut MsgVisitor(self.0.clone()));
+            }
+        }
+
+        let captured = Arc::new(Mutex::new(Vec::new()));
+        let subscriber = tracing_subscriber::registry().with(CaptureLayer(captured.clone()));
+        with_default(subscriber, f);
+        let out = captured.lock().unwrap().clone();
+        out
+    }
+
+    #[test]
+    fn nontext_snapshot_emits_its_distinct_reason() {
+        // A non-text snapshot must log reason 1 — and only reason 1.
+        let inserter = FakeInserter::default();
+        let clipboard = FakeClipboard::non_text_snapshot();
+        let msgs = capture_messages(|| {
+            insert_transcript(&inserter, &clipboard, TRANSCRIPT, InsertionMode::Paste);
+        });
+        assert!(
+            msgs.iter()
+                .any(|m| m.contains(NoRestoreReason::NonTextSnapshot.message())),
+            "expected the non-text-snapshot reason, got: {msgs:?}"
+        );
+        assert!(
+            !msgs
+                .iter()
+                .any(|m| m.contains(NoRestoreReason::BufferChanged.message())),
+            "must not also log the buffer-changed reason"
+        );
+    }
+
+    #[test]
+    fn paste_failure_emits_its_distinct_reason() {
+        let inserter = FakeInserter::failing_paste();
+        let clipboard = FakeClipboard::with_text(PRIOR);
+        let msgs = capture_messages(|| {
+            insert_transcript(&inserter, &clipboard, TRANSCRIPT, InsertionMode::Paste);
+        });
+        assert!(
+            msgs.iter()
+                .any(|m| m.contains(NoRestoreReason::PasteFailed.message())),
+            "expected the paste-failed reason, got: {msgs:?}"
+        );
+    }
+
+    #[test]
+    fn buffer_changed_emits_its_distinct_reason() {
+        let inserter = FakeInserter::default();
+        let clipboard = FakeClipboard::overwritten_before_verify(PRIOR, "чужой текст");
+        let msgs = capture_messages(|| {
+            insert_transcript(&inserter, &clipboard, TRANSCRIPT, InsertionMode::Paste);
+        });
+        assert!(
+            msgs.iter()
+                .any(|m| m.contains(NoRestoreReason::BufferChanged.message())),
+            "expected the buffer-changed reason, got: {msgs:?}"
         );
     }
 
