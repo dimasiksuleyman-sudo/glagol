@@ -84,6 +84,13 @@ pub struct AppState {
     /// `Idle` but before the previous session's cleanup ran — without the guard,
     /// the stale cleanup would clobber the new session (D10-class hazard).
     pub dictation_generation: std::sync::atomic::AtomicU64,
+
+    /// The tracing-appender flush guard (Sprint 6 PR3.1). In release builds the
+    /// non-blocking rolling-file writer keeps flushing only while its
+    /// `WorkerGuard` is alive; dropping it silently stops logging (D-L4). It is
+    /// parked here for the process lifetime, set once from the setup hook via
+    /// [`AppState::set_log_guard`]. `None` in dev (stdout needs no guard).
+    pub log_guard: Mutex<Option<tracing_appender::non_blocking::WorkerGuard>>,
 }
 
 impl AppState {
@@ -98,6 +105,15 @@ impl AppState {
             dictation: Mutex::new(DictationPhase::Idle),
             dictation_stop: Mutex::new(None),
             dictation_generation: std::sync::atomic::AtomicU64::new(0),
+            log_guard: Mutex::new(None),
+        }
+    }
+
+    /// Park the tracing-appender flush guard for the process lifetime (D-L4).
+    /// Called once from the setup hook after the subscriber is installed.
+    pub fn set_log_guard(&self, guard: Option<tracing_appender::non_blocking::WorkerGuard>) {
+        if let Ok(mut slot) = self.log_guard.lock() {
+            *slot = guard;
         }
     }
 }

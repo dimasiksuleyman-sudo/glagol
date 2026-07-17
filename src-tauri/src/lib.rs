@@ -28,6 +28,9 @@ pub mod parser;
 // Library backup/restore via zip archive (Sprint 5c).
 pub mod backup;
 
+// Structured-logging subscriber installation (Sprint 6 PR3.1).
+pub mod logging;
+
 // Shared Tauri application state.
 pub mod state;
 
@@ -91,6 +94,12 @@ pub fn run() {
                 .build(),
         )
         .setup(move |app| {
+            // Install the tracing subscriber first so every `tracing::*!` call
+            // from here on is actually recorded (Sprint 6 PR3.1). In release the
+            // returned WorkerGuard must outlive the process or the rolling-file
+            // writer stops flushing (D-L4) — it is parked in AppState below.
+            let log_guard = crate::logging::init_tracing(app.handle());
+
             // Resolve the database path and eagerly initialise the connection.
             // Failure here is fatal: silently continuing with a broken DB would
             // corrupt every subsequent write.
@@ -115,6 +124,9 @@ pub fn run() {
             );
 
             app.manage(state::AppState::new(http_client.clone(), conn, recorder));
+
+            // Park the log-flush guard for the process lifetime (D-L4).
+            app.state::<state::AppState>().set_log_guard(log_guard);
 
             // ── Dictation surface (Sprint 6 PR3) ──────────────────────────
             //
