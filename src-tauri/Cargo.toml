@@ -146,6 +146,16 @@ rubato = "0.16.2"
 # lets the Linux CI box stay headless (no live clipboard in unit tests).
 arboard = { version = "=3.6.1", default-features = false }
 
+# Synthetic keystrokes for dictation auto-paste (Sprint 6 PR4). Unconditional
+# dependency (D2) — a `cfg(windows)` gate would hide `EnigoInserter` and the
+# insertion path from the Linux compile/lint gates. Exact `=`-pin (D1): enigo
+# declares `windows 0.61`, which Phase 0 confirmed already unifies with the
+# `windows 0.61.3` the whole Tauri + cpal graph resolves to (no split, unlike the
+# cpal 0.18 incident). `default-features` keeps the pure-Rust `x11rb` Linux
+# backend (no `libxdo` runtime dependency); insertion runs only behind the
+# `TextInserter` seam inside `spawn_blocking`, so unit tests stay hardware-free.
+enigo = "=0.6.1"
+
 [dev-dependencies]
 # HTTP mocking for unit tests
 mockito = "1"

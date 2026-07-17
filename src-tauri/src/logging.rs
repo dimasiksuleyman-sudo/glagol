@@ -60,19 +60,29 @@ use tracing_subscriber::EnvFilter;
 #[cfg(debug_assertions)]
 const DEFAULT_DIRECTIVE: &str = "glagol_lib=debug";
 
-/// Default filter when `RUST_LOG` is unset, in release: everything at `info`,
-/// **plus the dictation module at `debug`**. The extra clause is deliberate and
-/// load-bearing: D8-a wants each clip's RMS logged so the 0.005 silence
-/// threshold can be calibrated *from a week of real use*, and that log lives at
-/// `debug` (`pipeline.rs`). A flat `info` default would filter it out, so the
-/// real-use log — the release build's rolling file — would never contain the
-/// numbers, and the calibration could only happen in a dev run. Admitting
-/// `glagol_lib::dictation=debug` (and nothing else at debug) puts the RMS/
-/// duration/reason lines in the user's log while keeping the rest at `info`.
-/// This changes **no** log call's level (D-L7) — only the default filter. Those
-/// lines carry numbers and reasons only, never content or secrets (D-L5).
+/// Default filter when `RUST_LOG` is unset, in release (D14). Four clauses, each
+/// load-bearing:
+///
+/// - `warn` — the **base**. A flat `info` base (the previous default) let every
+///   third-party crate log at `info`; `rusqlite_migration` already leaked into
+///   the log. `warn` keeps deps quiet unless something is actually wrong.
+/// - `glagol_lib=info` — our own crate stays at `info` for the ordinary
+///   lifecycle breadcrumbs.
+/// - `glagol_lib::dictation=debug` — D8-a wants each clip's RMS / duration /
+///   discard-reason logged so the 0.005 silence threshold and the 300 ms settle
+///   (PR4 D7 rider) can be calibrated *from a week of real use*; those lines live
+///   at `debug` (`pipeline.rs`, `insert.rs`). This also carries the PR4 insertion
+///   timing rider and the three "no restore" reasons.
+/// - `glagol_lib::stt=debug` — without it the release log has no model / language
+///   / byte-count line for a transcription, leaving half the diagnostics dark
+///   (D14). The STT module logs those at `debug`.
+///
+/// This changes **no** log call's level (D-L7) — only the default filter. Every
+/// admitted line carries numbers and reasons only, never content or secrets
+/// (D-L5); the `find_secret_leak` redaction scan still guards `glagol_lib`.
 #[cfg(not(debug_assertions))]
-const DEFAULT_DIRECTIVE: &str = "info,glagol_lib::dictation=debug";
+const DEFAULT_DIRECTIVE: &str =
+    "warn,glagol_lib=info,glagol_lib::dictation=debug,glagol_lib::stt=debug";
 
 /// Prefix + suffix of the rolling log files, e.g. `glagol.2026-07-17.log`.
 #[cfg(not(debug_assertions))]
@@ -401,5 +411,16 @@ mod tests {
         // A typo'd default directive would silently disable all logging; assert
         // the compiled-in default is a valid filter.
         assert!(EnvFilter::try_new(DEFAULT_DIRECTIVE).is_ok());
+    }
+
+    #[test]
+    fn release_directive_parses_as_env_filter() {
+        // The release directive (D14) is compiled only under
+        // `not(debug_assertions)`, so the test profile never parses it via
+        // `DEFAULT_DIRECTIVE`. Pin the exact string here so a typo cannot reach a
+        // release build (where it would silently disable logging). Keep in sync
+        // with the release `DEFAULT_DIRECTIVE` above.
+        let release = "warn,glagol_lib=info,glagol_lib::dictation=debug,glagol_lib::stt=debug";
+        assert!(EnvFilter::try_new(release).is_ok());
     }
 }

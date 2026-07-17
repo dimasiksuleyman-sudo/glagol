@@ -454,13 +454,14 @@ export interface DictationLevelPayload {
 }
 
 /**
- * How the recognised text was delivered (Sprint 6 PR3). Mirrors the Rust
- * `Disposition` enum (`#[serde(rename_all = "camelCase")]`). `"discarded"` means
- * nothing was delivered — an accidental tap, a silent clip, or an empty
- * transcript — so the overlay hides with no "Скопировано". `"pasted"` is added
- * by PR4 (auto-insertion).
+ * How the recognised text was delivered. Mirrors the Rust `Disposition` enum
+ * (`#[serde(rename_all = "camelCase")]` in `src-tauri/src/dictation/pipeline.rs`)
+ * — keep in lock-step. `"pasted"` (PR4) means paste events were sent to the
+ * active window → «Вставлено»; `"clipboard"` means the text is on the clipboard
+ * for a manual Ctrl+V → «Скопировано»; `"discarded"` means nothing was delivered
+ * (accidental tap, silent clip, empty transcript) → the pill hides silently.
  */
-export type DictationDisposition = "clipboard" | "discarded";
+export type DictationDisposition = "pasted" | "clipboard" | "discarded";
 
 /**
  * The dictation state machine broadcast on {@link DICTATION_STATE_EVENT}.

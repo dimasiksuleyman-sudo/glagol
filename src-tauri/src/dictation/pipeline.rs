@@ -4,18 +4,20 @@
 //! [`run_dictation`] is the single async flow that stitches the two invisible
 //! foundations together: it drives the recorder (PR2) from `Start` to a
 //! finalized [`PcmAudio`], filters out silence and accidental taps (D8), sends
-//! the clip to the STT provider (PR1), and delivers the recognised text to the
-//! OS clipboard (D9). Every side effect happens behind a **seam** so the whole
-//! pipeline is exercised without a microphone, a network, a real clipboard, or
-//! a Tauri runtime:
+//! the clip to the STT provider (PR1), and delivers the recognised text into the
+//! active window (PR4). Every side effect happens behind a **seam** so the whole
+//! pipeline is exercised without a microphone, a network, a real clipboard, a
+//! real keyboard, or a Tauri runtime:
 //!
 //! - [`RecorderControl`] — start/stop the capture (real impl: [`RecorderHandle`];
 //!   a fake returns a canned [`PcmAudio`]).
 //! - [`crate::stt::SttProvider`] — transcription (real: `OpenAiCompatStt`; a
 //!   `FakeStt` returns canned text or errors).
-//! - [`TextSink`] — clipboard delivery (real: [`ClipboardSink`] via `arboard`
-//!   in `spawn_blocking`; a `FakeSink` records the text). D9: the CI box is
-//!   headless, so a real clipboard must never appear in a unit test.
+//! - [`TextInserter`] + [`ClipboardAccess`] — the two delivery seams (PR4, D8):
+//!   keystroke synthesis (real: `insert::EnigoInserter`) and clipboard get/set
+//!   (real: `insert::ArboardClipboard`), both blocking, both run inside one
+//!   `spawn_blocking`. `FakeInserter`/`FakeClipboard` keep the headless CI box
+//!   hardware-free (D9).
 //! - [`DictationEmitter`] — the `dictation-state` event stream that drives the
 //!   overlay pill (real: `AppHandle` in `lib.rs`; a `FakeEmitter` collects the
 //!   states).
@@ -37,6 +39,9 @@ use std::time::Duration;
 
 use tokio::sync::oneshot;
 
+use super::insert::{
+    insert_transcript, ClipboardAccess, InsertOutcome, InsertionMode, TextInserter,
+};
 use super::{DictationPhase, PcmAudio, RecorderError, RecorderHandle, StartedInfo};
 use crate::commands::dictation::{recorder_error_to_user_facing_ru, stt_error_to_user_facing_ru};
 use crate::stt::{wav, SttProvider};
@@ -65,19 +70,23 @@ pub const DEFAULT_WATCHDOG: Duration = Duration::from_millis(super::MAX_RECORDIN
 
 // ── Event contract (D7) ─────────────────────────────────────────────────
 
-/// How the recognised text was delivered (D7). `disposition` was reserved in
-/// PR2's event design specifically so PR4 (auto-paste) can add `Pasted` without
+/// How the recognised text was delivered (D7/D13). `disposition` was reserved in
+/// PR2's event design specifically so PR4 (auto-paste) could add `Pasted` without
 /// breaking the wire contract. `Discarded` covers "nothing to deliver" — an
 /// accidental tap, a silent clip, or an empty transcript — so the overlay can
 /// hide the pill immediately with no "Скопировано" flash.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Disposition {
-    /// Text written to the OS clipboard (this PR).
+    /// Paste events were sent to the active window (PR4). Serialises to `"pasted"`
+    /// — the overlay shows «Вставлено». Means *sent to the OS*, not *landed in the
+    /// app* (D11); the two cannot be distinguished by design of Windows.
+    Pasted,
+    /// Text written to the OS clipboard only — clipboard-only mode, or the paste
+    /// keystroke failed and the transcript was left for a manual Ctrl+V.
     Clipboard,
     /// Nothing delivered — the clip was filtered or the transcript was empty.
     Discarded,
-    // Pasted — added in PR4 (auto-insertion). Reserved here on purpose.
 }
 
 /// The dictation state machine as broadcast to the overlay (D7).
@@ -101,19 +110,6 @@ pub enum DictationState {
     },
     /// Terminal failure. `message` is a ready-to-display Russian sentence.
     Error { message: String },
-}
-
-/// A sink for the recognised text (D9).
-///
-/// The real [`ClipboardSink`] writes to the OS clipboard via `arboard`; a
-/// `FakeSink` records the text in tests. `Clone + Send + 'static` because the
-/// pipeline hands a clone to `spawn_blocking` (arboard is blocking, and a
-/// blocking clipboard call must never run on an async worker).
-pub trait TextSink: Clone + Send + 'static {
-    /// Replace the clipboard contents with `text`. The returned error is an
-    /// internal English string; the pipeline wraps it in a Russian sentence at
-    /// the event boundary (mirrors the STT/recorder error convention).
-    fn set_text(&self, text: &str) -> Result<(), String>;
 }
 
 /// A sink for [`DictationState`] transitions (D7).
@@ -149,26 +145,6 @@ impl RecorderControl for RecorderHandle {
     }
 }
 
-// ── Real clipboard sink ─────────────────────────────────────────────────
-
-/// The production [`TextSink`] — writes text to the OS clipboard via `arboard`.
-///
-/// A zero-field unit struct: `arboard::Clipboard` is not `Clone` and the
-/// documented pattern is to open a fresh handle per operation, so the sink
-/// carries no state and every call constructs its own `Clipboard`. Blocking by
-/// nature (Win32 `OpenClipboard`), so [`run_dictation`] only ever calls it
-/// inside `spawn_blocking` (D9). `arboard` is built with `default-features =
-/// false`, so this pulls in only the text path — never the `image` crate.
-#[derive(Clone, Default)]
-pub struct ClipboardSink;
-
-impl TextSink for ClipboardSink {
-    fn set_text(&self, text: &str) -> Result<(), String> {
-        let mut clipboard = arboard::Clipboard::new().map_err(|e| e.to_string())?;
-        clipboard.set_text(text).map_err(|e| e.to_string())
-    }
-}
-
 // ── Pipeline inputs / outputs ───────────────────────────────────────────
 
 /// Why a recording produced nothing to deliver (D8). Carried by
@@ -198,21 +174,24 @@ pub enum DictationOutcome {
     Failed,
 }
 
-/// Per-run knobs. `device`/`lang` come from persisted STT settings; `watchdog`
-/// defaults to [`DEFAULT_WATCHDOG`] and is overridden only by tests.
+/// Per-run knobs. `device`/`lang`/`mode` come from persisted STT settings;
+/// `watchdog` defaults to [`DEFAULT_WATCHDOG`] and is overridden only by tests.
 pub struct DictationOpts {
     pub device: Option<String>,
     pub lang: Option<String>,
+    /// How to deliver the transcript (D12). Read from `stt_insertion_mode`.
+    pub mode: InsertionMode,
     pub watchdog: Duration,
 }
 
 impl DictationOpts {
     /// Production options: no explicit device (system default), the given
-    /// language, the full 60 s watchdog.
-    pub fn new(device: Option<String>, lang: Option<String>) -> Self {
+    /// language + insertion mode, the full 60 s watchdog.
+    pub fn new(device: Option<String>, lang: Option<String>, mode: InsertionMode) -> Self {
         Self {
             device,
             lang,
+            mode,
             watchdog: DEFAULT_WATCHDOG,
         }
     }
@@ -220,16 +199,20 @@ impl DictationOpts {
 
 /// The borrowed dependencies [`run_dictation`] drives. Bundled into a struct so
 /// the function signature stays readable as the seam count grows.
-pub struct DictationDeps<'a, R, P, S, E>
+pub struct DictationDeps<'a, R, P, I, C, E>
 where
     R: RecorderControl,
     P: SttProvider,
-    S: TextSink,
+    I: TextInserter,
+    C: ClipboardAccess,
     E: DictationEmitter,
 {
     pub recorder: &'a R,
     pub provider: &'a P,
-    pub sink: &'a S,
+    /// Keystroke synthesis seam (D8). Real impl: `insert::EnigoInserter`.
+    pub inserter: &'a I,
+    /// Clipboard get/set seam (D8). Real impl: `insert::ArboardClipboard`.
+    pub clipboard: &'a C,
     pub emitter: &'a E,
     /// App-level phase (D13). Set to `Recording` for the capture, `Processing`
     /// during transcription, `Idle` on every exit. `std::sync::Mutex`, only ever
@@ -240,11 +223,12 @@ where
 // ── Pure helpers ────────────────────────────────────────────────────────
 
 /// Linear RMS of a finalized clip, computed on the `i16` samples reinterpreted
-/// as `f32` in `[-1, 1)`. Reuses the recorder's [`super::rms`] so the level
-/// meter and the silence filter measure loudness identically.
+/// as `f32` in `[-1, 1)`. Uses [`super::rms_iter`] over a lazy map so the level
+/// meter and the silence filter measure loudness identically **without** first
+/// allocating a parallel `Vec<f32>` (the PR4 `rms_iter` carry-over — ~3.84 MB
+/// saved on a 60 s clip).
 fn clip_rms(pcm: &PcmAudio) -> f32 {
-    let as_f32: Vec<f32> = pcm.samples.iter().map(|&s| s as f32 / 32768.0).collect();
-    super::rms(&as_f32)
+    super::rms_iter(pcm.samples.iter().map(|&s| s as f32 / 32768.0))
 }
 
 /// Decide whether a finalized clip should be discarded before spending an API
@@ -273,23 +257,25 @@ fn set_phase(phase: &Mutex<DictationPhase>, next: DictationPhase) {
 ///
 /// Sequence: emit `recording` → start the recorder → wait for `Released` *or*
 /// the watchdog → stop the recorder → silence filter (D8) → emit `processing`
-/// → transcribe (PR1) → deliver to the clipboard behind the [`TextSink`] seam
-/// (D9) → emit the terminal `done`/`error`. Every failure surfaces as an
+/// → transcribe (PR1) → insert the text into the active window behind the
+/// [`TextInserter`] + [`ClipboardAccess`] seams (D6) → emit the terminal
+/// `done`/`error`. Every failure surfaces as an
 /// `error` event with a Russian sentence and returns [`DictationOutcome::Failed`];
 /// the phase is reset to `Idle` on every exit.
 ///
 /// `released` resolves when the hotkey is released (the sender is stored by the
 /// `Pressed` handler and fired by `Released`); a dropped sender (app shutdown)
 /// resolves it too, which simply stops the recording — the correct behaviour.
-pub async fn run_dictation<R, P, S, E>(
-    deps: DictationDeps<'_, R, P, S, E>,
+pub async fn run_dictation<R, P, I, C, E>(
+    deps: DictationDeps<'_, R, P, I, C, E>,
     opts: DictationOpts,
     released: oneshot::Receiver<()>,
 ) -> DictationOutcome
 where
     R: RecorderControl,
     P: SttProvider,
-    S: TextSink,
+    I: TextInserter,
+    C: ClipboardAccess,
     E: DictationEmitter,
 {
     set_phase(deps.phase, DictationPhase::Recording);
@@ -350,14 +336,34 @@ where
         return discard(&deps, DiscardReason::EmptyTranscript);
     }
 
-    // Deliver to the clipboard behind the seam, off the async worker (D9).
-    let sink = deps.sink.clone();
+    // Deliver: snapshot → clipboard → paste → restore, all behind the seams and
+    // off the async worker (D6/D9). `enigo` + `arboard` are both blocking, so the
+    // whole insertion runs in one `spawn_blocking`; the seams are cheap `Clone`s
+    // that construct their real OS handle per call (D8).
+    let inserter = deps.inserter.clone();
+    let clipboard = deps.clipboard.clone();
     let owned = text.to_string();
-    let delivery = tokio::task::spawn_blocking(move || sink.set_text(&owned)).await;
+    let mode = opts.mode;
+    let delivery =
+        tokio::task::spawn_blocking(move || insert_transcript(&inserter, &clipboard, &owned, mode))
+            .await;
+
     match delivery {
-        Ok(Ok(())) => {
+        Ok(insert_outcome) => {
+            let disposition = match insert_outcome {
+                InsertOutcome::Pasted => Disposition::Pasted,
+                InsertOutcome::ClipboardOnly => Disposition::Clipboard,
+                // We couldn't even write the clipboard (busy) — nothing was
+                // delivered anywhere, so tell the user loudly (D10).
+                InsertOutcome::Failed => {
+                    return fail(
+                        &deps,
+                        "Буфер обмена занят другим приложением. Попробуйте ещё раз.".to_string(),
+                    );
+                }
+            };
             deps.emitter.emit_state(DictationState::Done {
-                disposition: Disposition::Clipboard,
+                disposition,
                 truncated: pcm.truncated,
             });
             set_phase(deps.phase, DictationPhase::Idle);
@@ -366,24 +372,18 @@ where
                 duration_ms: pcm.duration_ms,
             }
         }
-        Ok(Err(e)) => fail(
-            &deps,
-            format!("Не удалось записать текст в буфер обмена: {e}."),
-        ),
         // spawn_blocking join failure (panic inside the blocking task).
-        Err(e) => fail(
-            &deps,
-            format!("Не удалось записать текст в буфер обмена: {e}."),
-        ),
+        Err(e) => fail(&deps, format!("Не удалось выполнить вставку: {e}.")),
     }
 }
 
 /// Emit an `error` event, reset the phase, and report failure.
-fn fail<R, P, S, E>(deps: &DictationDeps<'_, R, P, S, E>, message: String) -> DictationOutcome
+fn fail<R, P, I, C, E>(deps: &DictationDeps<'_, R, P, I, C, E>, message: String) -> DictationOutcome
 where
     R: RecorderControl,
     P: SttProvider,
-    S: TextSink,
+    I: TextInserter,
+    C: ClipboardAccess,
     E: DictationEmitter,
 {
     deps.emitter.emit_state(DictationState::Error { message });
@@ -392,14 +392,15 @@ where
 }
 
 /// Emit a silent-discard `done` event, reset the phase, and report the reason.
-fn discard<R, P, S, E>(
-    deps: &DictationDeps<'_, R, P, S, E>,
+fn discard<R, P, I, C, E>(
+    deps: &DictationDeps<'_, R, P, I, C, E>,
     reason: DiscardReason,
 ) -> DictationOutcome
 where
     R: RecorderControl,
     P: SttProvider,
-    S: TextSink,
+    I: TextInserter,
+    C: ClipboardAccess,
     E: DictationEmitter,
 {
     deps.emitter.emit_state(DictationState::Done {
@@ -412,6 +413,7 @@ where
 
 #[cfg(test)]
 mod tests {
+    use super::super::insert::fakes::{FakeClipboard, FakeInserter};
     use super::*;
     use std::sync::{Arc, Mutex};
 
@@ -488,37 +490,6 @@ mod tests {
     }
 
     #[derive(Clone, Default)]
-    struct FakeSink {
-        written: Arc<std::sync::Mutex<Vec<String>>>,
-        fail: bool,
-    }
-
-    impl FakeSink {
-        fn failing() -> Self {
-            Self {
-                written: Arc::new(std::sync::Mutex::new(Vec::new())),
-                fail: true,
-            }
-        }
-        fn last(&self) -> Option<String> {
-            self.written.lock().unwrap().last().cloned()
-        }
-        fn count(&self) -> usize {
-            self.written.lock().unwrap().len()
-        }
-    }
-
-    impl TextSink for FakeSink {
-        fn set_text(&self, text: &str) -> Result<(), String> {
-            if self.fail {
-                return Err("mock clipboard failure".into());
-            }
-            self.written.lock().unwrap().push(text.to_string());
-            Ok(())
-        }
-    }
-
-    #[derive(Clone, Default)]
     struct FakeEmitter {
         states: Arc<std::sync::Mutex<Vec<DictationState>>>,
     }
@@ -542,10 +513,17 @@ mod tests {
     }
 
     /// Assemble deps + fired-release and run the pipeline to completion.
+    ///
+    /// Uses [`InsertionMode::ClipboardOnly`] so the plan is a single `SetText`
+    /// (no synthetic keystrokes, no 300 ms settle) — the pipeline's control flow
+    /// and the surviving-PR3 `Disposition::Clipboard` contract are what these
+    /// tests exercise; the paste path itself is covered exhaustively in
+    /// `insert.rs` and by the dedicated Paste-mode test below.
     async fn run(
         recorder: &FakeRecorder,
         provider: &FakeStt,
-        sink: &FakeSink,
+        inserter: &FakeInserter,
+        clipboard: &FakeClipboard,
         emitter: &FakeEmitter,
         phase: &Mutex<DictationPhase>,
     ) -> DictationOutcome {
@@ -555,13 +533,15 @@ mod tests {
             DictationDeps {
                 recorder,
                 provider,
-                sink,
+                inserter,
+                clipboard,
                 emitter,
                 phase,
             },
             DictationOpts {
                 device: None,
                 lang: Some("ru".into()),
+                mode: InsertionMode::ClipboardOnly,
                 watchdog: DEFAULT_WATCHDOG,
             },
             rx,
@@ -575,11 +555,15 @@ mod tests {
     async fn delivers_text_to_clipboard_on_success() {
         let recorder = FakeRecorder::ok(Ok(loud_clip(1000, 8000, false)));
         let provider = FakeStt::text("Привет, мир");
-        let sink = FakeSink::default();
+        let inserter = FakeInserter::default();
+        let clipboard = FakeClipboard::empty();
         let emitter = FakeEmitter::default();
         let phase = Mutex::new(DictationPhase::Idle);
 
-        let outcome = run(&recorder, &provider, &sink, &emitter, &phase).await;
+        let outcome = run(
+            &recorder, &provider, &inserter, &clipboard, &emitter, &phase,
+        )
+        .await;
 
         assert_eq!(
             outcome,
@@ -588,7 +572,7 @@ mod tests {
                 duration_ms: 1000
             }
         );
-        assert_eq!(sink.last(), Some("Привет, мир".to_string()));
+        assert_eq!(clipboard.content(), Some("Привет, мир".to_string()));
         assert_eq!(
             emitter.states(),
             vec![
@@ -607,12 +591,16 @@ mod tests {
     async fn trims_transcript_before_delivery() {
         let recorder = FakeRecorder::ok(Ok(loud_clip(1000, 8000, false)));
         let provider = FakeStt::text("  привет  \n");
-        let sink = FakeSink::default();
+        let inserter = FakeInserter::default();
+        let clipboard = FakeClipboard::empty();
         let emitter = FakeEmitter::default();
         let phase = Mutex::new(DictationPhase::Idle);
 
-        run(&recorder, &provider, &sink, &emitter, &phase).await;
-        assert_eq!(sink.last(), Some("привет".to_string()));
+        run(
+            &recorder, &provider, &inserter, &clipboard, &emitter, &phase,
+        )
+        .await;
+        assert_eq!(clipboard.content(), Some("привет".to_string()));
     }
 
     // ── silence filter (D8) ──
@@ -622,18 +610,22 @@ mod tests {
         // 200 ms < 300 ms — discarded before any transcription.
         let recorder = FakeRecorder::ok(Ok(loud_clip(200, 8000, false)));
         let provider = FakeStt::text("should not be called");
-        let sink = FakeSink::default();
+        let inserter = FakeInserter::default();
+        let clipboard = FakeClipboard::empty();
         let emitter = FakeEmitter::default();
         let phase = Mutex::new(DictationPhase::Idle);
 
-        let outcome = run(&recorder, &provider, &sink, &emitter, &phase).await;
+        let outcome = run(
+            &recorder, &provider, &inserter, &clipboard, &emitter, &phase,
+        )
+        .await;
 
         assert_eq!(
             outcome,
             DictationOutcome::Discarded(DiscardReason::TooShort)
         );
         assert_eq!(*provider.calls.lock().unwrap(), 0, "API must not be hit");
-        assert_eq!(sink.count(), 0, "clipboard untouched");
+        assert_eq!(clipboard.writes().len(), 0, "clipboard untouched");
         assert_eq!(
             emitter.states(),
             vec![
@@ -653,11 +645,15 @@ mod tests {
         // 1 s but amplitude 100/32768 ≈ 0.003 RMS < 0.005 floor.
         let recorder = FakeRecorder::ok(Ok(loud_clip(1000, 100, false)));
         let provider = FakeStt::text("should not be called");
-        let sink = FakeSink::default();
+        let inserter = FakeInserter::default();
+        let clipboard = FakeClipboard::empty();
         let emitter = FakeEmitter::default();
         let phase = Mutex::new(DictationPhase::Idle);
 
-        let outcome = run(&recorder, &provider, &sink, &emitter, &phase).await;
+        let outcome = run(
+            &recorder, &provider, &inserter, &clipboard, &emitter, &phase,
+        )
+        .await;
         assert_eq!(outcome, DictationOutcome::Discarded(DiscardReason::Silent));
         assert_eq!(*provider.calls.lock().unwrap(), 0);
     }
@@ -667,29 +663,41 @@ mod tests {
         // amplitude 200/32768 ≈ 0.0061 RMS > 0.005 floor — must NOT be discarded.
         let recorder = FakeRecorder::ok(Ok(loud_clip(1000, 200, false)));
         let provider = FakeStt::text("на грани");
-        let sink = FakeSink::default();
+        let inserter = FakeInserter::default();
+        let clipboard = FakeClipboard::empty();
         let emitter = FakeEmitter::default();
         let phase = Mutex::new(DictationPhase::Idle);
 
-        let outcome = run(&recorder, &provider, &sink, &emitter, &phase).await;
+        let outcome = run(
+            &recorder, &provider, &inserter, &clipboard, &emitter, &phase,
+        )
+        .await;
         assert!(matches!(outcome, DictationOutcome::Delivered { .. }));
-        assert_eq!(sink.last(), Some("на грани".to_string()));
+        assert_eq!(clipboard.content(), Some("на грани".to_string()));
     }
 
     #[tokio::test]
     async fn discards_empty_transcript_without_writing_clipboard() {
         let recorder = FakeRecorder::ok(Ok(loud_clip(1000, 8000, false)));
         let provider = FakeStt::text("   \n  ");
-        let sink = FakeSink::default();
+        let inserter = FakeInserter::default();
+        let clipboard = FakeClipboard::empty();
         let emitter = FakeEmitter::default();
         let phase = Mutex::new(DictationPhase::Idle);
 
-        let outcome = run(&recorder, &provider, &sink, &emitter, &phase).await;
+        let outcome = run(
+            &recorder, &provider, &inserter, &clipboard, &emitter, &phase,
+        )
+        .await;
         assert_eq!(
             outcome,
             DictationOutcome::Discarded(DiscardReason::EmptyTranscript)
         );
-        assert_eq!(sink.count(), 0, "empty transcript must not touch clipboard");
+        assert_eq!(
+            clipboard.writes().len(),
+            0,
+            "empty transcript must not touch clipboard"
+        );
     }
 
     // ── error paths ──
@@ -698,11 +706,15 @@ mod tests {
     async fn recorder_start_error_surfaces_russian_error() {
         let recorder = FakeRecorder::start_fails(RecorderError::PermissionDenied);
         let provider = FakeStt::text("unused");
-        let sink = FakeSink::default();
+        let inserter = FakeInserter::default();
+        let clipboard = FakeClipboard::empty();
         let emitter = FakeEmitter::default();
         let phase = Mutex::new(DictationPhase::Idle);
 
-        let outcome = run(&recorder, &provider, &sink, &emitter, &phase).await;
+        let outcome = run(
+            &recorder, &provider, &inserter, &clipboard, &emitter, &phase,
+        )
+        .await;
         assert_eq!(outcome, DictationOutcome::Failed);
         let states = emitter.states();
         assert!(matches!(states.last(), Some(DictationState::Error { .. })));
@@ -716,11 +728,15 @@ mod tests {
     async fn recorder_stop_device_lost_surfaces_error() {
         let recorder = FakeRecorder::ok(Err(RecorderError::DeviceLost("unplugged".into())));
         let provider = FakeStt::text("unused");
-        let sink = FakeSink::default();
+        let inserter = FakeInserter::default();
+        let clipboard = FakeClipboard::empty();
         let emitter = FakeEmitter::default();
         let phase = Mutex::new(DictationPhase::Idle);
 
-        let outcome = run(&recorder, &provider, &sink, &emitter, &phase).await;
+        let outcome = run(
+            &recorder, &provider, &inserter, &clipboard, &emitter, &phase,
+        )
+        .await;
         assert_eq!(outcome, DictationOutcome::Failed);
         assert_eq!(*provider.calls.lock().unwrap(), 0);
         assert!(matches!(
@@ -733,13 +749,17 @@ mod tests {
     async fn transcribe_auth_error_surfaces_russian_error() {
         let recorder = FakeRecorder::ok(Ok(loud_clip(1000, 8000, false)));
         let provider = FakeStt::err(SttError::Auth);
-        let sink = FakeSink::default();
+        let inserter = FakeInserter::default();
+        let clipboard = FakeClipboard::empty();
         let emitter = FakeEmitter::default();
         let phase = Mutex::new(DictationPhase::Idle);
 
-        let outcome = run(&recorder, &provider, &sink, &emitter, &phase).await;
+        let outcome = run(
+            &recorder, &provider, &inserter, &clipboard, &emitter, &phase,
+        )
+        .await;
         assert_eq!(outcome, DictationOutcome::Failed);
-        assert_eq!(sink.count(), 0);
+        assert_eq!(clipboard.writes().len(), 0);
         if let Some(DictationState::Error { message }) = emitter.states().last() {
             assert!(message.contains("401"), "got: {message}");
         } else {
@@ -751,14 +771,19 @@ mod tests {
     async fn clipboard_failure_surfaces_error() {
         let recorder = FakeRecorder::ok(Ok(loud_clip(1000, 8000, false)));
         let provider = FakeStt::text("текст");
-        let sink = FakeSink::failing();
+        let inserter = FakeInserter::default();
+        // A clipboard that fails every write → busy (D10) → Failed.
+        let clipboard = FakeClipboard::set_fails_first(3);
         let emitter = FakeEmitter::default();
         let phase = Mutex::new(DictationPhase::Idle);
 
-        let outcome = run(&recorder, &provider, &sink, &emitter, &phase).await;
+        let outcome = run(
+            &recorder, &provider, &inserter, &clipboard, &emitter, &phase,
+        )
+        .await;
         assert_eq!(outcome, DictationOutcome::Failed);
         if let Some(DictationState::Error { message }) = emitter.states().last() {
-            assert!(message.contains("буфер обмена"), "got: {message}");
+            assert!(message.contains("Буфер обмена занят"), "got: {message}");
         } else {
             panic!("expected error state");
         }
@@ -771,11 +796,15 @@ mod tests {
     async fn truncated_flag_reaches_done_event() {
         let recorder = FakeRecorder::ok(Ok(loud_clip(60_000, 8000, true)));
         let provider = FakeStt::text("длинная речь");
-        let sink = FakeSink::default();
+        let inserter = FakeInserter::default();
+        let clipboard = FakeClipboard::empty();
         let emitter = FakeEmitter::default();
         let phase = Mutex::new(DictationPhase::Idle);
 
-        let outcome = run(&recorder, &provider, &sink, &emitter, &phase).await;
+        let outcome = run(
+            &recorder, &provider, &inserter, &clipboard, &emitter, &phase,
+        )
+        .await;
         assert_eq!(
             outcome,
             DictationOutcome::Delivered {
@@ -801,7 +830,8 @@ mod tests {
         // must still drive the flow to a delivered result.
         let recorder = FakeRecorder::ok(Ok(loud_clip(1000, 8000, false)));
         let provider = FakeStt::text("сработал сторож");
-        let sink = FakeSink::default();
+        let inserter = FakeInserter::default();
+        let clipboard = FakeClipboard::empty();
         let emitter = FakeEmitter::default();
         let phase = Mutex::new(DictationPhase::Idle);
 
@@ -810,13 +840,15 @@ mod tests {
             DictationDeps {
                 recorder: &recorder,
                 provider: &provider,
-                sink: &sink,
+                inserter: &inserter,
+                clipboard: &clipboard,
                 emitter: &emitter,
                 phase: &phase,
             },
             DictationOpts {
                 device: None,
                 lang: None,
+                mode: InsertionMode::ClipboardOnly,
                 watchdog: Duration::from_millis(10),
             },
             rx,
@@ -824,7 +856,7 @@ mod tests {
         .await;
 
         assert!(matches!(outcome, DictationOutcome::Delivered { .. }));
-        assert_eq!(sink.last(), Some("сработал сторож".to_string()));
+        assert_eq!(clipboard.content(), Some("сработал сторож".to_string()));
     }
 
     // ── pure helpers ──
@@ -842,6 +874,73 @@ mod tests {
         assert_eq!(discard_reason(300, 0.9), None);
     }
 
+    // ── insertion mode → disposition (D12/D13) ──
+
+    /// Run the pipeline to completion under an explicit insertion `mode` and
+    /// return the terminal `done` disposition.
+    async fn run_with_mode(mode: InsertionMode) -> (DictationOutcome, Vec<DictationState>) {
+        let recorder = FakeRecorder::ok(Ok(loud_clip(1000, 8000, false)));
+        let provider = FakeStt::text("Привет");
+        let inserter = FakeInserter::default();
+        let clipboard = FakeClipboard::empty();
+        let emitter = FakeEmitter::default();
+        let phase = Mutex::new(DictationPhase::Idle);
+
+        let (tx, rx) = oneshot::channel();
+        tx.send(()).unwrap();
+        let outcome = run_dictation(
+            DictationDeps {
+                recorder: &recorder,
+                provider: &provider,
+                inserter: &inserter,
+                clipboard: &clipboard,
+                emitter: &emitter,
+                phase: &phase,
+            },
+            DictationOpts {
+                device: None,
+                lang: None,
+                mode,
+                watchdog: DEFAULT_WATCHDOG,
+            },
+            rx,
+        )
+        .await;
+        (outcome, emitter.states())
+    }
+
+    #[tokio::test]
+    async fn paste_mode_emits_pasted_disposition() {
+        // Paste mode with an empty clipboard: snapshot is non-text → paste
+        // proceeds, no restore → InsertOutcome::Pasted → Disposition::Pasted.
+        let (outcome, states) = run_with_mode(InsertionMode::Paste).await;
+        assert!(matches!(outcome, DictationOutcome::Delivered { .. }));
+        assert_eq!(
+            states.last(),
+            Some(&DictationState::Done {
+                disposition: Disposition::Pasted,
+                truncated: false
+            }),
+            "Paste mode must report `pasted` so the overlay shows «Вставлено»"
+        );
+    }
+
+    #[tokio::test]
+    async fn clipboard_only_mode_emits_clipboard_disposition() {
+        // The surviving PR3 contract (D13): ClipboardOnly mode still reports
+        // `clipboard` so the overlay shows «Скопировано». This snapshot must
+        // outlive PR4.
+        let (outcome, states) = run_with_mode(InsertionMode::ClipboardOnly).await;
+        assert!(matches!(outcome, DictationOutcome::Delivered { .. }));
+        assert_eq!(
+            states.last(),
+            Some(&DictationState::Done {
+                disposition: Disposition::Clipboard,
+                truncated: false
+            })
+        );
+    }
+
     // ── event wire contract (D7) ──
 
     #[test]
@@ -856,6 +955,19 @@ mod tests {
         assert_eq!(json["kind"], "done");
         assert_eq!(json["disposition"], "clipboard");
         assert_eq!(json["truncated"], false);
+    }
+
+    #[test]
+    fn done_pasted_serializes_to_expected_wire_shape() {
+        // PR4's new variant: the overlay maps `"pasted"` → «Вставлено» (D13). The
+        // Rust ↔ TS lock-step depends on this exact string.
+        let json = serde_json::to_value(DictationState::Done {
+            disposition: Disposition::Pasted,
+            truncated: false,
+        })
+        .unwrap();
+        assert_eq!(json["kind"], "done");
+        assert_eq!(json["disposition"], "pasted");
     }
 
     #[test]

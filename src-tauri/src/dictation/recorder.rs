@@ -456,6 +456,20 @@ impl SampleSource for CpalSource {
         let fmt = chosen.sample_format();
         let config: cpal::StreamConfig = chosen.config();
 
+        // Log the winning config on every real capture (PR4 D15 carry-over).
+        // Four PRs deep in Windows audio, this is the first line that says which
+        // rung of the config ladder the live hardware actually took — device,
+        // native rate, channel count, sample format. Cheap, `info`-level, and it
+        // turns the `live_mic` gate into a diagnostic instrument for free.
+        tracing::info!(
+            device = %info.device_name,
+            fell_back_to_default = info.fell_back_to_default,
+            native_sample_rate = sample_rate,
+            channels,
+            sample_format = ?fmt,
+            "dictation capture opened"
+        );
+
         let stream = match fmt {
             SampleFormat::F32 => {
                 let data_tx = tx.clone();
@@ -833,6 +847,16 @@ mod tests {
     #[tokio::test]
     #[ignore = "requires a live microphone; speak during the ~2 s run"]
     async fn live_mic() {
+        // Print the winning capture config (PR4 D15 carry-over): install a
+        // stderr subscriber so the `info!("dictation capture opened", …)` line
+        // from `CpalSource::start` — device / native rate / channels / format —
+        // shows under `--nocapture`. `try_init` is a no-op if a subscriber is
+        // already set, so this never panics.
+        let _ = tracing_subscriber::fmt()
+            .with_test_writer()
+            .with_max_level(tracing::Level::INFO)
+            .try_init();
+
         let sink = FakeSink::default();
         let sink_thread = sink.clone();
         let (tx, rx) = std::sync::mpsc::channel();
