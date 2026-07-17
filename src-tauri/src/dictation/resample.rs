@@ -35,9 +35,23 @@ const CHUNK_SIZE_IN: usize = 1024;
 /// FFT sub-chunk hint (efficiency only; the resampler may use a different
 /// actual value).
 const SUB_CHUNKS: usize = 2;
-/// Safety bound on the flush loop — `process_partial(None)` terminates on the
-/// first empty batch; this only guards against a pathological non-terminating
-/// drain.
+/// Flush budget for the filter-latency drain (D16, closed by PR4 Phase 0).
+///
+/// `FftFixedIn::process_partial(None)` does **not** signal "done" with an empty
+/// batch — it keeps emitting frames indefinitely — so this budget, not an
+/// empty-break, bounds the drain; step 4 trims whatever surplus it produces.
+///
+/// The budget is deliberately generous. Measured directly against `rubato
+/// 0.16.2` for every real device rate (44.1 / 48 / 88.2 / 96 / 192 kHz), at both
+/// the 300 ms floor and the 60 s cap, the tail deficit after the zero-pad step is
+/// at most **68 output frames**, and a **single** flush round emits ≥43 (usually
+/// 172–342). So one round always covers the tail; 16 leaves ~15 rounds of margin
+/// (~16×). The `out.len() < expected_len` guard in step 4 is therefore
+/// **unreachable for any real device** — it can only fire if the flush block is
+/// deleted, which is exactly the negative-regression cycle
+/// `flush_keeps_the_tail_of_the_last_word` exercises. (Kickoff D16: with the
+/// budget proven generous, the `UnsupportedConfig` tail-loss branch stays dead
+/// and no error-taxonomy split is warranted.)
 const MAX_FLUSH_ROUNDS: usize = 16;
 
 /// Resample a **mono** `f32` buffer captured at `from_rate` down to

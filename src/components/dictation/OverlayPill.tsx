@@ -5,9 +5,36 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
   DICTATION_LEVEL_EVENT,
   DICTATION_STATE_EVENT,
+  type DictationDisposition,
   type DictationLevelPayload,
   type DictationState,
 } from "@/lib/tauri";
+
+/**
+ * Map a terminal `done` disposition to the pill's success label (D13), or `null`
+ * when the pill should show nothing and hide (a silent discard).
+ *
+ * The `switch` is **exhaustive**: the `never`-typed fall-through makes `tsc` fail
+ * if the Rust `Disposition` enum grows a variant and {@link DictationDisposition}
+ * is updated without a matching case here — the compile-time half of the Rust ↔
+ * TS lock-step (there is no JS test runner in this project).
+ */
+export function dispositionPillText(
+  disposition: DictationDisposition,
+): string | null {
+  switch (disposition) {
+    case "pasted":
+      return "Вставлено";
+    case "clipboard":
+      return "Скопировано";
+    case "discarded":
+      return null;
+    default: {
+      const _exhaustive: never = disposition;
+      return _exhaustive;
+    }
+  }
+}
 
 /**
  * The dictation overlay pill (Sprint 6 PR3).
@@ -109,9 +136,10 @@ function PillContent({ state, level }: { state: DictationState; level: number })
           <span style={labelStyle}>Распознаю…</span>
         </>
       );
-    case "done":
-      if (state.disposition === "discarded") {
-        // Hidden almost immediately; render nothing meaningful.
+    case "done": {
+      const label = dispositionPillText(state.disposition);
+      if (label === null) {
+        // Silent discard: hidden almost immediately; render nothing meaningful.
         return <span style={labelStyle} />;
       }
       return (
@@ -120,11 +148,12 @@ function PillContent({ state, level }: { state: DictationState; level: number })
             ✓
           </span>
           <span style={labelStyle}>
-            Скопировано
+            {label}
             {state.truncated ? " · обрезано по 60 с" : ""}
           </span>
         </>
       );
+    }
     case "error":
       return (
         <>

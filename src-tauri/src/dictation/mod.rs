@@ -30,6 +30,7 @@
 //! [`LevelSink`] seams keep the whole path testable without hardware; a live
 //! `#[ignore]` microphone test (see `recorder`) is the manual gate (D14).
 
+pub mod insert;
 pub mod pipeline;
 pub mod recorder;
 pub mod resample;
@@ -320,13 +321,32 @@ pub fn downmix_to_mono(interleaved: &[f32], channels: u16) -> Vec<f32> {
         .collect()
 }
 
-/// Root-mean-square of a mono buffer — `sqrt(mean(x²))` (D6). Empty → `0.0`.
-pub fn rms(mono: &[f32]) -> f32 {
-    if mono.is_empty() {
+/// Root-mean-square over a stream of mono samples — `sqrt(mean(x²))` (D6).
+/// Empty → `0.0`.
+///
+/// Iterator-based (the PR4 `rms_iter` carry-over) so a caller that only has a
+/// lazy sequence never has to materialise a `Vec` just to measure it — the
+/// pipeline's whole-clip RMS reinterprets `i16` samples as `f32` on the fly
+/// instead of allocating a parallel `Vec<f32>` (~3.84 MB on a 60 s clip). One
+/// pass computes both the sum of squares and the count. [`rms`] is the slice
+/// wrapper over this, so the recorder and the pipeline share one implementation.
+pub fn rms_iter<I: IntoIterator<Item = f32>>(samples: I) -> f32 {
+    let mut sum_sq = 0.0f32;
+    let mut n = 0usize;
+    for x in samples {
+        sum_sq += x * x;
+        n += 1;
+    }
+    if n == 0 {
         return 0.0;
     }
-    let sum_sq: f32 = mono.iter().map(|&x| x * x).sum();
-    (sum_sq / mono.len() as f32).sqrt()
+    (sum_sq / n as f32).sqrt()
+}
+
+/// Root-mean-square of a mono buffer — `sqrt(mean(x²))` (D6). Empty → `0.0`.
+/// Thin slice wrapper over [`rms_iter`].
+pub fn rms(mono: &[f32]) -> f32 {
+    rms_iter(mono.iter().copied())
 }
 
 /// Convert mono `f32` in `[-1.0, 1.0]` to `i16` (D7).
@@ -391,6 +411,18 @@ mod tests {
     #[test]
     fn rms_of_empty_is_zero() {
         assert_eq!(rms(&[]), 0.0);
+    }
+
+    #[test]
+    fn rms_iter_matches_slice_rms() {
+        // The PR4 carry-over: `rms_iter` must be bit-for-bit the slice `rms`, so
+        // the pipeline's allocation-free path measures loudness identically to the
+        // recorder's slice path.
+        let data = vec![0.1f32, -0.5, 0.3, 0.9, -0.2, 0.0, 0.7];
+        assert_eq!(rms_iter(data.iter().copied()), rms(&data));
+        // Empty streams agree at 0.0.
+        assert_eq!(rms_iter(std::iter::empty::<f32>()), rms(&[]));
+        assert_eq!(rms_iter(std::iter::empty::<f32>()), 0.0);
     }
 
     #[test]

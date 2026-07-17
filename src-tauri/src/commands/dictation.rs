@@ -25,6 +25,7 @@ use rusqlite::Connection;
 use serde::Serialize;
 
 use crate::db::repository;
+use crate::dictation::insert::InsertionMode;
 use crate::dictation::RecorderError;
 use crate::secrets::keyring::{self, KeyringError};
 use crate::state::AppState;
@@ -37,6 +38,9 @@ const KEY_BASE_URL: &str = "stt_base_url";
 const KEY_MODEL: &str = "stt_model";
 const KEY_PROXY: &str = "stt_proxy";
 const KEY_LANGUAGE: &str = "stt_language";
+/// `app_settings` key for the auto-insertion mode (Sprint 6 PR4, D12). Written by
+/// the PR5 radio button; read here. Absent → the [`InsertionMode::Paste`] default.
+const KEY_INSERTION_MODE: &str = "stt_insertion_mode";
 
 /// First-run default endpoint: AITunnel always works without a system VPN and
 /// costs kopecks per minute (see kickoff D4).
@@ -113,6 +117,18 @@ pub async fn test_stt_key(state: tauri::State<'_, AppState>, force: bool) -> Res
 }
 
 // ── Impl functions (unit-testable) ─────────────────────────────────────
+
+/// Read the persisted auto-insertion mode (D12). An absent key defaults to
+/// [`InsertionMode::Paste`]; a present-but-unknown value is a loud fallback to
+/// [`InsertionMode::ClipboardOnly`] (handled inside
+/// [`crate::dictation::insert::parse_insertion_mode`]) — never a silent guess at
+/// `Paste`.
+pub(crate) fn read_insertion_mode(conn: &Connection) -> rusqlite::Result<InsertionMode> {
+    Ok(match repository::get_setting(conn, KEY_INSERTION_MODE)? {
+        None => InsertionMode::Paste,
+        Some(raw) => crate::dictation::insert::parse_insertion_mode(&raw),
+    })
+}
 
 /// Read the persisted STT settings, substituting defaults for any unset key.
 pub(crate) fn get_stt_settings_impl(conn: &Connection) -> rusqlite::Result<SttSettings> {
@@ -447,6 +463,38 @@ mod tests {
         assert_eq!(s.model, DEFAULT_MODEL);
         assert_eq!(s.proxy, "");
         assert_eq!(s.language, DEFAULT_LANGUAGE);
+    }
+
+    // ── insertion mode (D12) ──
+
+    #[test]
+    fn insertion_mode_defaults_to_paste_on_empty_db() {
+        // D12: an absent key means the auto-paste default.
+        let conn = crate::db::test_connection();
+        assert_eq!(read_insertion_mode(&conn).unwrap(), InsertionMode::Paste);
+    }
+
+    #[test]
+    fn insertion_mode_reads_persisted_values() {
+        let conn = crate::db::test_connection();
+        repository::set_setting(&conn, KEY_INSERTION_MODE, "clipboard_only", 1).unwrap();
+        assert_eq!(
+            read_insertion_mode(&conn).unwrap(),
+            InsertionMode::ClipboardOnly
+        );
+        repository::set_setting(&conn, KEY_INSERTION_MODE, "paste", 2).unwrap();
+        assert_eq!(read_insertion_mode(&conn).unwrap(), InsertionMode::Paste);
+    }
+
+    #[test]
+    fn insertion_mode_unknown_value_falls_back_to_clipboard_only() {
+        // D12: a garbage value must NOT silently become Paste.
+        let conn = crate::db::test_connection();
+        repository::set_setting(&conn, KEY_INSERTION_MODE, "type", 1).unwrap();
+        assert_eq!(
+            read_insertion_mode(&conn).unwrap(),
+            InsertionMode::ClipboardOnly
+        );
     }
 
     #[test]

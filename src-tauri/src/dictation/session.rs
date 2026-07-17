@@ -30,11 +30,11 @@ use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
 use tauri_plugin_global_shortcut::{Code, Modifiers, Shortcut, ShortcutState};
 use tokio::sync::oneshot;
 
-use crate::commands::dictation::{build_stt_client, get_stt_settings_impl};
+use crate::commands::dictation::{build_stt_client, get_stt_settings_impl, read_insertion_mode};
 use crate::db::repository;
+use crate::dictation::insert::{ArboardClipboard, EnigoInserter, InsertionMode};
 use crate::dictation::pipeline::{
-    run_dictation, ClipboardSink, DictationDeps, DictationEmitter, DictationOpts, DictationOutcome,
-    DictationState,
+    run_dictation, DictationDeps, DictationEmitter, DictationOpts, DictationOutcome, DictationState,
 };
 use crate::dictation::DictationPhase;
 use crate::state::AppState;
@@ -160,8 +160,8 @@ fn on_released(app: &AppHandle) {
 async fn run_session(app: AppHandle, release_rx: oneshot::Receiver<()>, token: u64) {
     let state = app.state::<AppState>();
 
-    let (provider, language) = match build_provider(&state) {
-        Ok(pair) => pair,
+    let (provider, language, mode) = match build_provider(&state) {
+        Ok(triple) => triple,
         Err(message) => {
             // No key / bad config — surface it in the pill and stand down. The
             // recorder was never opened.
@@ -171,13 +171,18 @@ async fn run_session(app: AppHandle, release_rx: oneshot::Receiver<()>, token: u
         }
     };
 
-    let sink = ClipboardSink;
-    let opts = DictationOpts::new(None, language);
+    // The two delivery seams (D8): zero-field unit structs holding no OS handle,
+    // so they cost nothing to construct here and open a fresh `Enigo` /
+    // `arboard::Clipboard` per call inside the pipeline's `spawn_blocking`.
+    let inserter = EnigoInserter;
+    let clipboard = ArboardClipboard;
+    let opts = DictationOpts::new(None, language, mode);
     let outcome = run_dictation(
         DictationDeps {
             recorder: &state.recorder,
             provider: &provider,
-            sink: &sink,
+            inserter: &inserter,
+            clipboard: &clipboard,
             emitter: &app,
             phase: &state.dictation,
         },
@@ -222,17 +227,22 @@ fn finish_session(app: &AppHandle, state: &AppState, token: u64) {
 }
 
 /// Build the STT provider for a session from persisted settings + the keyring
-/// key, plus the resolved recognition language. Returns a user-facing Russian
-/// error when the configuration is unusable — most importantly when a remote
-/// endpoint has no API key (D13).
-fn build_provider(state: &AppState) -> Result<(OpenAiCompatStt, Option<String>), String> {
-    let settings = {
+/// key, plus the resolved recognition language and the auto-insertion mode (D12).
+/// Returns a user-facing Russian error when the configuration is unusable — most
+/// importantly when a remote endpoint has no API key (D13).
+fn build_provider(
+    state: &AppState,
+) -> Result<(OpenAiCompatStt, Option<String>, InsertionMode), String> {
+    let (settings, mode) = {
         let conn = state
             .db
             .lock()
             .map_err(|e| format!("Не удалось получить блокировку базы данных: {e}"))?;
-        get_stt_settings_impl(&conn)
-            .map_err(|e| format!("Не удалось прочитать настройки диктовки: {e}"))?
+        let settings = get_stt_settings_impl(&conn)
+            .map_err(|e| format!("Не удалось прочитать настройки диктовки: {e}"))?;
+        let mode = read_insertion_mode(&conn)
+            .map_err(|e| format!("Не удалось прочитать режим вставки: {e}"))?;
+        (settings, mode)
     };
 
     let key = crate::secrets::keyring::get_stt_key().map_err(|e| e.to_string())?;
@@ -243,7 +253,7 @@ fn build_provider(state: &AppState) -> Result<(OpenAiCompatStt, Option<String>),
     let proxy = settings.proxy.trim();
     let client = build_stt_client(if proxy.is_empty() { None } else { Some(proxy) })?;
     let provider = OpenAiCompatStt::new(client, &settings.base_url, &settings.model, key);
-    Ok((provider, resolve_language(&settings.language)))
+    Ok((provider, resolve_language(&settings.language), mode))
 }
 
 /// Advisory write of recognition seconds to `api_usage` for the current month
