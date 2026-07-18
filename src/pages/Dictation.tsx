@@ -73,10 +73,10 @@ export function Dictation() {
         if (cancelled) return;
         setSettings(dictSettings);
         setMinutes(mins);
-        // History is gated backend-side by the toggle; asking when off returns [].
-        if (dictSettings.history_enabled) {
-          setHistory(await listDictations(HISTORY_LIMIT));
-        }
+        // Reads are ungated (D5): accumulated history is shown regardless of the
+        // toggle, which only governs whether NEW rows are written. So always load
+        // it on mount — the rows stay visible across remount until «Очистить».
+        setHistory(await listDictations(HISTORY_LIMIT));
         // Device enumeration failing must not sink the whole page — the picker
         // just falls back to «Системный по умолчанию» with an inline note.
         try {
@@ -154,10 +154,10 @@ export function Dictation() {
     setBusy(true);
     try {
       await setDictationSetting("dictation_history_enabled", enabled ? "true" : "false");
-      // Turning ON surfaces whatever the backend has; turning OFF keeps the
-      // already-visible rows on screen (D5 — off stops writing, «Очистить»
-      // deletes). We deliberately do NOT refetch-to-empty here.
-      if (enabled) setHistory(await listDictations(HISTORY_LIMIT));
+      // Reads are ungated (D5), so re-sync with the authoritative DB either way:
+      // toggling only changes whether FUTURE dictations are written, never what is
+      // already stored. Off keeps the accumulated rows on screen until «Очистить».
+      setHistory(await listDictations(HISTORY_LIMIT));
     } catch (err) {
       setSettings((s) => (s ? { ...s, history_enabled: prev } : s)); // revert
       toast.error(stringifyError(err));
