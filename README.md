@@ -2,8 +2,7 @@
 
 # 📖 Glagol
 
-**Бесплатная локальная озвучка длинных текстов на русском языке**
-**Free local text-to-speech for long Russian documents**
+**Локальная озвучка и голосовой ввод на русском языке** · **Local Russian text-to-speech and voice dictation**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Tauri](https://img.shields.io/badge/Tauri-2.x-24c8db?logo=tauri)](https://tauri.app/)
@@ -31,7 +30,9 @@
 
 **Glagol** — desktop-приложение для Windows, которое озвучивает длинные тексты и документы качественными русскими голосами и сохраняет аудио в локальную библиотеку, чтобы вы могли вернуться к прослушиванию когда угодно.
 
-Работает поверх **SaluteSpeech API** от Сбера — бесплатно до 200 000 символов в месяц на персональном тарифе.
+**Две функции:** озвучка текста (TTS) через SaluteSpeech API от Сбера и голосовой ввод (диктовка, STT) с автоматической вставкой в активное окно.
+
+Glagol — бесплатное open source приложение (MIT). За распознавание и синтез вы платите провайдеру напрямую по своему ключу: озвучка — по подписке SaluteSpeech; диктовку можно подключить к разным провайдерам (оплата по потреблению — копейки за час аудио) или к Groq с бесплатным тарифом и лимитами.
 
 ### Зачем?
 
@@ -42,7 +43,7 @@
 - 💻 **SaluteSpeech App от Сбера** — отличные голоса, но без библиотеки документов и кэша
 - 🤖 **Яндекс.Браузер «Прочитать вслух»** — только в браузере, требует Яндекс-аккаунт
 
-**Glagol сочетает лучшее:** качественные нейросетевые голоса Сбера + локальная библиотека прослушанных документов + резервное копирование + полностью бесплатно для большинства пользователей.
+**Glagol сочетает лучшее:** качественные нейросетевые голоса Сбера, локальная библиотека прослушанных документов, резервное копирование — плюс голосовой ввод без системного VPN. Приложение бесплатно и с открытым кодом; за API вы платите провайдеру напрямую.
 
 ### Кому это нужно?
 
@@ -68,17 +69,27 @@
 - 🔒 **Безопасность** — Authorization Key хранится в Windows Credential Manager, тексты не покидают вашу машину (кроме отправки в SaluteSpeech для синтеза)
 - 🇷🇺 **Только русский.** Латиница и другие языки озвучиваются «на любителя» — это особенность SaluteSpeech
 
+#### 🎤 Голосовой ввод (диктовка)
+
+- ⌨️ **Push-to-talk диктовка** — зажмите хоткей, говорите, отпустите; текст сам появится в активном окне (Notepad, Chrome, Word, Telegram)
+- 📋 **Автовставка или буфер** — на выбор: текст вставляется автоматически или копируется в буфер
+- 🎹 **Настраиваемый хоткей** — по умолчанию `Ctrl+Shift+Space`, меняется на странице «Диктовка»
+- 🎙️ **Выбор микрофона** из списка устройств
+- 🔌 **Выбор STT-провайдера** — Groq (бесплатный тариф) и другие OpenAI-совместимые эндпоинты; base URL, модель и прокси настраиваются
+- 📝 **Локальная история** последних 10 расшифровок — по умолчанию **выключена**, тексты не касаются диска без необходимости
+- 🌐 **Без системного VPN** — работает через провайдеров, доступных из РФ
+
 ### Что планируется
 
 - 🖱️ **Drag & drop** файлов в окно
 - ▶️ **Возобновление прослушивания** с точки остановки
 - 🌙 **Тёмная и светлая темы**
 - 🔍 **Поиск по библиотеке**
-- 🔊 **Распознавание речи (STT)** и другие движки синтеза — на рассмотрении
+- 🔊 **Другие движки синтеза** — на рассмотрении
 
 ### Установка
 
-1. Скачайте `Glagol_0.1.0_x64-setup.exe` из последнего [GitHub Release](https://github.com/dimasiksuleyman-sudo/glagol/releases) (~8 МБ, ~26 МБ после установки).
+1. Скачайте `Glagol_0.2.0_x64-setup.exe` из последнего [GitHub Release](https://github.com/dimasiksuleyman-sudo/glagol/releases) (~8 МБ, ~26 МБ после установки).
 2. Запустите файл.
 
 **При первом запуске Windows покажет предупреждение SmartScreen.** Поскольку установщик не подписан коммерческим сертификатом, Windows встретит вас синим окном «Система Windows защитила ваш компьютер». Это нормально для новых приложений:
@@ -111,9 +122,9 @@
 - [x] Sprint 5b: Inline-переименование + фокус MVP (`v0.1.0-rc.5`)
 - [x] Sprint 5c: Резервное копирование и восстановление (`v0.1.0-rc.6`)
 - [x] Sprint 5d: Счётчик символов + русские сообщения об ошибках (`v0.1.0-rc.7`)
-- [x] **Первый публичный релиз — `v0.1.0-rc.7`**
-- [ ] Стабильный `v0.1.0`
-- [ ] Async-синтез для очень больших документов
+- [x] Первый публичный релиз — `v0.1.0-rc.7`
+- [x] **Sprint 6: Голосовой ввод — STT-клиент, рекордер, хоткей, автовставка, страница настроек (`v0.2.0`)**
+- [ ] Иконки и миграция провайдеров
 - [ ] **`v1.0.0`**
 
 ### Вклад в проект
@@ -138,7 +149,9 @@
 
 **Glagol** (Russian for "verb", "to speak") is a Windows desktop app that reads long texts and documents aloud using high-quality Russian neural voices, and saves audio to a local library so you can resume listening anytime.
 
-Powered by **SaluteSpeech API** from Sberbank — free up to 200,000 characters/month on the personal tier.
+**Two functions:** text-to-speech (TTS) via Sberbank's SaluteSpeech API, and voice dictation (STT) that types straight into your active window.
+
+Glagol is free open source software (MIT). You pay the provider directly with your own key: TTS via a SaluteSpeech subscription; dictation works with several STT providers (pay-per-usage — pennies per audio-hour) or with Groq's free tier with limits.
 
 ### Why?
 
@@ -149,7 +162,7 @@ Existing Russian TTS solutions have gaps:
 - 💻 **SaluteSpeech App by Sber** — great voices, no document library or cache
 - 🤖 **Yandex Browser TTS** — only in the browser, requires a Yandex account
 
-**Glagol combines the best:** quality neural voices from Sber + a local library of synthesized documents + backup/restore + completely free for most users.
+**Glagol combines the best:** quality neural voices from Sber, a local library of synthesized documents, backup/restore — plus voice dictation with no system VPN. The app is free and open source; you pay the API provider directly.
 
 ### Who is it for?
 
@@ -175,17 +188,27 @@ Existing Russian TTS solutions have gaps:
 - 🔒 **Security** — Authorization Key stored in Windows Credential Manager; your texts never leave your machine (except synthesis requests to SaluteSpeech)
 - 🇷🇺 **Russian only.** Latin script and other languages come out "hit or miss" — that's a SaluteSpeech trait
 
+#### 🎤 Voice dictation
+
+- ⌨️ **Push-to-talk dictation** — hold the hotkey, speak, release; text appears in your active window (Notepad, Chrome, Word, Telegram)
+- 📋 **Auto-paste or clipboard** — your choice
+- 🎹 **Configurable hotkey** — `Ctrl+Shift+Space` by default, changeable on the Dictation page
+- 🎙️ **Microphone selection** from the device list
+- 🔌 **Choose your STT provider** — Groq (free tier) and other OpenAI-compatible endpoints; base URL, model and proxy are configurable
+- 📝 **Local history** of the last 10 transcripts — **off by default**, text never touches disk unless you opt in
+- 🌐 **No system VPN** — works through providers reachable from Russia
+
 ### Planned
 
 - 🖱️ **Drag & drop** files
 - ▶️ **Resume playback** from where you stopped
 - 🌙 **Dark and light themes**
 - 🔍 **Library search**
-- 🔊 **Speech-to-text (STT)** and additional synthesis engines — under consideration
+- 🔊 **Additional synthesis engines** — under consideration
 
 ### Installation
 
-1. Download `Glagol_0.1.0_x64-setup.exe` from the latest [GitHub Release](https://github.com/dimasiksuleyman-sudo/glagol/releases) (~8 MB, ~26 MB installed).
+1. Download `Glagol_0.2.0_x64-setup.exe` from the latest [GitHub Release](https://github.com/dimasiksuleyman-sudo/glagol/releases) (~8 MB, ~26 MB installed).
 2. Run the file.
 
 **Windows SmartScreen warning on first launch.** Because the installer isn't signed with a commercial certificate, Windows shows a blue "Windows protected your PC" dialog. This is normal for new apps:
