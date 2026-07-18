@@ -159,14 +159,21 @@ pub fn run() {
             // System tray with the idle icon + «Показать / Выход» menu (D11).
             dictation::session::build_tray(app.handle())?;
 
-            // Register the global push-to-talk hotkey (D3). A failure here (some
-            // other app already owns Ctrl+Shift+Space) is logged, not fatal —
+            // Register the global push-to-talk hotkey (D3/D7). Prefer the user's
+            // saved hotkey (falls back to the default if unset or unparseable) so
+            // a hotkey changed via Settings persists across restarts. A failure
+            // here (some other app already owns the combo) is logged, not fatal —
             // the rest of Glagol (TTS) must still run.
-            if let Err(e) = app
-                .global_shortcut()
-                .register(dictation::session::dictation_hotkey())
-            {
-                tracing::warn!("failed to register dictation hotkey Ctrl+Shift+Space: {e}");
+            let hotkey = {
+                let state = app.state::<state::AppState>();
+                let conn = state
+                    .db
+                    .lock()
+                    .expect("db mutex poisoned during startup hotkey read");
+                commands::dictation::startup_hotkey(&conn)
+            };
+            if let Err(e) = app.global_shortcut().register(hotkey) {
+                tracing::warn!("failed to register dictation hotkey {hotkey:?}: {e}");
             }
 
             // Close-to-tray (D12): intercept the main window's close so the
@@ -206,6 +213,12 @@ pub fn run() {
             commands::dictation::has_stt_key,
             commands::dictation::test_stt_key,
             commands::dictation::list_audio_input_devices,
+            commands::dictation::get_dictation_settings,
+            commands::dictation::set_dictation_setting,
+            commands::dictation::set_dictation_hotkey,
+            commands::dictation::list_dictations,
+            commands::dictation::clear_dictation_history,
+            commands::dictation::get_recognitions_minutes,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

@@ -186,7 +186,7 @@ impl SaluteAuth {
         self.refresh_token().await
     }
 
-    /// Force a token refresh, ignoring any cached value.
+    /// Refresh the access token under a single-flight write lock.
     ///
     /// Makes a `POST` request to the OAuth endpoint with:
     ///
@@ -197,6 +197,17 @@ impl SaluteAuth {
     ///
     /// Stores the resulting token in the cache and returns it.
     ///
+    /// # Single-flight (kickoff D8)
+    ///
+    /// The write lock is held across the whole network request, and the cache is
+    /// **re-checked after acquiring it**. This closes the double-checked-locking
+    /// gap that caused *two* OAuth calls on startup: [`Self::get_token`] releases
+    /// its read lock before calling here, so a burst of callers used to each find
+    /// an empty cache and each fire a request. Now the first caller refreshes
+    /// while the rest queue on the write lock, then return the token it cached —
+    /// exactly one network round-trip per genuine expiry. A caller that arrives
+    /// after [`Self::invalidate`] still refreshes (the cache is `None`).
+    ///
     /// # Errors
     ///
     /// - [`SaluteError::Auth`] on HTTP 401 (invalid Authorization Key).
@@ -206,6 +217,22 @@ impl SaluteAuth {
     /// - [`SaluteError::InvalidResponse`] if the response body cannot be
     ///   parsed as the expected JSON shape.
     pub async fn refresh_token(&self) -> SaluteResult<String> {
+        // Single-flight: hold the write lock for the whole refresh so concurrent
+        // callers collapse to one request. `tokio::sync::RwLock` is designed to
+        // be held across `.await`, so this is safe (unlike a `std` guard).
+        let mut cache_guard = self.token_cache.write().await;
+
+        // Double-check: another task may have refreshed while we waited for the
+        // lock. If its token is still comfortably valid, reuse it — no second
+        // network call (D8).
+        if let Some(cached) = cache_guard.as_ref() {
+            let now_ms = Utc::now().timestamp_millis();
+            if cached.expires_at_ms - now_ms > REFRESH_BUFFER_MS {
+                debug!("token refreshed by a concurrent caller; reusing it");
+                return Ok(cached.access_token.clone());
+            }
+        }
+
         let rquid = http::new_rquid();
         debug!(rquid = %rquid, url = %self.oauth_url, "requesting OAuth token");
 
@@ -250,14 +277,12 @@ impl SaluteAuth {
             SaluteError::InvalidResponse(format!("failed to parse OAuth response: {}", e))
         })?;
 
-        // Update cache under write lock.
-        {
-            let mut guard = self.token_cache.write().await;
-            *guard = Some(CachedToken {
-                access_token: token_response.access_token.clone(),
-                expires_at_ms: token_response.expires_at,
-            });
-        }
+        // Update the cache through the write guard we have held since the top of
+        // the function (single-flight, D8) — no second lock acquisition.
+        *cache_guard = Some(CachedToken {
+            access_token: token_response.access_token.clone(),
+            expires_at_ms: token_response.expires_at,
+        });
 
         info!(
             rquid = %rquid,
@@ -454,6 +479,32 @@ mod tests {
 
         assert_eq!(first, "reissued_token");
         assert_eq!(second, "reissued_token");
+        mock.assert_async().await;
+    }
+
+    #[tokio::test]
+    async fn concurrent_get_token_on_empty_cache_makes_one_request() {
+        // D8 single-flight: a startup burst of callers on an empty cache must
+        // collapse to exactly ONE OAuth request. Before the fix, each caller
+        // released its read lock and independently fired a refresh (two calls
+        // observed on start); `.expect(1)` fails if that regresses.
+        let mut server = mockito::Server::new_async().await;
+        let mock = server
+            .mock("POST", "/api/v2/oauth")
+            .with_status(200)
+            .with_body(r#"{"access_token":"single_flight_token","expires_at":99999999999999}"#)
+            .expect(1)
+            .create_async()
+            .await;
+
+        let auth = make_test_auth(&server);
+
+        // Two callers race on the empty cache.
+        let (a, b) = tokio::join!(auth.get_token(), auth.get_token());
+        assert_eq!(a.expect("first ok"), "single_flight_token");
+        assert_eq!(b.expect("second ok"), "single_flight_token");
+
+        // Exactly one HTTP request reached the mock.
         mock.assert_async().await;
     }
 

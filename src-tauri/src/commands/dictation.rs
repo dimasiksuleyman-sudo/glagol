@@ -23,9 +23,13 @@ use cpal::traits::{DeviceTrait, HostTrait};
 use reqwest::{Client, Proxy};
 use rusqlite::Connection;
 use serde::Serialize;
+use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
 
 use crate::db::repository;
-use crate::dictation::insert::InsertionMode;
+use crate::db::repository::Dictation;
+use crate::dictation::insert::{
+    InsertionMode, INSERTION_MODE_CLIPBOARD_ONLY, INSERTION_MODE_PASTE,
+};
 use crate::dictation::RecorderError;
 use crate::secrets::keyring::{self, KeyringError};
 use crate::state::AppState;
@@ -41,6 +45,35 @@ const KEY_LANGUAGE: &str = "stt_language";
 /// `app_settings` key for the auto-insertion mode (Sprint 6 PR4, D12). Written by
 /// the PR5 radio button; read here. Absent → the [`InsertionMode::Paste`] default.
 const KEY_INSERTION_MODE: &str = "stt_insertion_mode";
+
+// ── Dictation-page settings keys + defaults (Sprint 6 PR5a, D3) ─────────
+//
+// Each key is read with its default in Rust (never INSERTed by the migration)
+// so a default can change with a code patch, and an absent key resolves to the
+// default rather than panicking (D3). An unknown/corrupt value is a **loud**
+// fallback, mirroring the D12 insertion-mode reader.
+
+/// Push-to-talk hotkey (D7). global-shortcut accelerator string; the default is
+/// `Control+Shift+Space` on Windows/Linux, `Cmd+Shift+Space` on macOS.
+const KEY_HOTKEY: &str = "dictation_hotkey";
+/// Pinned input device **name** (D6). Empty = system default.
+const KEY_DEVICE: &str = "dictation_device";
+/// History opt-in toggle (D4). Default **off** — when off, no transcript is
+/// written to `dictations` at all.
+const KEY_HISTORY_ENABLED: &str = "dictation_history_enabled";
+/// STT provider preset name (D3). Informational label for the Settings UI.
+const KEY_PROVIDER: &str = "stt_provider";
+
+/// Default push-to-talk hotkey (D3/D7). `CmdOrCtrl` resolves to `Control` on
+/// Windows/Linux and `Cmd` on macOS via global-shortcut's parser.
+pub(crate) const DEFAULT_HOTKEY: &str = "CmdOrCtrl+Shift+Space";
+/// Default STT provider preset (D3).
+const DEFAULT_PROVIDER: &str = "aitunnel";
+/// Default history state: **off** (D4/Q3).
+const DEFAULT_HISTORY_ENABLED: bool = false;
+/// Persisted representation of an enabled/disabled boolean setting.
+const BOOL_TRUE: &str = "true";
+const BOOL_FALSE: &str = "false";
 
 /// First-run default endpoint: AITunnel always works without a system VPN and
 /// costs kopecks per minute (see kickoff D4).
@@ -70,6 +103,26 @@ pub struct SttSettings {
     pub proxy: String,
     /// `"ru"` | `"en"` | `"auto"`.
     pub language: String,
+}
+
+/// Dictation-page settings returned to the (PR5b) Settings UI (D3). All fields
+/// carry their in-code defaults when the underlying key is unset. `Serialize`
+/// only — it is a command return type, never an input (an input would want the
+/// per-field setter instead).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct DictationSettings {
+    /// global-shortcut accelerator string (D7).
+    pub hotkey: String,
+    /// Pinned device name; empty = system default (D6).
+    pub device: String,
+    /// History opt-in (D4).
+    pub history_enabled: bool,
+    /// Provider preset name (D3).
+    pub provider: String,
+    /// Recognition model id (shared with the STT settings block).
+    pub model: String,
+    /// `"paste"` | `"clipboard_only"` — the effective auto-insertion mode (D12).
+    pub insertion_mode: String,
 }
 
 // ── Tauri command wrappers ─────────────────────────────────────────────
@@ -128,6 +181,117 @@ pub(crate) fn read_insertion_mode(conn: &Connection) -> rusqlite::Result<Inserti
         None => InsertionMode::Paste,
         Some(raw) => crate::dictation::insert::parse_insertion_mode(&raw),
     })
+}
+
+/// Read the history opt-in toggle (D4). Absent → [`DEFAULT_HISTORY_ENABLED`]
+/// (off). An unknown/corrupt value is a **loud** fallback to off, never a silent
+/// guess — mirrors the D12 insertion-mode reader. Off is the safe default: it
+/// keeps transcripts off disk.
+pub(crate) fn read_history_enabled(conn: &Connection) -> rusqlite::Result<bool> {
+    Ok(match repository::get_setting(conn, KEY_HISTORY_ENABLED)? {
+        None => DEFAULT_HISTORY_ENABLED,
+        Some(raw) => match raw.as_str() {
+            BOOL_TRUE => true,
+            BOOL_FALSE => false,
+            other => {
+                tracing::error!(
+                    value = other,
+                    "unknown dictation_history_enabled; falling back to off"
+                );
+                DEFAULT_HISTORY_ENABLED
+            }
+        },
+    })
+}
+
+/// Read the pinned input device name (D6). An absent or whitespace-only value
+/// means "system default" → `None`.
+pub(crate) fn read_device_setting(conn: &Connection) -> rusqlite::Result<Option<String>> {
+    Ok(repository::get_setting(conn, KEY_DEVICE)?
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty()))
+}
+
+/// Persisted string form of an [`InsertionMode`] for the settings DTO.
+fn insertion_mode_str(mode: InsertionMode) -> &'static str {
+    match mode {
+        InsertionMode::Paste => INSERTION_MODE_PASTE,
+        InsertionMode::ClipboardOnly => INSERTION_MODE_CLIPBOARD_ONLY,
+    }
+}
+
+/// Read every dictation-page setting, substituting defaults for unset keys (D3).
+pub(crate) fn get_dictation_settings_impl(
+    conn: &Connection,
+) -> rusqlite::Result<DictationSettings> {
+    Ok(DictationSettings {
+        hotkey: repository::get_setting(conn, KEY_HOTKEY)?
+            .unwrap_or_else(|| DEFAULT_HOTKEY.to_string()),
+        device: repository::get_setting(conn, KEY_DEVICE)?.unwrap_or_default(),
+        history_enabled: read_history_enabled(conn)?,
+        provider: repository::get_setting(conn, KEY_PROVIDER)?
+            .unwrap_or_else(|| DEFAULT_PROVIDER.to_string()),
+        model: repository::get_setting(conn, KEY_MODEL)?
+            .unwrap_or_else(|| DEFAULT_MODEL.to_string()),
+        insertion_mode: insertion_mode_str(read_insertion_mode(conn)?).to_string(),
+    })
+}
+
+/// Validate + persist a single dictation-page setting (D3). The `name` is
+/// whitelisted (an unknown key is rejected, not written), the value is validated
+/// per key, and the hotkey is deliberately **not** settable here — it goes
+/// through [`set_dictation_hotkey_impl`] so the live unregister/register with
+/// rollback (D7) always runs. Returns a user-facing Russian error on any invalid
+/// input; nothing is written unless it validates.
+pub(crate) fn set_dictation_setting_impl(
+    conn: &Connection,
+    name: &str,
+    value: &str,
+    updated_at: i64,
+) -> Result<(), String> {
+    let value = value.trim();
+    match name {
+        KEY_HISTORY_ENABLED => {
+            if value != BOOL_TRUE && value != BOOL_FALSE {
+                return Err(
+                    "Недопустимое значение переключателя истории (ожидается true или false)."
+                        .to_string(),
+                );
+            }
+        }
+        KEY_INSERTION_MODE => {
+            if value != INSERTION_MODE_PASTE && value != INSERTION_MODE_CLIPBOARD_ONLY {
+                return Err(
+                    "Недопустимый режим вставки (ожидается paste или clipboard_only).".to_string(),
+                );
+            }
+        }
+        KEY_MODEL => {
+            if value.is_empty() {
+                return Err(
+                    "Укажите модель распознавания (например whisper-large-v3-turbo).".to_string(),
+                );
+            }
+        }
+        KEY_PROVIDER => {
+            if value.is_empty() {
+                return Err("Укажите провайдера распознавания.".to_string());
+            }
+        }
+        // Device name is free-form (empty = system default); no validation.
+        KEY_DEVICE => {}
+        KEY_HOTKEY => {
+            return Err(
+                "Хоткей меняется отдельной командой (set_dictation_hotkey) с проверкой конфликта."
+                    .to_string(),
+            );
+        }
+        other => return Err(format!("Неизвестная настройка диктовки: {other}")),
+    }
+
+    repository::set_setting(conn, name, value, updated_at)
+        .map_err(|e| format!("Не удалось сохранить настройку диктовки: {e}"))?;
+    Ok(())
 }
 
 /// Read the persisted STT settings, substituting defaults for any unset key.
@@ -427,6 +591,219 @@ pub(crate) fn recorder_error_to_user_facing_ru(err: &RecorderError) -> String {
     }
 }
 
+// ── Dictation-page commands (Sprint 6 PR5a) ────────────────────────────
+
+#[tauri::command]
+pub async fn get_dictation_settings(
+    state: tauri::State<'_, AppState>,
+) -> Result<DictationSettings, String> {
+    let conn = state
+        .db
+        .lock()
+        .map_err(|e| format!("Не удалось получить блокировку базы данных: {e}"))?;
+    get_dictation_settings_impl(&conn)
+        .map_err(|e| format!("Не удалось прочитать настройки диктовки: {e}"))
+}
+
+#[tauri::command]
+pub async fn set_dictation_setting(
+    state: tauri::State<'_, AppState>,
+    name: String,
+    value: String,
+) -> Result<(), String> {
+    let updated_at = chrono::Utc::now().timestamp_millis();
+    let conn = state
+        .db
+        .lock()
+        .map_err(|e| format!("Не удалось получить блокировку базы данных: {e}"))?;
+    set_dictation_setting_impl(&conn, &name, &value, updated_at)
+}
+
+#[tauri::command]
+pub async fn list_dictations(
+    state: tauri::State<'_, AppState>,
+    limit: Option<i64>,
+) -> Result<Vec<Dictation>, String> {
+    let conn = state
+        .db
+        .lock()
+        .map_err(|e| format!("Не удалось получить блокировку базы данных: {e}"))?;
+    list_dictations_impl(&conn, limit)
+        .map_err(|e| format!("Не удалось прочитать историю диктовки: {e}"))
+}
+
+#[tauri::command]
+pub async fn clear_dictation_history(state: tauri::State<'_, AppState>) -> Result<(), String> {
+    let conn = state
+        .db
+        .lock()
+        .map_err(|e| format!("Не удалось получить блокировку базы данных: {e}"))?;
+    repository::clear_dictations(&conn)
+        .map(|_| ())
+        .map_err(|e| format!("Не удалось очистить историю диктовки: {e}"))
+}
+
+#[tauri::command]
+pub async fn get_recognitions_minutes(state: tauri::State<'_, AppState>) -> Result<u64, String> {
+    let conn = state
+        .db
+        .lock()
+        .map_err(|e| format!("Не удалось получить блокировку базы данных: {e}"))?;
+    get_recognitions_minutes_impl(&conn)
+        .map_err(|e| format!("Не удалось прочитать счётчик диктовки: {e}"))
+}
+
+#[tauri::command]
+pub async fn set_dictation_hotkey(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, AppState>,
+    hotkey: String,
+) -> Result<(), String> {
+    let updated_at = chrono::Utc::now().timestamp_millis();
+    let old = {
+        let conn = state
+            .db
+            .lock()
+            .map_err(|e| format!("Не удалось получить блокировку базы данных: {e}"))?;
+        repository::get_setting(&conn, KEY_HOTKEY)
+            .map_err(|e| format!("Не удалось прочитать текущий хоткей: {e}"))?
+            .unwrap_or_else(|| DEFAULT_HOTKEY.to_string())
+        // Guard drops before the register/unregister below.
+    };
+
+    let registrar = AppHotkeyRegistrar { app: &app };
+    set_dictation_hotkey_impl(&state, &registrar, &old, &hotkey, updated_at)
+}
+
+/// Gating (D4): when history is **off**, `list_dictations` returns empty even if
+/// stale rows survive from a period when it was on — "off" means the UI never
+/// surfaces transcripts. When on, returns rows newest-first, capped by `limit`.
+pub(crate) fn list_dictations_impl(
+    conn: &Connection,
+    limit: Option<i64>,
+) -> rusqlite::Result<Vec<Dictation>> {
+    if !read_history_enabled(conn)? {
+        return Ok(Vec::new());
+    }
+    repository::list_dictations(conn, limit)
+}
+
+/// The lifetime «Надиктовано» figure in whole minutes (D4). Reads the always-on
+/// `recognitions_seconds` ledger (independent of the history toggle) and floors
+/// to minutes.
+pub(crate) fn get_recognitions_minutes_impl(conn: &Connection) -> rusqlite::Result<u64> {
+    let seconds = repository::sum_recognition_seconds(conn)?;
+    Ok((seconds.max(0) as u64) / 60)
+}
+
+// ── Hotkey re-registration with rollback (D7) ──────────────────────────
+
+/// The register/unregister seam so the D7 rollback is testable without a Tauri
+/// runtime. The real implementation ([`AppHotkeyRegistrar`]) forwards to the
+/// global-shortcut plugin; a fake in tests can make `register` fail to exercise
+/// the rollback branch.
+pub(crate) trait HotkeyRegistrar {
+    fn register(&self, shortcut: &Shortcut) -> Result<(), String>;
+    fn unregister(&self, shortcut: &Shortcut) -> Result<(), String>;
+}
+
+/// Production registrar backed by the global-shortcut plugin.
+struct AppHotkeyRegistrar<'a> {
+    app: &'a tauri::AppHandle,
+}
+
+impl HotkeyRegistrar for AppHotkeyRegistrar<'_> {
+    fn register(&self, shortcut: &Shortcut) -> Result<(), String> {
+        self.app
+            .global_shortcut()
+            .register(*shortcut)
+            .map_err(|e| e.to_string())
+    }
+    fn unregister(&self, shortcut: &Shortcut) -> Result<(), String> {
+        self.app
+            .global_shortcut()
+            .unregister(*shortcut)
+            .map_err(|e| e.to_string())
+    }
+}
+
+/// The hotkey to register at startup (D7): the saved `dictation_hotkey` if it
+/// parses, else the default. Encapsulates the key + default so `lib.rs` need not
+/// know either. A DB read error or an unparseable saved value both fall through
+/// to the default rather than leaving dictation without a hotkey.
+pub(crate) fn startup_hotkey(conn: &Connection) -> Shortcut {
+    repository::get_setting(conn, KEY_HOTKEY)
+        .ok()
+        .flatten()
+        .and_then(|s| validate_hotkey(&s).ok())
+        .unwrap_or_else(|| validate_hotkey(DEFAULT_HOTKEY).expect("default hotkey constant parses"))
+}
+
+/// Validate a hotkey accelerator string (D7), returning the parsed [`Shortcut`].
+/// Pure — no Tauri runtime — so format validation is unit-testable. A parse
+/// failure becomes a user-facing Russian error.
+pub(crate) fn validate_hotkey(raw: &str) -> Result<Shortcut, String> {
+    raw.trim().parse::<Shortcut>().map_err(|_| {
+        "Некорректный хоткей. Пример: Ctrl+Shift+Space (модификатор + клавиша).".to_string()
+    })
+}
+
+/// Swap the live push-to-talk hotkey with rollback (D7): unregister `old`,
+/// register `new`; if registering `new` fails (another app owns the combo),
+/// **re-register `old`** so the user is never left with no working hotkey, and
+/// return an error. The unregister of `old` is best-effort — if the old hotkey
+/// was never registered (e.g. startup registration lost the race), failing to
+/// remove it must not block setting a working new one.
+pub(crate) fn swap_hotkey<R: HotkeyRegistrar>(
+    registrar: &R,
+    old: &Shortcut,
+    new: &Shortcut,
+) -> Result<(), String> {
+    if let Err(e) = registrar.unregister(old) {
+        tracing::warn!(error = %e, "unregistering old dictation hotkey failed (continuing)");
+    }
+    if let Err(e) = registrar.register(new) {
+        // Roll back to the working hotkey before reporting the conflict.
+        if let Err(re) = registrar.register(old) {
+            tracing::error!(error = %re, "failed to re-register the previous dictation hotkey after a conflict");
+        }
+        return Err(format!(
+            "Не удалось назначить хоткей — возможно, он занят другим приложением ({e}). \
+             Оставлен прежний хоткей."
+        ));
+    }
+    Ok(())
+}
+
+/// Validate the new hotkey, swap it live with rollback (D7), and persist it only
+/// on success. Generic over the registrar seam so the whole flow — including the
+/// rollback branch — is unit-testable.
+pub(crate) fn set_dictation_hotkey_impl<R: HotkeyRegistrar>(
+    state: &AppState,
+    registrar: &R,
+    old_raw: &str,
+    new_raw: &str,
+    updated_at: i64,
+) -> Result<(), String> {
+    let new = validate_hotkey(new_raw)?;
+    // The stored/old hotkey should be valid, but fall back to the default rather
+    // than aborting if a hand-edited DB holds garbage — we still want to install
+    // the new one.
+    let old = validate_hotkey(old_raw).unwrap_or_else(|_| {
+        validate_hotkey(DEFAULT_HOTKEY).expect("default hotkey constant must parse")
+    });
+
+    swap_hotkey(registrar, &old, &new)?;
+
+    let conn = state
+        .db
+        .lock()
+        .map_err(|e| format!("Не удалось получить блокировку базы данных: {e}"))?;
+    repository::set_setting(&conn, KEY_HOTKEY, new_raw.trim(), updated_at)
+        .map_err(|e| format!("Не удалось сохранить хоткей: {e}"))?;
+    Ok(())
+}
+
 // ── Tests ──────────────────────────────────────────────────────────────
 
 #[cfg(test)]
@@ -463,6 +840,244 @@ mod tests {
         assert_eq!(s.model, DEFAULT_MODEL);
         assert_eq!(s.proxy, "");
         assert_eq!(s.language, DEFAULT_LANGUAGE);
+    }
+
+    // ── dictation-page settings (D3) ──
+
+    #[test]
+    fn get_dictation_settings_returns_defaults_on_empty_db() {
+        let conn = crate::db::test_connection();
+        let s = get_dictation_settings_impl(&conn).unwrap();
+        assert_eq!(s.hotkey, DEFAULT_HOTKEY);
+        assert_eq!(s.device, "");
+        assert!(!s.history_enabled, "history default is off (D4)");
+        assert_eq!(s.provider, DEFAULT_PROVIDER);
+        assert_eq!(s.model, DEFAULT_MODEL);
+        assert_eq!(s.insertion_mode, INSERTION_MODE_PASTE);
+    }
+
+    #[test]
+    fn read_history_enabled_default_off_reads_values_and_loud_fallback() {
+        let conn = crate::db::test_connection();
+        // Absent → off (D4).
+        assert!(!read_history_enabled(&conn).unwrap());
+        // Explicit values round-trip.
+        repository::set_setting(&conn, KEY_HISTORY_ENABLED, "true", 1).unwrap();
+        assert!(read_history_enabled(&conn).unwrap());
+        repository::set_setting(&conn, KEY_HISTORY_ENABLED, "false", 2).unwrap();
+        assert!(!read_history_enabled(&conn).unwrap());
+        // Garbage → loud fallback to off, never a silent guess at on.
+        repository::set_setting(&conn, KEY_HISTORY_ENABLED, "yes", 3).unwrap();
+        assert!(!read_history_enabled(&conn).unwrap());
+    }
+
+    #[test]
+    fn read_device_setting_maps_empty_to_none() {
+        let conn = crate::db::test_connection();
+        assert_eq!(read_device_setting(&conn).unwrap(), None);
+        repository::set_setting(&conn, KEY_DEVICE, "  ", 1).unwrap();
+        assert_eq!(read_device_setting(&conn).unwrap(), None);
+        repository::set_setting(&conn, KEY_DEVICE, "USB Mic", 2).unwrap();
+        assert_eq!(
+            read_device_setting(&conn).unwrap(),
+            Some("USB Mic".to_string())
+        );
+    }
+
+    #[test]
+    fn set_dictation_setting_validates_and_persists() {
+        let conn = crate::db::test_connection();
+        // history_enabled: only true/false.
+        set_dictation_setting_impl(&conn, KEY_HISTORY_ENABLED, "true", 1).unwrap();
+        assert!(read_history_enabled(&conn).unwrap());
+        assert!(set_dictation_setting_impl(&conn, KEY_HISTORY_ENABLED, "maybe", 2).is_err());
+
+        // insertion_mode: only paste/clipboard_only.
+        set_dictation_setting_impl(&conn, KEY_INSERTION_MODE, "clipboard_only", 3).unwrap();
+        assert!(set_dictation_setting_impl(&conn, KEY_INSERTION_MODE, "type", 4).is_err());
+
+        // model: non-empty.
+        assert!(set_dictation_setting_impl(&conn, KEY_MODEL, "   ", 5).is_err());
+        set_dictation_setting_impl(&conn, KEY_MODEL, "whisper-1", 6).unwrap();
+
+        // device: free-form, trimmed.
+        set_dictation_setting_impl(&conn, KEY_DEVICE, "  Line In  ", 7).unwrap();
+        assert_eq!(
+            read_device_setting(&conn).unwrap(),
+            Some("Line In".to_string())
+        );
+    }
+
+    #[test]
+    fn set_dictation_setting_rejects_hotkey_and_unknown_keys() {
+        let conn = crate::db::test_connection();
+        // Hotkey must go through the dedicated command (D7 rollback), never here.
+        let err = set_dictation_setting_impl(&conn, KEY_HOTKEY, "Ctrl+A", 1).unwrap_err();
+        assert!(err.contains("set_dictation_hotkey"), "got: {err}");
+        // Arbitrary key names are rejected, not silently written.
+        assert!(set_dictation_setting_impl(&conn, "evil_key", "x", 2).is_err());
+    }
+
+    #[test]
+    fn list_dictations_impl_gated_by_history_toggle() {
+        let mut conn = crate::db::test_connection();
+        // Seed a row (simulating a period when history was on).
+        repository::insert_dictation(
+            &mut conn,
+            &repository::NewDictation {
+                created_at: 1_000,
+                duration_ms: 500,
+                text: "привет".to_string(),
+                status: "clipboard".to_string(),
+                error_message: None,
+            },
+        )
+        .unwrap();
+
+        // History off (default) → the list surfaces nothing even though a row exists.
+        assert!(list_dictations_impl(&conn, None).unwrap().is_empty());
+
+        // History on → the row appears.
+        repository::set_setting(&conn, KEY_HISTORY_ENABLED, "true", 2).unwrap();
+        let rows = list_dictations_impl(&conn, None).unwrap();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].text, "привет");
+    }
+
+    #[test]
+    fn get_recognitions_minutes_impl_floors_seconds() {
+        let conn = crate::db::test_connection();
+        assert_eq!(get_recognitions_minutes_impl(&conn).unwrap(), 0);
+        // 130 s across two months → 2 minutes (floored).
+        repository::record_recognition_usage(&conn, "2026-05", 70, 1).unwrap();
+        repository::record_recognition_usage(&conn, "2026-06", 60, 2).unwrap();
+        assert_eq!(get_recognitions_minutes_impl(&conn).unwrap(), 2);
+    }
+
+    // ── hotkey re-registration with rollback (D7) ──
+
+    /// A fake registrar recording every call; `register` fails when its target
+    /// is in `fail_on` so the rollback branch can be driven deterministically.
+    #[derive(Default)]
+    struct FakeRegistrar {
+        registered: std::sync::Mutex<Vec<String>>,
+        unregistered: std::sync::Mutex<Vec<String>>,
+        fail_register_for: Option<String>,
+    }
+
+    impl HotkeyRegistrar for FakeRegistrar {
+        fn register(&self, shortcut: &Shortcut) -> Result<(), String> {
+            let name = format!("{shortcut:?}");
+            if self.fail_register_for.as_deref() == Some(name.as_str()) {
+                return Err("occupied".to_string());
+            }
+            self.registered.lock().unwrap().push(name);
+            Ok(())
+        }
+        fn unregister(&self, shortcut: &Shortcut) -> Result<(), String> {
+            self.unregistered
+                .lock()
+                .unwrap()
+                .push(format!("{shortcut:?}"));
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn startup_hotkey_prefers_saved_then_falls_back_to_default() {
+        let conn = crate::db::test_connection();
+        let default = validate_hotkey(DEFAULT_HOTKEY).unwrap();
+        // Absent → default.
+        assert_eq!(startup_hotkey(&conn), default);
+        // Saved + valid → saved.
+        repository::set_setting(&conn, KEY_HOTKEY, "Alt+Shift+D", 1).unwrap();
+        assert_eq!(
+            startup_hotkey(&conn),
+            validate_hotkey("Alt+Shift+D").unwrap()
+        );
+        // Saved + garbage → default (never leaves dictation without a hotkey).
+        repository::set_setting(&conn, KEY_HOTKEY, "!!broken!!", 2).unwrap();
+        assert_eq!(startup_hotkey(&conn), default);
+    }
+
+    #[test]
+    fn validate_hotkey_accepts_default_and_rejects_garbage() {
+        assert!(validate_hotkey(DEFAULT_HOTKEY).is_ok());
+        assert!(validate_hotkey("Ctrl+Shift+Space").is_ok());
+        let err = validate_hotkey("not a hotkey!!").unwrap_err();
+        assert!(err.contains("хоткей"), "got: {err}");
+        assert!(validate_hotkey("").is_err());
+    }
+
+    #[test]
+    fn swap_hotkey_success_registers_new_and_unregisters_old() {
+        let old = validate_hotkey("Ctrl+Shift+Space").unwrap();
+        let new = validate_hotkey("Alt+Shift+D").unwrap();
+        let reg = FakeRegistrar::default();
+        swap_hotkey(&reg, &old, &new).expect("swap succeeds");
+        assert_eq!(reg.registered.lock().unwrap().len(), 1);
+        assert_eq!(reg.unregistered.lock().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn swap_hotkey_rolls_back_when_new_is_occupied() {
+        // D7 negative cycle: registering the new hotkey fails (occupied) → the
+        // OLD hotkey must be re-registered so the user is never left with none.
+        let old = validate_hotkey("Ctrl+Shift+Space").unwrap();
+        let new = validate_hotkey("Alt+Shift+D").unwrap();
+        let reg = FakeRegistrar {
+            fail_register_for: Some(format!("{new:?}")),
+            ..Default::default()
+        };
+        let err = swap_hotkey(&reg, &old, &new).unwrap_err();
+        assert!(err.contains("занят"), "conflict message expected: {err}");
+        // The rollback re-registered the OLD hotkey (the only successful register).
+        let registered = reg.registered.lock().unwrap();
+        assert_eq!(registered.len(), 1);
+        assert_eq!(registered[0], format!("{old:?}"));
+    }
+
+    #[tokio::test]
+    async fn set_dictation_hotkey_impl_persists_on_success() {
+        init_mock();
+        let state = fresh_state();
+        let reg = FakeRegistrar::default();
+        set_dictation_hotkey_impl(&state, &reg, DEFAULT_HOTKEY, "Alt+Shift+D", 1)
+            .expect("valid hotkey installs");
+        let conn = state.db.lock().unwrap();
+        assert_eq!(
+            repository::get_setting(&conn, KEY_HOTKEY).unwrap(),
+            Some("Alt+Shift+D".to_string())
+        );
+    }
+
+    #[tokio::test]
+    async fn set_dictation_hotkey_impl_does_not_persist_on_conflict() {
+        // D7: a conflict must leave the stored hotkey unchanged.
+        init_mock();
+        let state = fresh_state();
+        let new = validate_hotkey("Alt+Shift+D").unwrap();
+        let reg = FakeRegistrar {
+            fail_register_for: Some(format!("{new:?}")),
+            ..Default::default()
+        };
+        let err =
+            set_dictation_hotkey_impl(&state, &reg, DEFAULT_HOTKEY, "Alt+Shift+D", 1).unwrap_err();
+        assert!(err.contains("занят"), "got: {err}");
+        let conn = state.db.lock().unwrap();
+        assert_eq!(
+            repository::get_setting(&conn, KEY_HOTKEY).unwrap(),
+            None,
+            "a failed swap must not write the hotkey setting"
+        );
+    }
+
+    #[test]
+    fn set_dictation_setting_rejects_bad_hotkey_stays_out_of_this_path() {
+        // Guard: the generic setter never touches the hotkey key.
+        let conn = crate::db::test_connection();
+        assert!(set_dictation_setting_impl(&conn, KEY_HOTKEY, DEFAULT_HOTKEY, 1).is_err());
+        assert_eq!(repository::get_setting(&conn, KEY_HOTKEY).unwrap(), None);
     }
 
     // ── insertion mode (D12) ──
