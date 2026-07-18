@@ -54,6 +54,32 @@ const MIGRATIONS_SLICE: &[M<'static>] = &[
     );
     "#,
     ),
+    // Sprint 6 PR5a (Dictation history): the `dictations` table records each
+    // completed dictation so the Settings page can show a history list. Writing
+    // a row is **opt-in** — gated by the `dictation_history_enabled` setting
+    // (default off, D4); when history is disabled the transcript never touches
+    // disk. `app_settings` already exists (v3) and is NOT recreated here: the
+    // new dictation keys (`dictation_hotkey`, `dictation_device`,
+    // `dictation_history_enabled`, `stt_provider`) are written by the app with
+    // defaults in code, never by this migration, so a default can change without
+    // a new migration (D3). `api_usage.recognitions_seconds` (v2) already holds
+    // the always-on recognition-seconds counter and is intentionally untouched
+    // (D4). `status` is a persistent projection of the pipeline's `disposition`
+    // (D2): 'pasted' | 'clipboard' | 'error'. Append-only — never edit once
+    // shipped.
+    M::up(
+        r#"
+    CREATE TABLE IF NOT EXISTS dictations (
+        id            INTEGER PRIMARY KEY AUTOINCREMENT,
+        created_at    INTEGER NOT NULL,
+        duration_ms   INTEGER NOT NULL,
+        text          TEXT NOT NULL,
+        status        TEXT NOT NULL,
+        error_message TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_dictations_created_at ON dictations(created_at);
+    "#,
+    ),
 ];
 
 /// Apply every pending migration to `conn`. Idempotent: calling twice on the
@@ -128,5 +154,81 @@ mod tests {
             "SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND name='idx_docs_created'",
         );
         assert_eq!(n, 1, "idx_docs_created index should exist after migration");
+    }
+
+    #[test]
+    fn apply_migrations_to_empty_db_creates_dictations_table() {
+        // Sprint 6 PR5a: v0 → v4 on a fresh install must create `dictations`.
+        let mut conn = Connection::open_in_memory().unwrap();
+        apply_migrations(&mut conn).expect("apply succeeds");
+
+        let n = count(
+            &conn,
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='dictations'",
+        );
+        assert_eq!(n, 1, "dictations table should be created by migration v4");
+    }
+
+    #[test]
+    fn apply_migrations_creates_dictations_index() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        apply_migrations(&mut conn).expect("apply succeeds");
+
+        let n = count(
+            &conn,
+            "SELECT COUNT(*) FROM sqlite_master \
+             WHERE type='index' AND name='idx_dictations_created_at'",
+        );
+        assert_eq!(
+            n, 1,
+            "idx_dictations_created_at index should exist after migration v4"
+        );
+    }
+
+    #[test]
+    fn upgrading_from_v3_adds_dictations_without_touching_prior_tables() {
+        // Backward-compatibility gate (Phase 0): a real DB already on v3 (the
+        // day-10 state — documents + api_usage + app_settings, no dictations)
+        // must upgrade cleanly to v4. Reaching v3 first proves the v4 step is a
+        // pure addition applied incrementally, not a fresh v0 → v4 run.
+        let migrations = Migrations::from_slice(MIGRATIONS_SLICE);
+        let mut conn = Connection::open_in_memory().unwrap();
+
+        migrations.to_version(&mut conn, 3).expect("reach v3");
+        assert_eq!(
+            count(
+                &conn,
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='dictations'",
+            ),
+            0,
+            "dictations must not exist at v3"
+        );
+
+        // Seed a pre-existing v3 row so we can prove the upgrade preserves data.
+        conn.execute(
+            "INSERT INTO app_settings (key, value, updated_at) VALUES ('stt_model', 'whisper-1', 1)",
+            [],
+        )
+        .unwrap();
+
+        apply_migrations(&mut conn).expect("v3 → v4 upgrade succeeds");
+
+        assert_eq!(
+            count(
+                &conn,
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='dictations'",
+            ),
+            1,
+            "dictations must exist after upgrading to v4"
+        );
+        // Prior data survived the upgrade.
+        let model: String = conn
+            .query_row(
+                "SELECT value FROM app_settings WHERE key = 'stt_model'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(model, "whisper-1", "v3 rows must survive the v4 upgrade");
     }
 }

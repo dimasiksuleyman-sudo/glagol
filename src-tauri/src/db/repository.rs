@@ -213,9 +213,18 @@ pub fn record_recognition_usage(
 // configuration. The STT feature persists `stt_base_url`, `stt_model`,
 // `stt_proxy` and `stt_language` here; the API key stays in the OS keyring.
 
+// The parameter is named `setting_name` (not `key`) throughout the
+// app_settings API: a future secret-redaction scan keys off the literal
+// `key` and would false-positive on `get_setting(key)` (kickoff D3).
+
 /// Upsert a single setting. `updated_at` is a Unix millisecond timestamp
 /// supplied by the caller (deterministic — no clock access here).
-pub fn set_setting(conn: &Connection, key: &str, value: &str, updated_at: i64) -> Result<usize> {
+pub fn set_setting(
+    conn: &Connection,
+    setting_name: &str,
+    value: &str,
+    updated_at: i64,
+) -> Result<usize> {
     conn.execute(
         "
         INSERT INTO app_settings (key, value, updated_at)
@@ -224,19 +233,141 @@ pub fn set_setting(conn: &Connection, key: &str, value: &str, updated_at: i64) -
             value = excluded.value,
             updated_at = excluded.updated_at
         ",
-        params![key, value, updated_at],
+        params![setting_name, value, updated_at],
     )
 }
 
 /// Read a single setting's value. Returns `Ok(None)` when the key has never
 /// been written — the caller substitutes its default.
-pub fn get_setting(conn: &Connection, key: &str) -> Result<Option<String>> {
+pub fn get_setting(conn: &Connection, setting_name: &str) -> Result<Option<String>> {
     conn.query_row(
         "SELECT value FROM app_settings WHERE key = ?1",
-        params![key],
+        params![setting_name],
         |row| row.get(0),
     )
     .optional()
+}
+
+// ── dictations table ───────────────────────────────────────────────────
+//
+// Sprint 6 PR5a (Dictation history). One row per completed dictation,
+// written only when `dictation_history_enabled` is on (gating lives at the
+// session layer, D4). `status` mirrors the pipeline's `Disposition` (D2):
+// 'pasted' | 'clipboard' | 'error'.
+
+/// Maximum number of history rows kept in `dictations`. The table is pruned to
+/// this cap **inside the same transaction as every insert** (D5), so it can
+/// never exceed the cap even momentarily.
+pub const DICTATION_HISTORY_CAP: i64 = 200;
+
+/// A dictation about to be persisted. No `id` — the column is
+/// `INTEGER PRIMARY KEY AUTOINCREMENT`, assigned by SQLite. `created_at` /
+/// `duration_ms` are Unix-ms / milliseconds supplied by the caller so this
+/// layer stays clock-free and deterministic (matching [`DocumentRecord`]).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NewDictation {
+    pub created_at: i64,
+    pub duration_ms: i64,
+    pub text: String,
+    /// 'pasted' | 'clipboard' | 'error' (D2).
+    pub status: String,
+    pub error_message: Option<String>,
+}
+
+/// A persisted dictation row, including its assigned `id`. Returned by
+/// [`list_dictations`]. `Serialize` so the command layer can hand it straight
+/// to the (PR5b) Settings history list over IPC.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct Dictation {
+    pub id: i64,
+    pub created_at: i64,
+    pub duration_ms: i64,
+    pub text: String,
+    pub status: String,
+    pub error_message: Option<String>,
+}
+
+impl Dictation {
+    fn from_row(row: &Row) -> Result<Self> {
+        Ok(Self {
+            id: row.get("id")?,
+            created_at: row.get("created_at")?,
+            duration_ms: row.get("duration_ms")?,
+            text: row.get("text")?,
+            status: row.get("status")?,
+            error_message: row.get("error_message")?,
+        })
+    }
+}
+
+/// Insert a dictation and prune the table back to [`DICTATION_HISTORY_CAP`] in
+/// **one transaction** (D5), so the history can never exceed the cap. Returns
+/// the new row's `id`. The prune orders by `created_at DESC, id DESC` — `id`
+/// breaks ties deterministically (autoincrement is monotonic with insertion),
+/// so the oldest rows are always the ones dropped even when several share a
+/// timestamp. Takes `&mut Connection` because it opens a transaction.
+pub fn insert_dictation(conn: &mut Connection, rec: &NewDictation) -> Result<i64> {
+    let tx = conn.transaction()?;
+    tx.execute(
+        "INSERT INTO dictations (created_at, duration_ms, text, status, error_message) \
+         VALUES (?1, ?2, ?3, ?4, ?5)",
+        params![
+            rec.created_at,
+            rec.duration_ms,
+            rec.text,
+            rec.status,
+            rec.error_message
+        ],
+    )?;
+    let id = tx.last_insert_rowid();
+    tx.execute(
+        "DELETE FROM dictations WHERE id NOT IN (
+             SELECT id FROM dictations ORDER BY created_at DESC, id DESC LIMIT ?1
+         )",
+        params![DICTATION_HISTORY_CAP],
+    )?;
+    tx.commit()?;
+    Ok(id)
+}
+
+/// List dictations, most recent first (`created_at DESC, id DESC`). `limit`
+/// caps the number of rows returned (`None` = all, up to the table's own
+/// [`DICTATION_HISTORY_CAP`]). Whether to return anything at all when history is
+/// disabled is a policy decision owned by the command layer, not here.
+pub fn list_dictations(conn: &Connection, limit: Option<i64>) -> Result<Vec<Dictation>> {
+    let sql = format!(
+        "SELECT id, created_at, duration_ms, text, status, error_message \
+         FROM dictations ORDER BY created_at DESC, id DESC{}",
+        match limit {
+            Some(_) => " LIMIT ?1",
+            None => "",
+        }
+    );
+    let mut stmt = conn.prepare(&sql)?;
+    let rows = match limit {
+        Some(n) => stmt.query_map(params![n], Dictation::from_row)?.collect(),
+        None => stmt.query_map([], Dictation::from_row)?.collect(),
+    };
+    rows
+}
+
+/// Delete every dictation. Returns the number of rows removed. Backs the
+/// Settings «Очистить историю» button (D5).
+pub fn clear_dictations(conn: &Connection) -> Result<usize> {
+    conn.execute("DELETE FROM dictations", [])
+}
+
+/// Total recognition seconds across every recorded month — the lifetime
+/// «Надиктовано» figure (D4). Reads the always-on `api_usage.recognitions_seconds`
+/// column (independent of the history toggle), summing all months so the stat is
+/// a lifetime total rather than resetting each month like the TTS free-tier
+/// counter. `SUM` over an empty table returns `NULL`, coalesced to `0`.
+pub fn sum_recognition_seconds(conn: &Connection) -> Result<i64> {
+    conn.query_row(
+        "SELECT COALESCE(SUM(recognitions_seconds), 0) FROM api_usage",
+        [],
+        |row| row.get(0),
+    )
 }
 
 #[cfg(test)]
@@ -516,5 +647,147 @@ mod tests {
             Some("en".to_string()),
             "second write must replace the value"
         );
+    }
+
+    // ── dictations tests ──────────────────────────────────────────
+
+    fn sample_dictation(created_at: i64, text: &str) -> NewDictation {
+        NewDictation {
+            created_at,
+            duration_ms: 1_500,
+            text: text.to_string(),
+            status: "clipboard".to_string(),
+            error_message: None,
+        }
+    }
+
+    fn dictation_count(conn: &Connection) -> i64 {
+        conn.query_row("SELECT COUNT(*) FROM dictations", [], |r| r.get(0))
+            .unwrap()
+    }
+
+    #[test]
+    fn insert_dictation_then_list_returns_it() {
+        let mut conn = test_connection();
+        let id = insert_dictation(&mut conn, &sample_dictation(1_000, "привет мир")).unwrap();
+        assert!(id > 0, "autoincrement id should be positive");
+
+        let all = list_dictations(&conn, None).unwrap();
+        assert_eq!(all.len(), 1);
+        assert_eq!(all[0].id, id);
+        assert_eq!(all[0].text, "привет мир");
+        assert_eq!(all[0].status, "clipboard");
+        assert_eq!(all[0].duration_ms, 1_500);
+        assert_eq!(all[0].error_message, None);
+    }
+
+    #[test]
+    fn insert_dictation_persists_error_status_and_message() {
+        let mut conn = test_connection();
+        insert_dictation(
+            &mut conn,
+            &NewDictation {
+                created_at: 1_000,
+                duration_ms: 0,
+                text: String::new(),
+                status: "error".to_string(),
+                error_message: Some("провайдер отклонил запрос".to_string()),
+            },
+        )
+        .unwrap();
+
+        let all = list_dictations(&conn, None).unwrap();
+        assert_eq!(all[0].status, "error");
+        assert_eq!(
+            all[0].error_message,
+            Some("провайдер отклонил запрос".to_string())
+        );
+        assert_eq!(all[0].text, "");
+    }
+
+    #[test]
+    fn list_dictations_orders_newest_first() {
+        let mut conn = test_connection();
+        insert_dictation(&mut conn, &sample_dictation(1_000, "старое")).unwrap();
+        insert_dictation(&mut conn, &sample_dictation(3_000, "новое")).unwrap();
+        insert_dictation(&mut conn, &sample_dictation(2_000, "среднее")).unwrap();
+
+        let texts: Vec<String> = list_dictations(&conn, None)
+            .unwrap()
+            .into_iter()
+            .map(|d| d.text)
+            .collect();
+        assert_eq!(texts, vec!["новое", "среднее", "старое"]);
+    }
+
+    #[test]
+    fn list_dictations_respects_limit() {
+        let mut conn = test_connection();
+        for i in 0..5 {
+            insert_dictation(&mut conn, &sample_dictation(1_000 + i, "x")).unwrap();
+        }
+        assert_eq!(list_dictations(&conn, Some(2)).unwrap().len(), 2);
+        assert_eq!(list_dictations(&conn, None).unwrap().len(), 5);
+    }
+
+    #[test]
+    fn list_dictations_empty_when_no_rows() {
+        let conn = test_connection();
+        assert!(list_dictations(&conn, None).unwrap().is_empty());
+    }
+
+    #[test]
+    fn clear_dictations_removes_all() {
+        let mut conn = test_connection();
+        insert_dictation(&mut conn, &sample_dictation(1_000, "a")).unwrap();
+        insert_dictation(&mut conn, &sample_dictation(2_000, "b")).unwrap();
+        let removed = clear_dictations(&conn).unwrap();
+        assert_eq!(removed, 2);
+        assert_eq!(dictation_count(&conn), 0);
+    }
+
+    #[test]
+    fn insert_dictation_prunes_to_cap_dropping_oldest() {
+        // D5 guard: inserting past the cap must leave EXACTLY `DICTATION_HISTORY_CAP`
+        // rows, with the oldest gone. This is the negative-cycle test — deleting
+        // the prune DELETE from `insert_dictation` makes the count assertion fail.
+        let mut conn = test_connection();
+        let cap = DICTATION_HISTORY_CAP;
+
+        // Insert cap + 1 rows with strictly increasing timestamps; the very first
+        // (oldest) must be the one pruned.
+        let oldest_id = insert_dictation(&mut conn, &sample_dictation(1_000, "oldest")).unwrap();
+        for i in 1..=cap {
+            insert_dictation(&mut conn, &sample_dictation(1_000 + i, "x")).unwrap();
+        }
+
+        assert_eq!(
+            dictation_count(&conn),
+            cap,
+            "table must be pruned to exactly the cap"
+        );
+        let survivors = list_dictations(&conn, None).unwrap();
+        assert!(
+            survivors.iter().all(|d| d.id != oldest_id),
+            "the oldest row must have been pruned"
+        );
+        assert!(
+            survivors.iter().all(|d| d.text != "oldest"),
+            "the oldest transcript must be gone"
+        );
+    }
+
+    #[test]
+    fn sum_recognition_seconds_totals_across_months() {
+        let conn = test_connection();
+        assert_eq!(
+            sum_recognition_seconds(&conn).unwrap(),
+            0,
+            "empty ledger sums to 0, not NULL"
+        );
+        record_recognition_usage(&conn, "2026-05", 30, 1).unwrap();
+        record_recognition_usage(&conn, "2026-06", 45, 2).unwrap();
+        record_usage(&conn, "2026-06", 999, 3).unwrap(); // chars must not count
+        assert_eq!(sum_recognition_seconds(&conn).unwrap(), 75);
     }
 }

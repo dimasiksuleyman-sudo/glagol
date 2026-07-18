@@ -165,13 +165,23 @@ pub enum DiscardReason {
 /// signal is the [`DictationState`] event stream.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DictationOutcome {
-    /// Text delivered to the clipboard. `duration_ms` feeds the advisory
-    /// recognition-seconds counter (D13).
-    Delivered { truncated: bool, duration_ms: u32 },
-    /// Nothing delivered — filtered clip or empty transcript.
+    /// Text delivered. `duration_ms` feeds the advisory recognition-seconds
+    /// counter (D13); `text` + `disposition` feed the opt-in history write
+    /// (Sprint 6 PR5a, D2/D4) — the caller maps `disposition` to the persisted
+    /// `dictations.status` (`pasted` | `clipboard`).
+    Delivered {
+        truncated: bool,
+        duration_ms: u32,
+        text: String,
+        disposition: Disposition,
+    },
+    /// Nothing delivered — filtered clip or empty transcript. Never written to
+    /// history (D2: `discarded` has no transcript to record).
     Discarded(DiscardReason),
     /// A recorder / provider / clipboard error was surfaced as an `error` event.
-    Failed,
+    /// `message` is the Russian sentence shown to the user, persisted as the
+    /// history row's `error_message` when history is on (D2).
+    Failed { message: String },
 }
 
 /// Per-run knobs. `device`/`lang`/`mode` come from persisted STT settings;
@@ -282,9 +292,19 @@ where
     deps.emitter.emit_state(DictationState::Recording);
 
     // Start capture. A start failure (no mic, permission denied) is the first
-    // thing the user can hit — surface it in the pill (test #9).
-    if let Err(e) = deps.recorder.start(opts.device).await {
-        return fail(&deps, recorder_error_to_user_facing_ru(&e));
+    // thing the user can hit — surface it in the pill (test #9). A successful
+    // start that fell back to the system default (the pinned device is gone,
+    // D6) is a warning, never an error — dictation proceeds on the default mic.
+    match deps.recorder.start(opts.device).await {
+        Ok(info) => {
+            if info.fell_back_to_default {
+                tracing::warn!(
+                    device = %info.device_name,
+                    "pinned dictation device unavailable — falling back to system default"
+                );
+            }
+        }
+        Err(e) => return fail(&deps, recorder_error_to_user_facing_ru(&e)),
     }
 
     // Wait for the hotkey release or the watchdog, whichever comes first (D10).
@@ -370,6 +390,8 @@ where
             DictationOutcome::Delivered {
                 truncated: pcm.truncated,
                 duration_ms: pcm.duration_ms,
+                text: text.to_string(),
+                disposition,
             }
         }
         // spawn_blocking join failure (panic inside the blocking task).
@@ -386,9 +408,11 @@ where
     C: ClipboardAccess,
     E: DictationEmitter,
 {
-    deps.emitter.emit_state(DictationState::Error { message });
+    deps.emitter.emit_state(DictationState::Error {
+        message: message.clone(),
+    });
     set_phase(deps.phase, DictationPhase::Idle);
-    DictationOutcome::Failed
+    DictationOutcome::Failed { message }
 }
 
 /// Emit a silent-discard `done` event, reset the phase, and report the reason.
@@ -441,6 +465,17 @@ mod tests {
             Self {
                 start: Err(err),
                 stop: std::sync::Mutex::new(Some(Ok(PcmAudio::from_samples_16k(vec![], false)))),
+            }
+        }
+        /// A recorder whose `start` succeeds but reports the pinned device was
+        /// missing and it fell back to the system default (D6).
+        fn ok_fell_back(stop: Result<PcmAudio, RecorderError>) -> Self {
+            Self {
+                start: Ok(StartedInfo {
+                    device_name: "default".into(),
+                    fell_back_to_default: true,
+                }),
+                stop: std::sync::Mutex::new(Some(stop)),
             }
         }
     }
@@ -565,12 +600,17 @@ mod tests {
         )
         .await;
 
-        assert_eq!(
-            outcome,
-            DictationOutcome::Delivered {
-                truncated: false,
-                duration_ms: 1000
-            }
+        assert!(
+            matches!(
+                &outcome,
+                DictationOutcome::Delivered {
+                    truncated: false,
+                    duration_ms: 1000,
+                    text,
+                    disposition: Disposition::Clipboard,
+                } if text == "Привет, мир"
+            ),
+            "got: {outcome:?}"
         );
         assert_eq!(clipboard.content(), Some("Привет, мир".to_string()));
         assert_eq!(
@@ -700,6 +740,34 @@ mod tests {
         );
     }
 
+    // ── device fallback (D6) ──
+
+    #[tokio::test]
+    async fn recorder_fallback_to_default_still_delivers() {
+        // D6: a pinned device that has vanished falls back to the system default
+        // (fell_back_to_default = true). That is a warning, never an error — the
+        // pipeline must proceed to a normal delivery.
+        let recorder = FakeRecorder::ok_fell_back(Ok(loud_clip(1000, 8000, false)));
+        let provider = FakeStt::text("на дефолтном микрофоне");
+        let inserter = FakeInserter::default();
+        let clipboard = FakeClipboard::empty();
+        let emitter = FakeEmitter::default();
+        let phase = Mutex::new(DictationPhase::Idle);
+
+        let outcome = run(
+            &recorder, &provider, &inserter, &clipboard, &emitter, &phase,
+        )
+        .await;
+        assert!(
+            matches!(outcome, DictationOutcome::Delivered { .. }),
+            "fallback must not fail the dictation: {outcome:?}"
+        );
+        assert_eq!(
+            clipboard.content(),
+            Some("на дефолтном микрофоне".to_string())
+        );
+    }
+
     // ── error paths ──
 
     #[tokio::test]
@@ -715,7 +783,7 @@ mod tests {
             &recorder, &provider, &inserter, &clipboard, &emitter, &phase,
         )
         .await;
-        assert_eq!(outcome, DictationOutcome::Failed);
+        assert!(matches!(outcome, DictationOutcome::Failed { .. }));
         let states = emitter.states();
         assert!(matches!(states.last(), Some(DictationState::Error { .. })));
         if let Some(DictationState::Error { message }) = states.last() {
@@ -737,7 +805,7 @@ mod tests {
             &recorder, &provider, &inserter, &clipboard, &emitter, &phase,
         )
         .await;
-        assert_eq!(outcome, DictationOutcome::Failed);
+        assert!(matches!(outcome, DictationOutcome::Failed { .. }));
         assert_eq!(*provider.calls.lock().unwrap(), 0);
         assert!(matches!(
             emitter.states().last(),
@@ -758,7 +826,7 @@ mod tests {
             &recorder, &provider, &inserter, &clipboard, &emitter, &phase,
         )
         .await;
-        assert_eq!(outcome, DictationOutcome::Failed);
+        assert!(matches!(outcome, DictationOutcome::Failed { .. }));
         assert_eq!(clipboard.writes().len(), 0);
         if let Some(DictationState::Error { message }) = emitter.states().last() {
             assert!(message.contains("401"), "got: {message}");
@@ -781,7 +849,7 @@ mod tests {
             &recorder, &provider, &inserter, &clipboard, &emitter, &phase,
         )
         .await;
-        assert_eq!(outcome, DictationOutcome::Failed);
+        assert!(matches!(outcome, DictationOutcome::Failed { .. }));
         if let Some(DictationState::Error { message }) = emitter.states().last() {
             assert!(message.contains("Буфер обмена занят"), "got: {message}");
         } else {
@@ -805,12 +873,16 @@ mod tests {
             &recorder, &provider, &inserter, &clipboard, &emitter, &phase,
         )
         .await;
-        assert_eq!(
-            outcome,
-            DictationOutcome::Delivered {
-                truncated: true,
-                duration_ms: 60_000
-            }
+        assert!(
+            matches!(
+                &outcome,
+                DictationOutcome::Delivered {
+                    truncated: true,
+                    duration_ms: 60_000,
+                    ..
+                }
+            ),
+            "got: {outcome:?}"
         );
         assert_eq!(
             emitter.states().last(),
