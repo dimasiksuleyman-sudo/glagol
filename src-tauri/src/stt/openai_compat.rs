@@ -41,6 +41,11 @@ pub struct OpenAiCompatStt {
     base_url: String,
     model: String,
     api_key: Option<String>,
+    /// Optional Whisper `prompt` biasing hint — a short vocabulary of proper
+    /// nouns the model otherwise mis-hears (kickoff D8). `None` by default;
+    /// dictation sets it via [`OpenAiCompatStt::with_prompt`]. The Settings
+    /// key-check probe leaves it `None` (silence needs no vocabulary).
+    prompt: Option<String>,
 }
 
 impl OpenAiCompatStt {
@@ -61,7 +66,17 @@ impl OpenAiCompatStt {
             base_url: normalize_base_url(&base_url.into()),
             model: model.into(),
             api_key,
+            prompt: None,
         }
+    }
+
+    /// Attach a Whisper `prompt` biasing hint (kickoff D8). A trimmed-empty hint
+    /// clears it back to `None` so an empty setting never sends a blank field.
+    /// Builder-style so [`OpenAiCompatStt::new`]'s four-argument shape is
+    /// unchanged for the Settings key-check path, which needs no vocabulary.
+    pub fn with_prompt(mut self, prompt: Option<String>) -> Self {
+        self.prompt = prompt.filter(|p| !p.trim().is_empty());
+        self
     }
 
     /// Test-only constructor: a default `reqwest::Client`, a placeholder model
@@ -118,6 +133,11 @@ impl OpenAiCompatStt {
         // `None` (auto) → omit the language field entirely.
         if let Some(lang) = lang {
             form = form.text("language", lang.to_string());
+        }
+
+        // Whisper `prompt` biasing hint (D8) — only sent when configured.
+        if let Some(prompt) = &self.prompt {
+            form = form.text("prompt", prompt.clone());
         }
 
         debug!(
@@ -335,6 +355,39 @@ mod tests {
             .transcribe(vec![0u8; 8], Some("ru"))
             .await
             .expect("multipart request accepted");
+    }
+
+    #[tokio::test]
+    async fn transcribe_sends_prompt_field_when_configured() {
+        // D8: a configured Whisper prompt must ride the multipart body so the
+        // provider biases toward the app's proper-noun vocabulary.
+        let mut server = mockito::Server::new_async().await;
+        let _m = server
+            .mock("POST", "/audio/transcriptions")
+            .match_body(mockito::Matcher::AllOf(vec![
+                mockito::Matcher::Regex("name=\"prompt\"".to_string()),
+                mockito::Matcher::Regex("Глагол".to_string()),
+            ]))
+            .with_status(200)
+            .with_body(r#"{"text":"ok"}"#)
+            .create_async()
+            .await;
+
+        let client = client_for(&server).with_prompt(Some("Глагол, Привезём.".to_string()));
+        client
+            .transcribe(vec![0u8; 4], Some("ru"))
+            .await
+            .expect("prompt-carrying request accepted");
+    }
+
+    #[test]
+    fn with_prompt_ignores_blank_hint() {
+        // A whitespace-only prompt must clear to None so we never send an empty
+        // `prompt` field (which some providers reject).
+        let c = OpenAiCompatStt::with_base_url("https://x/v1").with_prompt(Some("   ".to_string()));
+        assert!(c.prompt.is_none());
+        let c = c.with_prompt(Some("Глагол".to_string()));
+        assert_eq!(c.prompt.as_deref(), Some("Глагол"));
     }
 
     #[tokio::test]

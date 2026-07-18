@@ -34,6 +34,16 @@ use std::time::Duration;
 
 use thiserror::Error;
 
+/// Whisper `prompt` vocabulary hint for dictation (kickoff D8). Day-10 QA showed
+/// the model transcribing the app name «Глагол» as the common noun «глагола» and
+/// normalising the sister project «Привезём» inconsistently; a short prompt of
+/// the expected proper nouns biases recognition toward them. Kept deliberately
+/// small — a long prompt steers the model too hard and hurts general phrases.
+/// The dictation session passes this to
+/// [`openai_compat::OpenAiCompatStt::with_prompt`]; the Settings key-check probe
+/// (silence) leaves the prompt unset.
+pub const DICTATION_PROMPT: &str = "Глагол, Привезём, SaluteSpeech.";
+
 /// A successful transcription result.
 ///
 /// Deliberately minimal for PR1 — the provider contract returns plain text.

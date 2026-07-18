@@ -30,11 +30,15 @@ use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
 use tauri_plugin_global_shortcut::{Code, Modifiers, Shortcut, ShortcutState};
 use tokio::sync::oneshot;
 
-use crate::commands::dictation::{build_stt_client, get_stt_settings_impl, read_insertion_mode};
+use crate::commands::dictation::{
+    build_stt_client, get_stt_settings_impl, read_device_setting, read_history_enabled,
+    read_insertion_mode,
+};
 use crate::db::repository;
 use crate::dictation::insert::{ArboardClipboard, EnigoInserter, InsertionMode};
 use crate::dictation::pipeline::{
-    run_dictation, DictationDeps, DictationEmitter, DictationOpts, DictationOutcome, DictationState,
+    run_dictation, DictationDeps, DictationEmitter, DictationOpts, DictationOutcome,
+    DictationState, Disposition,
 };
 use crate::dictation::DictationPhase;
 use crate::state::AppState;
@@ -160,8 +164,8 @@ fn on_released(app: &AppHandle) {
 async fn run_session(app: AppHandle, release_rx: oneshot::Receiver<()>, token: u64) {
     let state = app.state::<AppState>();
 
-    let (provider, language, mode) = match build_provider(&state) {
-        Ok(triple) => triple,
+    let (provider, device, language, mode) = match build_provider(&state) {
+        Ok(setup) => setup,
         Err(message) => {
             // No key / bad config — surface it in the pill and stand down. The
             // recorder was never opened.
@@ -176,7 +180,9 @@ async fn run_session(app: AppHandle, release_rx: oneshot::Receiver<()>, token: u
     // `arboard::Clipboard` per call inside the pipeline's `spawn_blocking`.
     let inserter = EnigoInserter;
     let clipboard = ArboardClipboard;
-    let opts = DictationOpts::new(None, language, mode);
+    // Pass the pinned device (D6); the recorder falls back to the system default
+    // and reports it if the device is gone.
+    let opts = DictationOpts::new(device, language, mode);
     let outcome = run_dictation(
         DictationDeps {
             recorder: &state.recorder,
@@ -191,12 +197,48 @@ async fn run_session(app: AppHandle, release_rx: oneshot::Receiver<()>, token: u
     )
     .await;
 
-    // Advisory recognition-seconds accounting (D13) — never blocks the user.
-    if let DictationOutcome::Delivered { duration_ms, .. } = outcome {
-        record_recognition_usage(&state, duration_ms);
+    // Advisory writes — never block the user (best-effort, logged on failure).
+    // Recognition-seconds accounting is always-on (D4/D13); the transcript is
+    // written to history only when the opt-in toggle is on (D4).
+    match &outcome {
+        DictationOutcome::Delivered {
+            duration_ms,
+            text,
+            disposition,
+            ..
+        } => {
+            record_recognition_usage(&state, *duration_ms);
+            record_dictation_history(
+                &state,
+                text,
+                dictation_status(*disposition),
+                *duration_ms as i64,
+                None,
+            );
+        }
+        DictationOutcome::Failed { message } => {
+            // An error still earns a history row so the user can see the failed
+            // attempt (D2). No recognition seconds — nothing was recognised.
+            record_dictation_history(&state, "", "error", 0, Some(message.clone()));
+        }
+        // D2: a discarded clip (silence / accidental tap / empty transcript) has
+        // nothing to record and is never written.
+        DictationOutcome::Discarded(_) => {}
     }
 
     finish_session(&app, &state, token);
+}
+
+/// Persisted `dictations.status` for a delivery disposition (D2). `Delivered`
+/// only ever carries `Pasted`/`Clipboard`; the `Discarded` arm is unreachable
+/// from that path (a discarded clip is filtered out before delivery) and maps to
+/// the clipboard label defensively.
+fn dictation_status(disposition: Disposition) -> &'static str {
+    match disposition {
+        Disposition::Pasted => "pasted",
+        Disposition::Clipboard => "clipboard",
+        Disposition::Discarded => "clipboard",
+    }
 }
 
 /// Reset per-session state after the pipeline exits (or fails to start): tray
@@ -227,13 +269,19 @@ fn finish_session(app: &AppHandle, state: &AppState, token: u64) {
 }
 
 /// Build the STT provider for a session from persisted settings + the keyring
-/// key, plus the resolved recognition language and the auto-insertion mode (D12).
-/// Returns a user-facing Russian error when the configuration is unusable — most
-/// importantly when a remote endpoint has no API key (D13).
-fn build_provider(
-    state: &AppState,
-) -> Result<(OpenAiCompatStt, Option<String>, InsertionMode), String> {
-    let (settings, mode) = {
+/// key, plus the pinned device (D6), the resolved recognition language, and the
+/// auto-insertion mode (D12). Returns a user-facing Russian error when the
+/// configuration is unusable — most importantly when a remote endpoint has no
+/// API key (D13).
+type SessionSetup = (
+    OpenAiCompatStt,
+    Option<String>,
+    Option<String>,
+    InsertionMode,
+);
+
+fn build_provider(state: &AppState) -> Result<SessionSetup, String> {
+    let (settings, mode, device) = {
         let conn = state
             .db
             .lock()
@@ -242,7 +290,9 @@ fn build_provider(
             .map_err(|e| format!("Не удалось прочитать настройки диктовки: {e}"))?;
         let mode = read_insertion_mode(&conn)
             .map_err(|e| format!("Не удалось прочитать режим вставки: {e}"))?;
-        (settings, mode)
+        let device = read_device_setting(&conn)
+            .map_err(|e| format!("Не удалось прочитать устройство ввода: {e}"))?;
+        (settings, mode, device)
     };
 
     let key = crate::secrets::keyring::get_stt_key().map_err(|e| e.to_string())?;
@@ -252,8 +302,10 @@ fn build_provider(
 
     let proxy = settings.proxy.trim();
     let client = build_stt_client(if proxy.is_empty() { None } else { Some(proxy) })?;
-    let provider = OpenAiCompatStt::new(client, &settings.base_url, &settings.model, key);
-    Ok((provider, resolve_language(&settings.language), mode))
+    // Whisper prompt biasing hint for the app's proper nouns (D8).
+    let provider = OpenAiCompatStt::new(client, &settings.base_url, &settings.model, key)
+        .with_prompt(Some(crate::stt::DICTATION_PROMPT.to_string()));
+    Ok((provider, device, resolve_language(&settings.language), mode))
 }
 
 /// Advisory write of recognition seconds to `api_usage` for the current month
@@ -272,6 +324,48 @@ fn record_recognition_usage(state: &AppState, duration_ms: u32) {
     };
     if let Err(e) = repository::record_recognition_usage(&conn, &month, seconds, now) {
         eprintln!("advisory recognition-usage write failed: {e}");
+    }
+}
+
+/// Write one dictation to the history table (D2/D4/D5) — **only if the opt-in
+/// `dictation_history_enabled` toggle is on** (D4). When it is off the transcript
+/// never touches disk; this returns before the insert rather than filtering in
+/// the UI. Advisory: every failure is swallowed to stderr so a history write can
+/// never break the user's dictation (mirrors [`record_recognition_usage`]). The
+/// insert prunes the table to the 200-row cap in one transaction (D5,
+/// [`repository::insert_dictation`]).
+fn record_dictation_history(
+    state: &AppState,
+    text: &str,
+    status: &str,
+    duration_ms: i64,
+    error_message: Option<String>,
+) {
+    let created_at = chrono::Utc::now().timestamp_millis();
+    let Ok(mut conn) = state.db.lock() else {
+        eprintln!("advisory dictation-history skipped: db mutex poisoned");
+        return;
+    };
+
+    // D4 gating: opt-in means the text never touches disk when the toggle is off.
+    match read_history_enabled(&conn) {
+        Ok(true) => {}
+        Ok(false) => return,
+        Err(e) => {
+            eprintln!("advisory dictation-history skipped: cannot read toggle: {e}");
+            return;
+        }
+    }
+
+    let record = repository::NewDictation {
+        created_at,
+        duration_ms,
+        text: text.to_string(),
+        status: status.to_string(),
+        error_message,
+    };
+    if let Err(e) = repository::insert_dictation(&mut conn, &record) {
+        eprintln!("advisory dictation-history write failed: {e}");
     }
 }
 
@@ -454,6 +548,83 @@ pub(crate) fn mark_tray_notice_shown(conn: &Connection, updated_at: i64) -> rusq
 mod tests {
     use super::*;
     use crate::db::test_connection;
+
+    /// A minimal `AppState` for the advisory-history tests: real in-memory DB, no
+    /// recorder thread. Mirrors `commands::dictation::tests::fresh_state`.
+    fn fresh_state() -> AppState {
+        let client = crate::salute::http::build_client().expect("client builds");
+        let conn = test_connection();
+        AppState::new(
+            client,
+            conn,
+            crate::dictation::RecorderHandle::disconnected(),
+        )
+    }
+
+    fn dictation_rows(state: &AppState) -> Vec<repository::Dictation> {
+        let conn = state.db.lock().unwrap();
+        repository::list_dictations(&conn, None).unwrap()
+    }
+
+    #[test]
+    fn record_dictation_history_gated_by_toggle() {
+        // D4 negative cycle: with history OFF the transcript must NOT be written;
+        // with it ON, exactly one row lands. Deleting the `Ok(false) => return`
+        // gate in `record_dictation_history` makes the OFF assertion fail (a row
+        // is written while history is disabled).
+        let state = fresh_state();
+
+        // Off (default): nothing is written.
+        record_dictation_history(&state, "секрет", "clipboard", 1_500, None);
+        assert!(
+            dictation_rows(&state).is_empty(),
+            "history off must not write the transcript to disk"
+        );
+
+        // Turn history on.
+        {
+            let conn = state.db.lock().unwrap();
+            repository::set_setting(&conn, "dictation_history_enabled", "true", 1).unwrap();
+        }
+
+        record_dictation_history(&state, "виден", "clipboard", 1_500, None);
+        let rows = dictation_rows(&state);
+        assert_eq!(rows.len(), 1, "history on must write exactly one row");
+        assert_eq!(rows[0].text, "виден");
+        assert_eq!(rows[0].status, "clipboard");
+    }
+
+    #[test]
+    fn record_dictation_history_writes_error_rows_when_on() {
+        // A failed dictation earns an error row (D2) — status `error`, the Russian
+        // message in `error_message`, empty transcript.
+        let state = fresh_state();
+        {
+            let conn = state.db.lock().unwrap();
+            repository::set_setting(&conn, "dictation_history_enabled", "true", 1).unwrap();
+        }
+        record_dictation_history(
+            &state,
+            "",
+            "error",
+            0,
+            Some("ключ недействителен".to_string()),
+        );
+        let rows = dictation_rows(&state);
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].status, "error");
+        assert_eq!(
+            rows[0].error_message,
+            Some("ключ недействителен".to_string())
+        );
+        assert_eq!(rows[0].text, "");
+    }
+
+    #[test]
+    fn dictation_status_maps_disposition_to_persisted_string() {
+        assert_eq!(dictation_status(Disposition::Pasted), "pasted");
+        assert_eq!(dictation_status(Disposition::Clipboard), "clipboard");
+    }
 
     #[test]
     fn requires_missing_key_only_for_remote_without_key() {
