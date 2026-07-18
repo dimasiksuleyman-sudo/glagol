@@ -97,18 +97,20 @@ export function Dictation() {
   }, []);
 
   // Refresh the counter + history when a dictation finishes while the page is open.
+  // Reads are ungated (D5): always re-sync the list, never conditioned on the
+  // toggle. With history off nothing new was written, so this just re-shows the
+  // same accumulated rows — but the load path stays uniformly toggle-agnostic
+  // (no half-gate) rather than relying on that as an optimisation.
   useEffect(() => {
     const unlisten = listen<DictationState>(DICTATION_STATE_EVENT, (event) => {
       if (event.payload.kind !== "done") return;
       void getRecognitionsMinutes().then(setMinutes).catch(() => {});
-      if (settings?.history_enabled) {
-        void listDictations(HISTORY_LIMIT).then(setHistory).catch(() => {});
-      }
+      void listDictations(HISTORY_LIMIT).then(setHistory).catch(() => {});
     });
     return () => {
       void unlisten.then((fn) => fn());
     };
-  }, [settings?.history_enabled]);
+  }, []);
 
   async function handleInsertionMode(mode: string) {
     if (!settings || mode === settings.insertion_mode) return;
