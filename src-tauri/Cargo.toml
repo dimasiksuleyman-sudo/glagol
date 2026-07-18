@@ -1,6 +1,6 @@
 [package]
 name = "glagol"
-version = "0.1.0"
+version = "0.2.0"
 description = "Free local text-to-speech for long Russian documents via SaluteSpeech"
 authors = ["Glagol Contributors"]
 edition = "2021"
