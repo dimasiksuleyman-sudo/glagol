@@ -258,7 +258,14 @@ pub fn get_setting(conn: &Connection, setting_name: &str) -> Result<Option<Strin
 /// Maximum number of history rows kept in `dictations`. The table is pruned to
 /// this cap **inside the same transaction as every insert** (D5), so it can
 /// never exceed the cap even momentarily.
-pub const DICTATION_HISTORY_CAP: i64 = 200;
+///
+/// PR5a shipped 200; PR5b lowers it to **10** by product decision (D4): dictation
+/// history is «re-paste the last few», not an archive. 10 covers that, keeps the
+/// page light (no pagination), and honours the privacy stance — 200 transcripts
+/// on disk contradict «text does not touch disk without need». Not a bug fix: the
+/// prune invariant and its negative-cycle test are unchanged; only the number and
+/// this rationale moved.
+pub const DICTATION_HISTORY_CAP: i64 = 10;
 
 /// A dictation about to be persisted. No `id` — the column is
 /// `INTEGER PRIMARY KEY AUTOINCREMENT`, assigned by SQLite. `created_at` /
@@ -747,10 +754,20 @@ mod tests {
     }
 
     #[test]
+    fn dictation_history_cap_is_ten() {
+        // D4 product decision: history is «re-paste the last few», not an archive.
+        // Guard the exact value so a future edit can't quietly restore 200 and put
+        // 200 transcripts back on disk against the privacy stance.
+        assert_eq!(DICTATION_HISTORY_CAP, 10);
+    }
+
+    #[test]
     fn insert_dictation_prunes_to_cap_dropping_oldest() {
-        // D5 guard: inserting past the cap must leave EXACTLY `DICTATION_HISTORY_CAP`
-        // rows, with the oldest gone. This is the negative-cycle test — deleting
-        // the prune DELETE from `insert_dictation` makes the count assertion fail.
+        // D4/D5 guard: inserting past the cap must leave EXACTLY `DICTATION_HISTORY_CAP`
+        // rows, with the oldest gone. Written symbolically against the constant, so
+        // the PR5b cap change (200 → 10) turns this from 201→200 into 11→10 with no
+        // edit to the assertions. This is the negative-cycle test — deleting the
+        // prune DELETE from `insert_dictation` makes the count assertion fail.
         let mut conn = test_connection();
         let cap = DICTATION_HISTORY_CAP;
 

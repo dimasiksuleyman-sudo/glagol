@@ -84,6 +84,36 @@ It updates automatically after each synthesis and resets on the 1st of every mon
 
 ---
 
+## Dictation (voice input)
+
+Glagol also does the reverse — turns your speech into text and inserts it into any application. Hold the hotkey, speak, release — the recognized text appears wherever your cursor is.
+
+Everything is configured on the **Dictation** (Диктовка) page:
+
+- **Insertion mode** — "Auto-paste" (text is inserted for you, Ctrl+V) or "Clipboard only" (text is placed on the clipboard, you paste it yourself).
+- **Hotkey** — `Ctrl+Shift+Space` by default. Click **"Change"** and physically press the combination you want (or type it by hand if it isn't captured). If the combination is taken by another app, the previous hotkey stays active.
+- **Microphone** — "System default" or a specific device.
+- **History** — **off** by default. Turn it on to keep the last 10 transcripts (the "Copy" button puts a transcript back on the clipboard so you can re-paste something you said earlier). Turning it off stops new lines being written, but what's already there stays visible until you press "Clear history."
+- **Total dictated** — a lifetime minute counter.
+
+Recognition runs through an OpenAI-compatible provider (key and endpoint under **Settings → Dictation (STT)**), so it works even without a system-wide VPN.
+
+### Known limitations
+
+Dictation runs on top of Windows, which has its own rules. Here's what's worth knowing up front.
+
+1. **A non-text clipboard is lost.** In auto-paste mode Glagol briefly swaps the clipboard for the transcript, then restores the previous contents. If those were an image or files (not text), they can't be restored — they'll be gone from the clipboard.
+2. **Clipboard managers that change line endings.** Some clipboard managers "normalize" text (they rewrite line endings). That makes Glagol think someone else changed the clipboard, so out of caution it doesn't restore the previous contents.
+3. **Windows run as administrator.** If the active window is elevated (running as administrator) and Glagol isn't, the hotkey won't reach it and you can't dictate into that window. Run Glagol as administrator if you need this regularly.
+4. **Noisy surroundings.** The silence threshold is absolute. In a quiet room it rejects silence and lets speech through. In a noisy place (a café, a car), background hum can pass the filter and recognition may produce stray text. Dictate in relative quiet.
+5. **Two identical microphones.** If two devices with the same name are connected, Glagol can't tell them apart in the list — the selection may not point to the one you expect.
+6. **Win+V and clipboard history.** If Windows clipboard history (`Win+V`) is enabled, every transcript lands in it. You can turn it off in Windows Settings → Clipboard.
+7. **`Ctrl+Shift+Space` conflict in Office.** In Microsoft Office that combination inserts a non-breaking space. If you dictate into Office, assign a different hotkey (for example `Alt+Shift+D`) on the Dictation page.
+
+**Log-sending tip:** before attaching logs to a bug report, **close Glagol completely** — on exit it flushes everything still buffered into the log file. Otherwise the last lines may not make it to disk.
+
+---
+
 ## Backup and transfer
 
 Glagol can save your entire library (documents + audio files) into a single archive — handy for backups or moving to another computer.

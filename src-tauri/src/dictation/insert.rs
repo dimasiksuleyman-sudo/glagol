@@ -137,10 +137,14 @@ pub enum InsertStep {
 /// `transcript`, and the `mode` (D6). Pure — no IO, no logging.
 ///
 /// - [`InsertionMode::ClipboardOnly`] → just `[SetText]`; the user pastes by hand.
-/// - [`InsertionMode::Paste`] → `SetText → ReleaseModifiers → Paste → Settle`,
-///   plus `VerifyOwn → Restore` **iff** the snapshot was `Ok` (text). A non-text
-///   snapshot (image, files → `Err`) leaves nothing to restore, so those two
-///   steps are omitted entirely (D7, condition 1).
+/// - [`InsertionMode::Paste`] → `SetText → ReleaseModifiers → Paste`, plus
+///   `Settle → VerifyOwn → Restore` **iff** the snapshot was `Ok` (text). A
+///   non-text snapshot (image, files → `Err`) leaves nothing to restore, so all
+///   three steps — including the [`SETTLE_DELAY`] wait — are omitted entirely
+///   (D7 condition 1 / D12): the settle exists only to give the target app time
+///   to read the paste *before we overwrite the clipboard back*, so with no
+///   restore ahead it is 300 ms of pure latency. The 300 ms value itself is not
+///   touched (the timing rider is still gathering data); only its placement moves.
 pub fn plan_insertion(
     snapshot: Result<String, String>,
     transcript: &str,
@@ -153,10 +157,12 @@ pub fn plan_insertion(
                 InsertStep::SetText(transcript.to_string()),
                 InsertStep::ReleaseModifiers,
                 InsertStep::Paste,
-                InsertStep::Settle(SETTLE_DELAY),
             ];
-            // Restore is only possible when the prior clipboard was text.
+            // Settle + Restore are only meaningful when the prior clipboard was
+            // text: settle so the target reads our paste, then restore what was
+            // there. A non-text snapshot skips all three (D12).
             if let Ok(prior) = snapshot {
+                steps.push(InsertStep::Settle(SETTLE_DELAY));
                 steps.push(InsertStep::VerifyOwn(transcript.to_string()));
                 steps.push(InsertStep::Restore(prior));
             }
@@ -392,6 +398,8 @@ impl TextInserter for EnigoInserter {
             enigo::Enigo::new(&enigo::Settings::default()).map_err(|e| e.to_string())?;
         // A failed individual release is not fatal to the sequence; report the
         // first error but attempt all three so no modifier is left held.
+        // Control is absent by design — the paste chord ([`Self::paste`]) presses
+        // and releases it itself (D4), so releasing it here would fight that.
         let mut first_err: Option<String> = None;
         for key in [Key::Shift, Key::Alt, Key::Meta] {
             if let Err(e) = enigo.key(key, Release) {
@@ -690,8 +698,10 @@ mod tests {
     }
 
     #[test]
-    fn plan_paste_with_nontext_snapshot_omits_verify_and_restore() {
-        // D7 condition 1: a non-text snapshot (Err) leaves nothing to restore.
+    fn plan_paste_with_nontext_snapshot_omits_settle_verify_and_restore() {
+        // D7 condition 1 + D12: a non-text snapshot (Err) leaves nothing to
+        // restore, so Settle/VerifyOwn/Restore are all dropped — the settle only
+        // exists to precede a restore, so without one it is pure latency.
         let plan = plan_insertion(Err("non-text".into()), TRANSCRIPT, InsertionMode::Paste);
         assert_eq!(
             plan,
@@ -699,10 +709,25 @@ mod tests {
                 InsertStep::SetText(TRANSCRIPT.to_string()),
                 InsertStep::ReleaseModifiers,
                 InsertStep::Paste,
-                InsertStep::Settle(SETTLE_DELAY),
             ]
         );
         assert!(!plan.iter().any(|s| matches!(s, InsertStep::Restore(_))));
+    }
+
+    #[test]
+    fn plan_paste_nontext_skips_settle_but_text_keeps_it() {
+        // D12 focus: the 300 ms Settle is present exactly when there is a text
+        // clipboard to restore, and absent when there is not — no wasted wait.
+        let text = plan_insertion(Ok(PRIOR.to_string()), TRANSCRIPT, InsertionMode::Paste);
+        let nontext = plan_insertion(Err("img".into()), TRANSCRIPT, InsertionMode::Paste);
+        assert!(
+            text.iter().any(|s| matches!(s, InsertStep::Settle(_))),
+            "text snapshot keeps the settle before restore"
+        );
+        assert!(
+            !nontext.iter().any(|s| matches!(s, InsertStep::Settle(_))),
+            "non-text snapshot must not pay the 300 ms settle it can't use"
+        );
     }
 
     #[test]

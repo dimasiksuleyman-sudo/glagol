@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from "react-router-dom";
-import { AudioLines, Library, Settings } from "lucide-react";
+import { AudioLines, Library, Mic, Settings } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
@@ -14,6 +14,7 @@ interface NavItem {
 const NAV_ITEMS: readonly NavItem[] = [
   { to: "/synthesize", label: "Озвучить", Icon: AudioLines },
   { to: "/library", label: "Библиотека", Icon: Library },
+  { to: "/dictation", label: "Диктовка", Icon: Mic },
   { to: "/settings", label: "Настройки", Icon: Settings },
 ];
 
