@@ -158,6 +158,16 @@ These rules MUST hold across all PRs. If a change requires breaking one, escalat
 6. **SaluteSpeech sync API hard limit is 4000 chars per request.** Our chunker targets ≤3500 to leave room for SSML overhead.
 7. **Audio bytes never leave Rust over IPC.** `synthesize_document` returns `document_id` (UUID string). Frontend uses `get_audio_path` + asset protocol for playback, `export_audio` (server-side `fs::copy`) for disk export. Established Sprint 2 PR #16.
 
+### Documentation invariants
+
+1. **User-observable changes are documented in the same PR.** If a PR changes user-observable behaviour — a new setting, screen, default, known limitation, or an external fact the docs assert (pricing, providers, endpoints) — it updates `USER_GUIDE.ru.md` **and** `USER_GUIDE.en.md` in that same PR. The trigger is "will the user notice a difference," not "was the frontend touched." Internal refactors, test-only changes, and backend plumbing with no user-visible effect need no doc update.
+
+2. **RU and EN are edited as a pair, always.** Every user-facing claim exists in both languages saying the same thing. Editing one language's guide without the other is a defect, not a follow-up. This applies to `README.md` too (its RU and EN halves).
+
+3. **App is free; the API is paid.** Glagol itself is free/MIT. Providers are paid or free-with-limits per their own terms (SaluteSpeech/TTS by subscription, Groq/others/STT per-usage or free-tier). Every pricing sentence keeps these two facts distinct — never let "the provider became paid" become "Glagol became paid."
+
+4. **Factual doc edits use the `glagol-docs` skill and commit direct to `main`.** Real-world facts the code doesn't enforce (a provider cancelled its free tier, a price changed) are applied via the `glagol-docs` skill: grep every occurrence across all three docs, fix all, keep RU/EN in sync. Docs-only → direct commit to `main`, no PR. One fact = one commit (`docs: <the fact>`). Master logs in `docs/day-logs/` and `CHANGELOG.md` are exempt — they follow their own conventions and are never retro-edited.
+
 ### Code style invariants
 
 1. **Rust: `cargo fmt` + `cargo clippy -- -D warnings`** — enforced in CI, no exceptions.
