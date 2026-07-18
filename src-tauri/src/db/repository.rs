@@ -778,6 +778,65 @@ mod tests {
     }
 
     #[test]
+    fn equal_created_at_uses_id_desc_tiebreaker_consistently_in_list_and_prune() {
+        // The `id DESC` tiebreaker (added in PR5a) must make `list_dictations` and
+        // the `insert_dictation` prune agree on "who is newest" when several rows
+        // share a `created_at`. Without it, SQLite's tie order is unspecified and
+        // the two could disagree — list showing one row as newest while prune drops
+        // a different one.
+        let mut conn = test_connection();
+        let ts = 5_000; // identical timestamp for every row
+
+        // Part 1 — ordering: three rows, same time. list must return them by
+        // descending id (highest id = most recently inserted = newest).
+        let id_a = insert_dictation(&mut conn, &sample_dictation(ts, "a")).unwrap();
+        let id_b = insert_dictation(&mut conn, &sample_dictation(ts, "b")).unwrap();
+        let id_c = insert_dictation(&mut conn, &sample_dictation(ts, "c")).unwrap();
+        let ids: Vec<i64> = list_dictations(&conn, None)
+            .unwrap()
+            .into_iter()
+            .map(|d| d.id)
+            .collect();
+        assert_eq!(
+            ids,
+            vec![id_c, id_b, id_a],
+            "equal created_at must order by id DESC (newest insert first)"
+        );
+
+        // Part 2 — prune agrees: fill past the cap, all same timestamp. The single
+        // pruned row must be the lowest id (the oldest by the tiebreaker), i.e. the
+        // exact row list would have placed last. list and prune stay consistent.
+        let mut conn = test_connection();
+        let cap = DICTATION_HISTORY_CAP;
+        let first_id = insert_dictation(&mut conn, &sample_dictation(ts, "first")).unwrap();
+        for _ in 1..=cap {
+            insert_dictation(&mut conn, &sample_dictation(ts, "x")).unwrap();
+        }
+
+        assert_eq!(dictation_count(&conn), cap, "pruned to exactly the cap");
+        let survivors = list_dictations(&conn, None).unwrap();
+        // The lowest id (first inserted) is the one prune dropped.
+        assert!(
+            survivors.iter().all(|d| d.id != first_id),
+            "on a created_at tie, prune must drop the lowest id (oldest by tiebreaker)"
+        );
+        // list and prune agree: the oldest survivor list reports (its last row) is
+        // the smallest surviving id, and ids descend monotonically throughout.
+        let survivor_ids: Vec<i64> = survivors.iter().map(|d| d.id).collect();
+        let mut sorted_desc = survivor_ids.clone();
+        sorted_desc.sort_unstable_by(|a, b| b.cmp(a));
+        assert_eq!(
+            survivor_ids, sorted_desc,
+            "list must return equal-timestamp survivors in strict id-DESC order"
+        );
+        assert_eq!(
+            *survivor_ids.last().unwrap(),
+            first_id + 1,
+            "the oldest survivor is exactly the row just above the pruned one"
+        );
+    }
+
+    #[test]
     fn sum_recognition_seconds_totals_across_months() {
         let conn = test_connection();
         assert_eq!(
