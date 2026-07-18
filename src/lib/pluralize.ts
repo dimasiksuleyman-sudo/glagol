@@ -35,3 +35,13 @@ export function pluralizeDocuments(n: number): string {
 export function pluralizeFiles(n: number): string {
   return pluralRu(n, "файл", "файла", "файлов");
 }
+
+/** «1 минута» / «2 минуты» / «5 минут» — the «Надиктовано всего» counter. */
+export function pluralizeMinutes(n: number): string {
+  return pluralRu(n, "минута", "минуты", "минут");
+}
+
+/** «1 запись» / «2 записи» / «5 записей» — the dictation history counter. */
+export function pluralizeEntries(n: number): string {
+  return pluralRu(n, "запись", "записи", "записей");
+}

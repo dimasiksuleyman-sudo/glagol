@@ -56,12 +56,50 @@ pub const DICTATION_STATE_EVENT: &str = "dictation-state";
 /// an API request.
 pub const MIN_DICTATION_MS: u32 = 300;
 
-/// Linear-RMS silence floor for a whole clip (D8). A clip quieter than this is
-/// discarded. `0.005` is the *start* value from D8 — a mic noise floor with
-/// Windows AGC sits at 0.001–0.01, tided speech well above. Logged per clip at
-/// `debug` (D8-a) so a week of real use calibrates it; the weakening criterion
-/// (D8-b: halve it if live whispers get cut) is a QA follow-up, not shipped code.
+/// Linear-RMS silence threshold for a whole clip (D8). A clip quieter than this
+/// is discarded as silence. Day-10 calibration (7 real clips) vindicated `0.005`
+/// on 3 of 3 signal classes: measured room floor with a fan running was 0.00396
+/// (−48 dBFS, correctly rejected), whisper 0.0105 (+8.5 dB, kept), normal speech
+/// 0.0164 (+12.4 dB, kept). The threshold is **not moved** — it is correct, and
+/// with ~a day of data it is too early to re-centre by distribution (that is
+/// post-MVP). It lives inside the [`SILENCE_RMS_FLOOR`]..=[`SILENCE_RMS_CEILING`]
+/// band; the `silence_threshold_sits_inside_calibration_band` test proves it.
 pub const SILENCE_RMS_THRESHOLD: f32 = 0.005;
+
+/// Measured room noise floor from day-10 calibration: a fan running during the
+/// "silence" recording read 0.00396 linear RMS (−48 dBFS). Any silence threshold
+/// at or below this lets ambient hum pass the gate, and Whisper then hallucinates
+/// grammatical text nobody spoke straight into the clipboard. This is the hard
+/// lower bound the [`relaxed_silence_threshold`] clamp must never cross.
+pub const MEASURED_NOISE_FLOOR: f32 = 0.003_96;
+
+/// Safety margin above [`MEASURED_NOISE_FLOOR`] for the threshold floor, so a
+/// slightly noisier-than-measured room still can't push silence through.
+pub const NOISE_FLOOR_MARGIN: f32 = 0.000_5;
+
+/// Lower bound for any silence threshold (D10): the measured room floor plus a
+/// margin. The original D8-b relaxation rider — "if whispers get cut, halve the
+/// threshold" — is a self-destruct instruction: 0.005 ÷ 2 = 0.0025, *below* the
+/// 0.00396 floor, so silence would pass always. The corrected criterion clamps to
+/// this floor instead (see [`relaxed_silence_threshold`]).
+pub const SILENCE_RMS_FLOOR: f32 = MEASURED_NOISE_FLOOR + NOISE_FLOOR_MARGIN;
+
+/// Upper bound for any silence threshold (D10): **0.007**, safely below whisper's
+/// measured 0.0105 RMS. Day-10 data refuted the original 0.01 ceiling, which sat
+/// at ~95 % of whisper's RMS — a cliff that would cut real whispered speech, not
+/// a fuse. No threshold (or future adaptive raise for noisy rooms) may exceed it.
+pub const SILENCE_RMS_CEILING: f32 = 0.007;
+
+/// Relax (lower) the silence threshold toward catching quieter speech, clamped so
+/// it never drops to or below [`SILENCE_RMS_FLOOR`] (D10). This replaces the naive
+/// "halve it" rider, which lands at 0.0025 — under the room floor — and would let
+/// every clip (including pure silence) through. Pure and side-effect-free; the
+/// adaptive/relaxation path that would call it is post-MVP, but the corrected,
+/// floor-guarded criterion ships and is tested now so it can never regress to the
+/// self-destruct form.
+pub fn relaxed_silence_threshold(current: f32) -> f32 {
+    (current * 0.5).max(SILENCE_RMS_FLOOR)
+}
 
 /// Default wall-clock watchdog: the same 60 s as the recorder's sample cap
 /// ([`super::MAX_RECORDING_MS`]). Injectable via [`DictationOpts`] so tests can
@@ -944,6 +982,57 @@ mod tests {
             "exactly at threshold is not below it"
         );
         assert_eq!(discard_reason(300, 0.9), None);
+    }
+
+    // ── D8 calibration band (D10) ──
+
+    #[test]
+    fn silence_threshold_sits_inside_calibration_band() {
+        // D10: the shipped threshold must live strictly between the room-floor
+        // floor and the whisper-protecting ceiling. Below the floor, silence
+        // passes; above the ceiling, whispers get cut. The values are bound to
+        // locals so the comparisons are checked at runtime rather than folded to
+        // a constant assertion (which clippy rightly flags as pointless).
+        let (floor, threshold, ceiling) = (
+            SILENCE_RMS_FLOOR,
+            SILENCE_RMS_THRESHOLD,
+            SILENCE_RMS_CEILING,
+        );
+        // Measured day-10 whisper RMS the ceiling must stay under.
+        let whisper_rms = 0.0105_f32;
+        assert!(
+            floor < threshold,
+            "threshold {threshold} must clear the noise floor {floor}"
+        );
+        assert!(
+            threshold < ceiling,
+            "threshold {threshold} must stay below the whisper ceiling {ceiling}"
+        );
+        assert!(
+            ceiling < whisper_rms,
+            "ceiling {ceiling} must not cut whisper ({whisper_rms})"
+        );
+    }
+
+    #[test]
+    fn relaxed_threshold_never_sinks_below_the_floor() {
+        // D10 negative of the "halve it" self-destruct rider: relaxing the shipped
+        // threshold must clamp at the floor, never reach 0.0025 (below the 0.00396
+        // room floor), which would let silence — and thus Whisper hallucinations —
+        // through on every clip.
+        let relaxed = relaxed_silence_threshold(SILENCE_RMS_THRESHOLD);
+        assert!(
+            relaxed >= SILENCE_RMS_FLOOR,
+            "relaxed threshold {relaxed} must not drop below the floor {SILENCE_RMS_FLOOR}"
+        );
+        assert!(
+            relaxed > MEASURED_NOISE_FLOOR,
+            "relaxed threshold {relaxed} must stay above the measured room floor {MEASURED_NOISE_FLOOR}"
+        );
+        // An already-comfortable threshold relaxes normally (halved), no clamp.
+        assert!((relaxed_silence_threshold(0.02) - 0.01).abs() < 1e-6);
+        // A pathological tiny input is still clamped up to the floor, never below.
+        assert_eq!(relaxed_silence_threshold(0.0), SILENCE_RMS_FLOOR);
     }
 
     // ── insertion mode → disposition (D12/D13) ──

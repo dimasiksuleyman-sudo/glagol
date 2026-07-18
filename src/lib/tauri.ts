@@ -486,4 +486,109 @@ export type DictationState =
  */
 export const DICTATION_STATE_EVENT = "dictation-state";
 
+// ── Dictation page (Sprint 6 PR5b) ──────────────────────────────────────
+
+/**
+ * Non-secret Dictation-page settings. Mirrors
+ * `commands::dictation::DictationSettings` on the Rust side — serde keeps the
+ * field names as-is (snake_case) so the shape lines up 1:1 over the IPC
+ * boundary, matching the `SttSettings` / `DocumentRecord` convention.
+ *
+ * The hotkey is deliberately read here but written through {@link setDictationHotkey}
+ * (never {@link setDictationSetting}) so the backend's live unregister/register
+ * with rollback always runs (PR5a D7).
+ */
+export interface DictationSettings {
+  /** global-shortcut accelerator string, e.g. `"CmdOrCtrl+Shift+Space"`. */
+  hotkey: string;
+  /** Pinned input-device name; empty string = system default. */
+  device: string;
+  /** History opt-in (default off). */
+  history_enabled: boolean;
+  /** STT provider preset name. */
+  provider: string;
+  /** Recognition model id (shared with the STT settings block). */
+  model: string;
+  /** `"paste" | "clipboard_only"` — the effective auto-insertion mode. */
+  insertion_mode: string;
+}
+
+/**
+ * One persisted dictation-history row. Mirrors `db::repository::Dictation` on
+ * the Rust side; serde uses field names as-is (snake_case). `status` mirrors the
+ * pipeline `Disposition`: `"pasted" | "clipboard" | "error"`. `error_message` is
+ * non-null only for `"error"` rows.
+ */
+export interface Dictation {
+  /** SQLite AUTOINCREMENT row id. */
+  id: number;
+  /** Unix epoch milliseconds. */
+  created_at: number;
+  duration_ms: number;
+  text: string;
+  /** `"pasted" | "clipboard" | "error"`. */
+  status: string;
+  error_message: string | null;
+}
+
+/**
+ * Read every dictation-page setting, with backend defaults substituted for any
+ * key that has never been saved (D3). Cache-first is not applicable here — the
+ * settings are plain DB reads, cheap enough to fetch on every mount.
+ */
+export async function getDictationSettings(): Promise<DictationSettings> {
+  return await invoke<DictationSettings>("get_dictation_settings");
+}
+
+/**
+ * Persist a single dictation-page setting by whitelisted `name`
+ * (`stt_insertion_mode`, `dictation_device`, `dictation_history_enabled`,
+ * `stt_model`, `stt_provider`). The hotkey is **not** settable here — it goes
+ * through {@link setDictationHotkey}. Rejects with a Russian-language string on
+ * an invalid value or an unknown key; nothing is written unless it validates.
+ */
+export async function setDictationSetting(name: string, value: string): Promise<void> {
+  await invoke("set_dictation_setting", { name, value });
+}
+
+/**
+ * Change the push-to-talk hotkey (D7). The backend unregisters the old
+ * accelerator and registers `hotkey` live; on a conflict (another app owns the
+ * combo) it rolls back to the previous hotkey and rejects, so the user is never
+ * left with no working hotkey. `hotkey` is a global-shortcut accelerator string
+ * (`"Ctrl+Shift+Space"`, `"Alt+Shift+D"`, …). Rejects with a Russian-language
+ * string on a malformed accelerator or a registration conflict.
+ */
+export async function setDictationHotkey(hotkey: string): Promise<void> {
+  await invoke("set_dictation_hotkey", { hotkey });
+}
+
+/**
+ * List dictation-history rows, newest first, capped by `limit`. Returns `[]`
+ * when history is disabled even if stale rows survive from a period when it was
+ * on — «off» means the UI never surfaces transcripts (D4). The page passes
+ * `limit = 10` (the on-disk cap).
+ */
+export async function listDictations(limit?: number): Promise<Dictation[]> {
+  return await invoke<Dictation[]>("list_dictations", { limit: limit ?? null });
+}
+
+/**
+ * Delete every dictation-history row (the «Очистить историю» button). Turning
+ * the history toggle off only stops future writes; this is the explicit,
+ * irreversible clear of what was already recorded (D5).
+ */
+export async function clearDictationHistory(): Promise<void> {
+  await invoke("clear_dictation_history");
+}
+
+/**
+ * Lifetime «Надиктовано всего» figure in whole minutes (D4). Reads the always-on
+ * recognition-seconds ledger (independent of the history toggle) and floors to
+ * minutes. This is a lifetime total, **not** a per-month counter.
+ */
+export async function getRecognitionsMinutes(): Promise<number> {
+  return await invoke<number>("get_recognitions_minutes");
+}
+
 export { Channel };

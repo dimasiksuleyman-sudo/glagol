@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 
 import { AppShell } from "@/components/layout/AppShell";
+import { Dictation } from "@/pages/Dictation";
 import { Library } from "@/pages/Library";
 import { Settings } from "@/pages/Settings";
 import { Synthesize } from "@/pages/Synthesize";
@@ -20,6 +21,7 @@ function App() {
         <Route path="/" element={<Navigate to="/synthesize" replace />} />
         <Route path="/synthesize" element={<Synthesize />} />
         <Route path="/library" element={<Library />} />
+        <Route path="/dictation" element={<Dictation />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="*" element={<Navigate to="/synthesize" replace />} />
       </Route>

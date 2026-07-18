@@ -675,16 +675,16 @@ pub async fn set_dictation_hotkey(
     set_dictation_hotkey_impl(&state, &registrar, &old, &hotkey, updated_at)
 }
 
-/// Gating (D4): when history is **off**, `list_dictations` returns empty even if
-/// stale rows survive from a period when it was on — "off" means the UI never
-/// surfaces transcripts. When on, returns rows newest-first, capped by `limit`.
+/// List history rows newest-first, capped by `limit` (D5). Reads are **not**
+/// gated by the history toggle: turning the toggle off only stops new rows being
+/// written (the gate lives in [`crate::dictation::session::record_dictation_history`]),
+/// while everything already recorded stays visible until the user explicitly
+/// clears it. This reverses PR5a's read-side gating, which contradicted the D5
+/// product decision — the tumbler governs the future, «Очистить» governs the past.
 pub(crate) fn list_dictations_impl(
     conn: &Connection,
     limit: Option<i64>,
 ) -> rusqlite::Result<Vec<Dictation>> {
-    if !read_history_enabled(conn)? {
-        return Ok(Vec::new());
-    }
     repository::list_dictations(conn, limit)
 }
 
@@ -919,9 +919,12 @@ mod tests {
     }
 
     #[test]
-    fn list_dictations_impl_gated_by_history_toggle() {
+    fn list_dictations_impl_reads_are_not_gated_by_history_toggle() {
+        // D5: reads are ungated. Turning history off only stops new writes (that
+        // gate lives in `session::record_dictation_history`); everything already
+        // recorded stays visible until «Очистить». This is the reversal of PR5a's
+        // read-side gating — the tumbler governs the future, not the past.
         let mut conn = crate::db::test_connection();
-        // Seed a row (simulating a period when history was on).
         repository::insert_dictation(
             &mut conn,
             &repository::NewDictation {
@@ -934,14 +937,20 @@ mod tests {
         )
         .unwrap();
 
-        // History off (default) → the list surfaces nothing even though a row exists.
-        assert!(list_dictations_impl(&conn, None).unwrap().is_empty());
+        // History off (the default): the accumulated row is STILL surfaced.
+        let rows_off = list_dictations_impl(&conn, None).unwrap();
+        assert_eq!(
+            rows_off.len(),
+            1,
+            "off must not hide accumulated history (D5)"
+        );
+        assert_eq!(rows_off[0].text, "привет");
 
-        // History on → the row appears.
+        // Turning history on changes nothing for reads — the same row, still there.
         repository::set_setting(&conn, KEY_HISTORY_ENABLED, "true", 2).unwrap();
-        let rows = list_dictations_impl(&conn, None).unwrap();
-        assert_eq!(rows.len(), 1);
-        assert_eq!(rows[0].text, "привет");
+        let rows_on = list_dictations_impl(&conn, None).unwrap();
+        assert_eq!(rows_on.len(), 1);
+        assert_eq!(rows_on[0].text, "привет");
     }
 
     #[test]
