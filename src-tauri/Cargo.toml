@@ -1,6 +1,6 @@
 [package]
 name = "glagol"
-version = "0.2.0"
+version = "0.2.1"
 description = "Free local text-to-speech for long Russian documents via SaluteSpeech"
 authors = ["Glagol Contributors"]
 edition = "2021"
@@ -27,6 +27,17 @@ tauri-build = { version = "2", features = [] }
 #     working, and the tray icon swaps between idle/recording states. `image-png`
 #     lets `Image::from_bytes` decode the embedded PNG tray icons.
 tauri = { version = "2", features = ["protocol-asset", "tray-icon", "image-png"] }
+# Single-instance lock (v0.2.1 fix). Glagol registers a process-global hotkey
+# and writes one SQLite + one rolling log; a second copy either fails to claim
+# the hotkey or steals it out from under the first. This plugin makes the first
+# launch the only process — a second launch hands its argv to the running one
+# (see the callback in `lib.rs`) and exits. It is registered FIRST in the
+# builder so it fires before `global-shortcut` can even try to grab the combo.
+# Exact `=`-pin (D1 freshness convention): 2.4.3 is the latest 2.x on crates.io
+# (13.07.2026); its deps (`tauri ^2.10`, `windows-sys ^0.60`, `zbus ^5.9`) all
+# unify with the existing graph — no new `windows` split, unlike the cpal 0.18
+# incident.
+tauri-plugin-single-instance = "=2.4.3"
 tauri-plugin-opener = "2"
 tauri-plugin-dialog = "2"
 # Global hotkey for push-to-talk dictation (Sprint 6 PR3). Registered from Rust

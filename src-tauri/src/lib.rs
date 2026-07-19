@@ -81,6 +81,17 @@ pub fn run() {
         .expect("failed to build HTTP client (embedded НУЦ Минцифры cert may be malformed)");
 
     tauri::Builder::default()
+        // Single-instance lock (v0.2.1). MUST be registered FIRST so it runs
+        // before `global-shortcut` (and every other plugin) can act: a second
+        // launch has to be intercepted *before* it tries to grab the process-
+        // global hotkey, or it steals the combo from the copy the user is
+        // already using. The callback runs inside the ORIGINAL, already-running
+        // process (the second one exits) — so it brings the existing window
+        // forward from the tray rather than starting anything new (D2). argv/cwd
+        // are unused: Glagol takes no file arguments.
+        .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+            dictation::session::show_main_window(app);
+        }))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         // Global push-to-talk hotkey (Sprint 6 PR3). One handler dispatches the

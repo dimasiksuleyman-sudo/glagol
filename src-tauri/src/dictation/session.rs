@@ -459,8 +459,12 @@ fn set_tray_recording(app: &AppHandle, recording: bool) {
     }
 }
 
-/// Show + focus the main window (tray «Показать», D11).
-fn show_main_window(app: &AppHandle) {
+/// Show + un-minimize + focus the main window. Used by the tray «Показать»
+/// item (D11) and by the single-instance callback (v0.2.1): a second launch
+/// must bring the running copy forward from the tray, not silently no-op. The
+/// window may be hidden (closed to tray), minimized, or already visible — each
+/// step is best-effort so any starting state ends up shown and focused.
+pub fn show_main_window(app: &AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.show();
         let _ = window.unminimize();
