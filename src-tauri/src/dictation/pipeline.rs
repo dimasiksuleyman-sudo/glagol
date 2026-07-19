@@ -268,6 +268,25 @@ where
     pub phase: &'a Mutex<DictationPhase>,
 }
 
+/// The seams [`deliver_clip`] drives — the **delivery** half of a dictation,
+/// with no recorder. Push-to-talk builds one from its [`DictationDeps`] fields;
+/// the hands-free listener (PR2), which owns no per-utterance recorder handle,
+/// builds one directly. A struct (not loose args) keeps `deliver_clip` under the
+/// argument-count lint and mirrors [`DictationDeps`].
+pub struct DeliverDeps<'a, P, I, C, E>
+where
+    P: SttProvider,
+    I: TextInserter,
+    C: ClipboardAccess,
+    E: DictationEmitter,
+{
+    pub provider: &'a P,
+    pub inserter: &'a I,
+    pub clipboard: &'a C,
+    pub emitter: &'a E,
+    pub phase: &'a Mutex<DictationPhase>,
+}
+
 // ── Pure helpers ────────────────────────────────────────────────────────
 
 /// Linear RMS of a finalized clip, computed on the `i16` samples reinterpreted
@@ -293,7 +312,9 @@ fn discard_reason(duration_ms: u32, rms: f32) -> Option<DiscardReason> {
 }
 
 /// Set the shared phase in a tight block scope (never held across an `.await`).
-fn set_phase(phase: &Mutex<DictationPhase>, next: DictationPhase) {
+/// `pub(crate)` so the hands-free listener (PR2) can claim `Recording` on a
+/// voice-detected utterance the same way the hotkey path does.
+pub(crate) fn set_phase(phase: &Mutex<DictationPhase>, next: DictationPhase) {
     if let Ok(mut guard) = phase.lock() {
         *guard = next;
     }
@@ -342,7 +363,13 @@ where
                 );
             }
         }
-        Err(e) => return fail(&deps, recorder_error_to_user_facing_ru(&e)),
+        Err(e) => {
+            return fail(
+                deps.emitter,
+                deps.phase,
+                recorder_error_to_user_facing_ru(&e),
+            )
+        }
     }
 
     // Wait for the hotkey release or the watchdog, whichever comes first (D10).
@@ -356,8 +383,61 @@ where
     // Stop + finalize. Either branch above converges here.
     let pcm = match deps.recorder.stop().await {
         Ok(pcm) => pcm,
-        Err(e) => return fail(&deps, recorder_error_to_user_facing_ru(&e)),
+        Err(e) => {
+            return fail(
+                deps.emitter,
+                deps.phase,
+                recorder_error_to_user_facing_ru(&e),
+            )
+        }
     };
+
+    // Silence filter → transcription → insertion is shared with the hands-free
+    // listener (PR2), which produces its own `PcmAudio` from a voice-activity
+    // segment and must deliver it identically. The whole tail lives in
+    // `deliver_clip` so both entry points stay one implementation.
+    deliver_clip(
+        &DeliverDeps {
+            provider: deps.provider,
+            inserter: deps.inserter,
+            clipboard: deps.clipboard,
+            emitter: deps.emitter,
+            phase: deps.phase,
+        },
+        pcm,
+        opts.lang.as_deref(),
+        opts.mode,
+    )
+    .await
+}
+
+/// Deliver a finalized clip into the active window: silence filter (D8) →
+/// transcribe (PR1) → insert (PR4) → terminal `done`/`error` event.
+///
+/// Extracted from [`run_dictation`] in the hands-free work (PR2) so push-to-talk
+/// and the voice-activated listener share **one** delivery path. Both produce a
+/// [`PcmAudio`] — one from a hotkey hold, one from a VAD-segmented utterance —
+/// and from here on the behaviour must be identical: the same silence gate, the
+/// same empty-transcript discard, the same insertion seams, the same events.
+/// `phase` is set to `Processing` for transcription and reset to `Idle` on every
+/// exit.
+pub async fn deliver_clip<P, I, C, E>(
+    deps: &DeliverDeps<'_, P, I, C, E>,
+    pcm: PcmAudio,
+    lang: Option<&str>,
+    mode: InsertionMode,
+) -> DictationOutcome
+where
+    P: SttProvider,
+    I: TextInserter,
+    C: ClipboardAccess,
+    E: DictationEmitter,
+{
+    let provider = deps.provider;
+    let inserter = deps.inserter;
+    let clipboard = deps.clipboard;
+    let emitter = deps.emitter;
+    let phase = deps.phase;
 
     // Silence filter (D8). Compute + log RMS for every clip (D8-a), then decide.
     let rms = clip_rms(&pcm);
@@ -369,20 +449,16 @@ where
     );
     if let Some(reason) = discard_reason(pcm.duration_ms, rms) {
         tracing::debug!(?reason, "dictation clip discarded before transcription");
-        return discard(&deps, reason);
+        return discard(emitter, phase, reason);
     }
 
     // Transcribe (PR1). The clip is already 16 kHz mono S16LE; wrap it as WAV.
-    set_phase(deps.phase, DictationPhase::Processing);
-    deps.emitter.emit_state(DictationState::Processing);
+    set_phase(phase, DictationPhase::Processing);
+    emitter.emit_state(DictationState::Processing);
     let wav_bytes = wav::wrap_wav_s16le_mono(&pcm.samples, pcm.sample_rate);
-    let text = match deps
-        .provider
-        .transcribe(wav_bytes, opts.lang.as_deref())
-        .await
-    {
+    let text = match provider.transcribe(wav_bytes, lang).await {
         Ok(t) => t.text,
-        Err(e) => return fail(&deps, stt_error_to_user_facing_ru(&e)),
+        Err(e) => return fail(emitter, phase, stt_error_to_user_facing_ru(&e)),
     };
 
     // A provider can return empty text for a clip that passed the RMS gate
@@ -391,17 +467,16 @@ where
     let text = text.trim();
     if text.is_empty() {
         tracing::debug!("provider returned empty transcript; discarding");
-        return discard(&deps, DiscardReason::EmptyTranscript);
+        return discard(emitter, phase, DiscardReason::EmptyTranscript);
     }
 
     // Deliver: snapshot → clipboard → paste → restore, all behind the seams and
     // off the async worker (D6/D9). `enigo` + `arboard` are both blocking, so the
     // whole insertion runs in one `spawn_blocking`; the seams are cheap `Clone`s
     // that construct their real OS handle per call (D8).
-    let inserter = deps.inserter.clone();
-    let clipboard = deps.clipboard.clone();
+    let inserter = inserter.clone();
+    let clipboard = clipboard.clone();
     let owned = text.to_string();
-    let mode = opts.mode;
     let delivery =
         tokio::task::spawn_blocking(move || insert_transcript(&inserter, &clipboard, &owned, mode))
             .await;
@@ -415,16 +490,17 @@ where
                 // delivered anywhere, so tell the user loudly (D10).
                 InsertOutcome::Failed => {
                     return fail(
-                        &deps,
+                        emitter,
+                        phase,
                         "Буфер обмена занят другим приложением. Попробуйте ещё раз.".to_string(),
                     );
                 }
             };
-            deps.emitter.emit_state(DictationState::Done {
+            emitter.emit_state(DictationState::Done {
                 disposition,
                 truncated: pcm.truncated,
             });
-            set_phase(deps.phase, DictationPhase::Idle);
+            set_phase(phase, DictationPhase::Idle);
             DictationOutcome::Delivered {
                 truncated: pcm.truncated,
                 duration_ms: pcm.duration_ms,
@@ -433,43 +509,41 @@ where
             }
         }
         // spawn_blocking join failure (panic inside the blocking task).
-        Err(e) => fail(&deps, format!("Не удалось выполнить вставку: {e}.")),
+        Err(e) => fail(
+            emitter,
+            phase,
+            format!("Не удалось выполнить вставку: {e}."),
+        ),
     }
 }
 
-/// Emit an `error` event, reset the phase, and report failure.
-fn fail<R, P, I, C, E>(deps: &DictationDeps<'_, R, P, I, C, E>, message: String) -> DictationOutcome
-where
-    R: RecorderControl,
-    P: SttProvider,
-    I: TextInserter,
-    C: ClipboardAccess,
-    E: DictationEmitter,
-{
-    deps.emitter.emit_state(DictationState::Error {
+/// Emit an `error` event, reset the phase, and report failure. Takes the two
+/// seams it actually uses (emitter + phase) rather than the full
+/// [`DictationDeps`], so [`deliver_clip`] — which owns no recorder — shares it.
+fn fail<E: DictationEmitter>(
+    emitter: &E,
+    phase: &Mutex<DictationPhase>,
+    message: String,
+) -> DictationOutcome {
+    emitter.emit_state(DictationState::Error {
         message: message.clone(),
     });
-    set_phase(deps.phase, DictationPhase::Idle);
+    set_phase(phase, DictationPhase::Idle);
     DictationOutcome::Failed { message }
 }
 
 /// Emit a silent-discard `done` event, reset the phase, and report the reason.
-fn discard<R, P, I, C, E>(
-    deps: &DictationDeps<'_, R, P, I, C, E>,
+/// Like [`fail`], takes just emitter + phase so [`deliver_clip`] can reuse it.
+fn discard<E: DictationEmitter>(
+    emitter: &E,
+    phase: &Mutex<DictationPhase>,
     reason: DiscardReason,
-) -> DictationOutcome
-where
-    R: RecorderControl,
-    P: SttProvider,
-    I: TextInserter,
-    C: ClipboardAccess,
-    E: DictationEmitter,
-{
-    deps.emitter.emit_state(DictationState::Done {
+) -> DictationOutcome {
+    emitter.emit_state(DictationState::Done {
         disposition: Disposition::Discarded,
         truncated: false,
     });
-    set_phase(deps.phase, DictationPhase::Idle);
+    set_phase(phase, DictationPhase::Idle);
     DictationOutcome::Discarded(reason)
 }
 

@@ -31,6 +31,7 @@
 //! `#[ignore]` microphone test (see `recorder`) is the manual gate (D14).
 
 pub mod insert;
+pub mod listener;
 pub mod pipeline;
 pub mod recorder;
 pub mod resample;
