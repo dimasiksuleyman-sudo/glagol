@@ -35,6 +35,7 @@ pub mod pipeline;
 pub mod recorder;
 pub mod resample;
 pub mod session;
+pub mod vad;
 
 use thiserror::Error;
 use tokio::sync::oneshot;
