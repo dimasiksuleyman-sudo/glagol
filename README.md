@@ -75,6 +75,8 @@ Glagol — бесплатное open source приложение (MIT). За р�
 - 📋 **Автовставка или буфер** — на выбор: текст вставляется автоматически или копируется в буфер
 - 🎹 **Настраиваемый хоткей** — по умолчанию `Ctrl+Shift+Space`, меняется на странице «Диктовка»
 - 🎙️ **Выбор микрофона** из списка устройств
+- 💻 **Диктовка без интернета** — GigaAM v3 CTC или RNNT с пунктуацией скачивается из настроек по желанию (около 272–274 МБ + движок 20 МБ); модели не входят в установщик
+- 🏢 **Сервер организации** — общий OpenAI-совместимый распознаватель для компьютеров офиса, с отдельными настройками и необязательным API-ключом
 - 🔌 **Выбор STT-провайдера** — Groq (бесплатный тариф) и другие OpenAI-совместимые эндпоинты; base URL, модель и прокси настраиваются
 - 📝 **Локальная история** последних 10 расшифровок — по умолчанию **выключена**, тексты не касаются диска без необходимости
 - 🌐 **Без системного VPN** — работает через провайдеров, доступных из РФ
@@ -194,6 +196,8 @@ Existing Russian TTS solutions have gaps:
 - 📋 **Auto-paste or clipboard** — your choice
 - 🎹 **Configurable hotkey** — `Ctrl+Shift+Space` by default, changeable on the Dictation page
 - 🎙️ **Microphone selection** from the device list
+- 💻 **Offline dictation** — optionally download GigaAM v3 CTC or RNNT with punctuation from Settings (about 272–274 MB + a 20 MB engine); models are not bundled with the installer
+- 🏢 **Organization server** — a shared OpenAI-compatible recognizer for office computers, with separate settings and an optional API key
 - 🔌 **Choose your STT provider** — Groq (free tier) and other OpenAI-compatible endpoints; base URL, model and proxy are configurable
 - 📝 **Local history** of the last 10 transcripts — **off by default**, text never touches disk unless you opt in
 - 🌐 **No system VPN** — works through providers reachable from Russia

@@ -9,6 +9,7 @@ pub mod backup;
 pub mod credentials;
 pub mod dictation;
 pub mod file;
+pub mod speech;
 pub mod storage;
 pub mod synthesize;
 pub mod usage;

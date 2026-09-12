@@ -143,6 +143,62 @@ fn stt_key_entry() -> KeyringResult<Entry> {
     Entry::new(SERVICE, USERNAME_STT_KEY).map_err(|e| KeyringError::Backend(e.to_string()))
 }
 
+/// Separate office-server credential; never reuse the cloud provider's key.
+pub fn get_server_stt_key() -> KeyringResult<Option<String>> {
+    let entry = Entry::new(SERVICE, "stt_server_api_key")
+        .map_err(|e| KeyringError::Backend(e.to_string()))?;
+    get_with(&entry)
+}
+
+/// Store an optional office-server key in Windows Credential Manager.
+pub fn set_server_stt_key(key: &str) -> KeyringResult<()> {
+    let entry = Entry::new(SERVICE, "stt_server_api_key")
+        .map_err(|e| KeyringError::Backend(e.to_string()))?;
+    set_with(&entry, key)
+}
+
+/// Remove the office-server key without affecting cloud dictation.
+pub fn delete_server_stt_key() -> KeyringResult<()> {
+    let entry = Entry::new(SERVICE, "stt_server_api_key")
+        .map_err(|e| KeyringError::Backend(e.to_string()))?;
+    delete_with(&entry)
+}
+
+fn bound_stt_entry(server: bool) -> KeyringResult<Entry> {
+    Entry::new(
+        SERVICE,
+        if server {
+            "speech_server"
+        } else {
+            "speech_cloud"
+        },
+    )
+    .map_err(|e| KeyringError::Backend(e.to_string()))
+}
+
+/// Endpoint and key are written atomically as one OS credential, so a failed
+/// database write cannot make an old endpoint receive a newly entered key.
+pub fn set_bound_stt_key(server: bool, endpoint: &str, key: &str) -> KeyringResult<()> {
+    let value = serde_json::to_string(&(endpoint, key))
+        .map_err(|e| KeyringError::Internal(e.to_string()))?;
+    set_with(&bound_stt_entry(server)?, &value)
+}
+
+/// Read the endpoint-bound credential; the secret never crosses the IPC boundary.
+pub fn get_bound_stt_key(server: bool) -> KeyringResult<Option<(String, String)>> {
+    get_with(&bound_stt_entry(server)?)?
+        .map(|value| {
+            serde_json::from_str(&value)
+                .map_err(|_| KeyringError::Internal("invalid speech credential".into()))
+        })
+        .transpose()
+}
+
+/// Delete the new endpoint-bound credential for one mode.
+pub fn delete_bound_stt_key(server: bool) -> KeyringResult<()> {
+    delete_with(&bound_stt_entry(server)?)
+}
+
 // ───────────────────────────────────────────────────────────────
 // Internal helpers — operate on a borrowed `Entry`.
 //

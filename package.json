@@ -1,11 +1,11 @@
 {
   "name": "glagol",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.3.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "node scripts/check-version.mjs && tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri"
   },

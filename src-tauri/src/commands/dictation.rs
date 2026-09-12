@@ -231,8 +231,15 @@ pub(crate) fn get_dictation_settings_impl(
         history_enabled: read_history_enabled(conn)?,
         provider: repository::get_setting(conn, KEY_PROVIDER)?
             .unwrap_or_else(|| DEFAULT_PROVIDER.to_string()),
-        model: repository::get_setting(conn, KEY_MODEL)?
-            .unwrap_or_else(|| DEFAULT_MODEL.to_string()),
+        model: repository::get_setting(
+            conn,
+            match repository::get_setting(conn, "stt_mode")?.as_deref() {
+                Some("local") => "stt_local_model",
+                Some("server") => "stt_server_model",
+                _ => KEY_MODEL,
+            },
+        )?
+        .unwrap_or_else(|| DEFAULT_MODEL.to_string()),
         insertion_mode: insertion_mode_str(read_insertion_mode(conn)?).to_string(),
     })
 }
@@ -468,7 +475,10 @@ pub(crate) fn build_stt_client(proxy: Option<&str>) -> Result<Client, String> {
 /// key + endpoint + proxy + transcribe path. Auth/Balance/Network failures are
 /// reported immediately — retrying via transcribe would not change the answer.
 /// A 429 means auth already succeeded, so it counts as "key works".
-async fn check_provider(provider: &OpenAiCompatStt, language: &str) -> Result<(), String> {
+pub(crate) async fn check_provider(
+    provider: &OpenAiCompatStt,
+    language: &str,
+) -> Result<(), String> {
     match provider.list_models().await {
         Ok(_) => Ok(()),
         Err(SttError::RateLimited(_)) => Ok(()),

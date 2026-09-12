@@ -10,6 +10,15 @@ use std::path::PathBuf;
 
 use tauri::{AppHandle, Manager};
 
+/// Downloaded speech models and versioned native runtime, outside the installer.
+pub fn local_models_root(app: &AppHandle) -> Result<PathBuf, String> {
+    Ok(app
+        .path()
+        .app_local_data_dir()
+        .map_err(|e| e.to_string())?
+        .join("speech_models"))
+}
+
 /// Root directory for synthesized audio files.
 ///
 /// Default: `%LOCALAPPDATA%\Glagol\audio_cache\` on Windows, the platform

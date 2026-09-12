@@ -1,6 +1,6 @@
 [package]
 name = "glagol"
-version = "0.2.1"
+version = "0.3.0"
 description = "Free local text-to-speech for long Russian documents via SaluteSpeech"
 authors = ["Glagol Contributors"]
 edition = "2021"
@@ -67,6 +67,11 @@ anyhow = "1"
 uuid = { version = "1", features = ["v4"] }
 base64 = "0.22"
 chrono = "0.4"
+sha2 = "0.10"
+libloading = "0.8"
+flate2 = "1"
+tar = "0.4"
+fs2 = "0.4"
 
 # Structured logging. `tracing` provides the macros; the subscriber that
 # actually routes them was missing until Sprint 6 PR3.1 — every `tracing::*!`

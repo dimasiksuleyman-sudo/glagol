@@ -26,6 +26,7 @@
 //! (Bearer) never travels in cleartext to a remote host. See
 //! [`validation::validate_base_url`].
 
+pub mod local;
 pub mod openai_compat;
 pub mod validation;
 pub mod wav;
@@ -133,6 +134,8 @@ pub enum SttBackend {
     /// Any OpenAI-compatible HTTP endpoint (AITunnel, Groq, a local
     /// whisper server, …).
     OpenAiCompat(openai_compat::OpenAiCompatStt),
+    /// Downloaded model, executed entirely on this computer.
+    Local(local::LocalProvider),
 }
 
 impl SttProvider for SttBackend {
@@ -143,12 +146,14 @@ impl SttProvider for SttBackend {
     ) -> Result<Transcript, SttError> {
         match self {
             SttBackend::OpenAiCompat(inner) => inner.transcribe(wav_bytes, lang).await,
+            SttBackend::Local(inner) => inner.transcribe(wav_bytes, lang).await,
         }
     }
 
     async fn list_models(&self) -> Result<Vec<String>, SttError> {
         match self {
             SttBackend::OpenAiCompat(inner) => inner.list_models().await,
+            SttBackend::Local(inner) => inner.list_models().await,
         }
     }
 }

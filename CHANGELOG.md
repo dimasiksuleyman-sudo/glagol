@@ -11,6 +11,12 @@ the per-session master logs under [`docs/day-logs/`](docs/day-logs/).
 
 ## [Unreleased]
 
+## [v0.3.0] — 2026-09-12
+
+### Added
+- **Локальная диктовка по желанию / Optional offline dictation.** GigaAM v3 E2E CTC и RNNT скачиваются из настроек вместе с нативным CPU-движком, без Python и увеличения установщика на размер моделей. Прогресс, отмена, продолжение, проверка SHA-256 и удаление неиспользуемых моделей. / Download GigaAM v3 E2E CTC or RNNT and the native CPU engine from Settings, with progress, cancellation, resume, SHA-256 verification and removal of unused models. Models are excluded from the installer.
+- **Сервер организации / Organization server.** Отдельные профили и ключи для облака и общего офисного сервера; HTTP для частных IP и localhost, HTTPS для остальных адресов. / Separate cloud and office-server profiles and keys; private-IP/localhost HTTP and HTTPS endpoints supported.
+
 ### Fixed
 - **Индикатор диктовки дожидается готовности микрофона.** Раньше пилюля
   показывала запись ещё до запуска захвата, из-за чего на Windows 11 речь,

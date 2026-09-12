@@ -354,6 +354,21 @@ export const SYNTHESIS_COMPLETED_EVENT = "synthesis-completed";
  * keyring and never crosses IPC on a read. Use {@link hasSttKey} to learn
  * whether a key is stored, {@link setSttKey} to store one.
  */
+export type SpeechMode = "local" | "server" | "cloud";
+export interface SpeechProfile { mode: SpeechMode; base_url: string; model: string; proxy: string; language: string }
+export interface SpeechSettings { profile: SpeechProfile; active_mode: SpeechMode; key_stored: boolean }
+export interface LocalModel { id: string; name: string; description: string; bytes: number; installed: boolean; partial_bytes: number }
+export interface ModelProgress { model_id: string; stage: string; downloaded: number; total: number }
+export interface LocalModelsStatus { supported: boolean; runtime_bytes: number; runtime_installed: boolean; models: LocalModel[]; progress: ModelProgress | null }
+export const getSpeechSettings = (mode?: SpeechMode) => invoke<SpeechSettings>("get_speech_settings", { mode });
+export const saveSpeechSettings = (profile: SpeechProfile, apiKey?: string) => invoke<void>("save_speech_settings", { profile, apiKey });
+export const testSpeechSettings = () => invoke<void>("test_speech_settings");
+export const deleteSpeechKey = (mode: SpeechMode) => invoke<void>("delete_speech_key", { mode });
+export const localModelsStatus = () => invoke<LocalModelsStatus>("local_models_status");
+export const downloadLocalModel = (id: string) => invoke<void>("download_local_model", { id });
+export const cancelModelDownload = () => invoke<void>("cancel_model_download");
+export const removeLocalModel = (id: string) => invoke<void>("remove_local_model", { id });
+
 export interface SttSettings {
   base_url: string;
   model: string;

@@ -30,10 +30,7 @@ use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
 use tauri_plugin_global_shortcut::{Code, Modifiers, Shortcut, ShortcutState};
 use tokio::sync::oneshot;
 
-use crate::commands::dictation::{
-    build_stt_client, get_stt_settings_impl, read_device_setting, read_history_enabled,
-    read_insertion_mode,
-};
+use crate::commands::dictation::{read_device_setting, read_history_enabled, read_insertion_mode};
 use crate::db::repository;
 use crate::dictation::insert::{ArboardClipboard, EnigoInserter, InsertionMode};
 use crate::dictation::pipeline::{
@@ -42,8 +39,8 @@ use crate::dictation::pipeline::{
 };
 use crate::dictation::DictationPhase;
 use crate::state::AppState;
-use crate::stt::openai_compat::OpenAiCompatStt;
 use crate::stt::validation;
+use crate::stt::SttBackend;
 
 /// Label of the always-present overlay window (created hidden at startup, D5).
 pub const OVERLAY_LABEL: &str = "overlay";
@@ -164,7 +161,7 @@ fn on_released(app: &AppHandle) {
 async fn run_session(app: AppHandle, release_rx: oneshot::Receiver<()>, token: u64) {
     let state = app.state::<AppState>();
 
-    let (provider, device, language, mode) = match build_provider(&state) {
+    let (provider, device, language, mode) = match build_provider(&app, &state) {
         Ok(setup) => setup,
         Err(message) => {
             // No key / bad config — surface it in the pill and stand down. The
@@ -273,38 +270,22 @@ fn finish_session(app: &AppHandle, state: &AppState, token: u64) {
 /// auto-insertion mode (D12). Returns a user-facing Russian error when the
 /// configuration is unusable — most importantly when a remote endpoint has no
 /// API key (D13).
-type SessionSetup = (
-    OpenAiCompatStt,
-    Option<String>,
-    Option<String>,
-    InsertionMode,
-);
+type SessionSetup = (SttBackend, Option<String>, Option<String>, InsertionMode);
 
-fn build_provider(state: &AppState) -> Result<SessionSetup, String> {
-    let (settings, mode, device) = {
+fn build_provider(app: &AppHandle, state: &AppState) -> Result<SessionSetup, String> {
+    let (provider, settings, mode, device) = {
         let conn = state
             .db
             .lock()
             .map_err(|e| format!("Не удалось получить блокировку базы данных: {e}"))?;
-        let settings = get_stt_settings_impl(&conn)
-            .map_err(|e| format!("Не удалось прочитать настройки диктовки: {e}"))?;
+        let (provider, settings) = crate::commands::speech::build_backend(app, &conn)?;
         let mode = read_insertion_mode(&conn)
             .map_err(|e| format!("Не удалось прочитать режим вставки: {e}"))?;
         let device = read_device_setting(&conn)
             .map_err(|e| format!("Не удалось прочитать устройство ввода: {e}"))?;
-        (settings, mode, device)
+        (provider, settings, mode, device)
     };
 
-    let key = crate::secrets::keyring::get_stt_key().map_err(|e| e.to_string())?;
-    if requires_missing_key(&settings.base_url, key.is_some()) {
-        return Err("Добавьте ключ STT в Настройках, чтобы пользоваться диктовкой.".to_string());
-    }
-
-    let proxy = settings.proxy.trim();
-    let client = build_stt_client(if proxy.is_empty() { None } else { Some(proxy) })?;
-    // Whisper prompt biasing hint for the app's proper nouns (D8).
-    let provider = OpenAiCompatStt::new(client, &settings.base_url, &settings.model, key)
-        .with_prompt(Some(crate::stt::DICTATION_PROMPT.to_string()));
     Ok((provider, device, resolve_language(&settings.language), mode))
 }
 

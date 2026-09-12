@@ -2,10 +2,16 @@
 
 > Карта репозитория и обзор архитектуры: что это за приложение, из чего оно состоит,
 > где что лежит и как части связаны между собой. Файл описывает **фактическое**
-> состояние кода (версия `0.2.1`), а не план из [CLAUDE.md](CLAUDE.md).
+> состояние кода (версия `0.3.0`), а не план из [CLAUDE.md](CLAUDE.md).
 >
 > Для операционных правил ИИ-ассистентов см. [CLAUDE.md](CLAUDE.md), для контрибьюторов-людей —
 > [CONTRIBUTING.md](CONTRIBUTING.md), для пользователей — [USER_GUIDE.md](USER_GUIDE.md).
+
+Версию приложения меняем согласованно в `package.json`, `src-tauri/tauri.conf.json`,
+`src-tauri/Cargo.toml` и записи `glagol` в `src-tauri/Cargo.lock`.
+`scripts/check-version.mjs` проверяет совпадение перед frontend/Tauri-сборкой.
+Новая функциональность повышает minor, исправления — patch; изменения версии
+сопровождаются записью CHANGELOG. Уже установленная копия меняет версию только после обновления.
 
 ---
 
@@ -20,8 +26,8 @@
 2. **Голосовой ввод / диктовка (STT).** Зажмите глобальный хоткей (по умолчанию
    `Ctrl+Shift+Space`), говорите, отпустите — распознанный текст **автоматически вставляется в
    активное окно** (Notepad, Chrome, Word, Telegram) или кладётся в буфер обмена. Распознавание
-   идёт через любой **OpenAI-совместимый STT-эндпоинт** (AITunnel, Groq, локальный
-   whisper-сервер), поэтому работает без системного VPN.
+   работает на компьютере с загружаемой GigaAM v3 либо через **OpenAI-совместимый
+   STT-эндпоинт** облачного сервиса или сервера организации.
 
 ### Ключевые свойства
 
@@ -105,7 +111,7 @@ src/
 │   │   ├── DevicePicker.tsx    # Выбор микрофона (системный по умолчанию)
 │   │   └── DictationHistory.tsx# Список последних расшифровок с раскрытием и копированием
 │   ├── settings/
-│   │   ├── DictationSection.tsx# STT-провайдер: base URL, модель, язык, прокси, API-ключ, тест
+│   │   ├── DictationSection.tsx# Три режима STT, загрузка моделей, профили сервера и облака
 │   │   ├── UsageSection.tsx    # Счётчик символов SaluteSpeech за текущий месяц
 │   │   └── BackupSection.tsx   # Создание/восстановление резервной копии библиотеки
 │   └── ScannedPdfDialog.tsx    # Предупреждение о сканированном (нетекстовом) PDF
@@ -159,6 +165,7 @@ src-tauri/
 │   │   ├── file.rs             # read_and_parse_file (лимиты размера + диспетчер по расширению)
 │   │   ├── backup.rs           # create/validate/restore_backup + relaunch_app
 │   │   ├── usage.rs            # get_current_month_usage
+│   │   ├── speech.rs           # Профили local/server/cloud, раздельные ключи, выбор backend
 │   │   └── dictation.rs        # Настройки STT и диктовки, ключ, список микрофонов,
 │   │                           #   хоткей, история, минуты распознавания
 │   │
@@ -172,6 +179,8 @@ src-tauri/
 │   │   ├── mod.rs              # Трейт SttProvider, Transcript, SttError, промпт-словарь
 │   │   ├── openai_compat.rs    # POST /audio/transcriptions (multipart) + GET /models (проба)
 │   │   ├── validation.rs       # Валидация base_url и прокси: https обязателен, http — только loopback
+│   │   ├── local/              # Каталог, загрузка с продолжением, проверка SHA-256,
+│   │   │                       #   transcribe.cpp C ABI, GigaAM CTC/RNNT на CPU в spawn_blocking
 │   │   └── wav.rs              # Упаковка PCM в WAV в памяти + генератор «0.5 с тишины» для пробы
 │   │
 │   ├── dictation/              # Весь путь «хоткей → микрофон → текст в окне»
@@ -214,7 +223,7 @@ src-tauri/
 │   │
 │   └── secrets/
 │       └── keyring.rs          # Windows Credential Manager: сервис «Glagol»,
-│                               #   записи salutespeech_auth_key и stt_api_key
+│                               #   SaluteSpeech, legacy STT, привязанные к адресу ключи cloud/server
 ├── assets/
 │   └── russiantrustedca.pem    # Корневой сертификат НУЦ Минцифры (коммитится — нужен для TLS Сбера)
 ├── icons/                      # Иконки приложения + tray-idle.png / tray-recording.png
@@ -272,7 +281,9 @@ Synthesize.tsx
    └─ pipeline.rs
         ├─ отсев: короче 300 мс или RMS ниже порога 0.005 → отбрасываем, сети не касаемся
         ├─ stt/wav.rs → упаковка PCM в WAV в памяти
-        ├─ stt/openai_compat.rs → POST /audio/transcriptions (ключ из keyring, опционально прокси)
+        ├─ выбранный backend:
+        │    ├─ stt/local → GigaAM в памяти процесса, без сети
+        │    └─ stt/openai_compat.rs → POST /audio/transcriptions (облако/офис, ключ из keyring)
         ├─ insert.rs → план вставки → буфер обмена (arboard) + Ctrl+V (enigo) в spawn_blocking,
         │              либо только буфер — в зависимости от режима вставки
         └─ репозиторий: минуты распознавания всегда; текст расшифровки — только если
@@ -290,6 +301,7 @@ Watchdog в `pipeline.rs` гарантирует остановку, даже е
 |---|---|
 | Метаданные документов, usage, настройки, история диктовки | `%LOCALAPPDATA%\<bundle>\glagol.db` (SQLite) |
 | Аудиофайлы | `%LOCALAPPDATA%\<bundle>\audio_cache\{uuid}.wav` |
+| Загруженные модели, движок и незавершённые загрузки | `app_local_data_dir()/speech_models/`, через `paths::local_models_root` |
 | Логи (release) | Системный каталог логов приложения, daily-rolling, хранится 7 файлов |
 | Authorization Key SaluteSpeech и API-ключ STT | Windows Credential Manager, сервис `Glagol` |
 | Access-токен SaluteSpeech | Только в RAM (`AppState`), 30 минут |
@@ -312,18 +324,26 @@ Watchdog в `pipeline.rs` гарантирует остановку, даже е
 провайдер `aitunnel` (`https://api.aitunnel.ru/v1`, модель `whisper-large-v3-turbo`, язык `ru`),
 история — выключена, режим вставки — автовставка.
 
+Режим хранится в `stt_mode`; облако сохраняет прежние `stt_*`, офисный профиль использует
+`stt_server_*`, локальная модель — `stt_local_model`. Секреты облака и сервера разделены
+и привязаны к адресу. Загруженные модели не включены в установщик и резервную копию библиотеки.
+Версии, хеши и проверка нативного движка описаны в [local-dictation-runtime.md](docs/local-dictation-runtime.md).
+
 ---
 
 ## 6. Безопасность (что закреплено в коде)
 
 - **Ключи не хранятся в коде, конфигах и переменных окружения** — только в OS-хранилище.
-- **Весь трафик к Сберу идёт через `salute/http.rs`** — там пиннинг корневого сертификата
+- **Трафик SaluteSpeech идёт через `salute/http.rs`** — там пиннинг корневого сертификата
   НУЦ Минцифры (вшит через `include_bytes!`), генерация `RqUID` и ретраи. Проверка сертификатов
   никогда не отключается.
 - **Сетевой allowlist:** `ngw.devices.sberbank.ru:9443`, `smartspeech.sber.ru` — жёстко в CSP.
   STT-эндпоинт задаёт пользователь, но запрос уходит **из Rust**, а не из webview, поэтому CSP
   его не касается; вместо этого `stt/validation.rs` требует `https://` для внешних хостов и
-  разрешает `http://` только для loopback, чтобы Bearer-ключ не ушёл открытым текстом.
+  разрешает `http://` для loopback. Офисный режим в `commands/speech.rs` также допускает
+  частные IP-адреса RFC1918/ULA; интерфейс предупреждает об отсутствии шифрования.
+  Загрузка моделей идёт по HTTPS с фиксированных адресов GitHub/Hugging Face; перед
+  использованием проверяются размер и SHA-256, архив движка не допускает выход за каталог.
 - **Asset protocol scope узкий**, не `**`: только `$APPLOCALDATA/audio_cache/**`.
 - **Логи не содержат ни ключей, ни текста расшифровок** — правило зафиксировано в `logging.rs`
   и проверяется тестом, сканирующим исходники.

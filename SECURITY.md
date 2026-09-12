@@ -41,10 +41,10 @@ Glagol is a **local desktop application** that processes user documents and comm
 - **API credential theft** — Authorization Keys stored in Windows Credential Manager (OS-level encryption), never in plain text, never in files
 - **Man-in-the-middle attacks** on SaluteSpeech connections — TLS pinning with embedded Russian Ministry of Digital Development root certificate
 - **Malicious file content** — DOCX/PDF parsed via memory-safe Rust crates; no JavaScript execution in PDFs; no `dangerouslySetInnerHTML` in React
-- **Code injection** — strict Content Security Policy (CSP) restricts network requests to SaluteSpeech endpoints only
+- **Code injection** — strict Content Security Policy limits webview access; provider requests and model downloads are implemented in Rust
 - **Supply chain attacks** — `pnpm-lock.yaml` and `Cargo.lock` committed; Dependabot enabled; release artifacts signed with Ed25519
 - **Unsigned updates** — Tauri updater requires Ed25519 signature; cannot be disabled
-- **Data exfiltration** — no telemetry by default; no data sent anywhere except SaluteSpeech (under user's own account)
+- **Data exfiltration** — no telemetry; TTS text goes to SaluteSpeech and remote dictation audio goes only to the configured recognition endpoint. On-device recognition makes no network requests
 
 #### ❌ Threats we do NOT mitigate
 
@@ -83,10 +83,15 @@ Glagol makes network requests **only** to these endpoints:
 | `https://ngw.devices.sberbank.ru:9443/api/v2/oauth` | Get OAuth access token | When token expires (every ~30 min) |
 | `https://smartspeech.sber.ru/rest/v1/text:synthesize` | Synthesize speech | When user requests TTS |
 | `https://api.github.com/repos/dimasiksuleyman-sudo/glagol/releases/latest` | Check for updates | On app start (can be disabled in settings) |
+| User-configured OpenAI-compatible endpoint | Cloud or office-server dictation | On dictation or connection test |
+| `github.com/handy-computer/transcribe.cpp/releases` and GitHub release CDN | Pinned native recognition runtime | User requests a model download |
+| `huggingface.co/handy-computer/…` and Hugging Face file CDN | Pinned model weights | User requests a model download |
 
 **No analytics services. No advertising networks. No CDN tracking.**
 
-This is enforced via Tauri's CSP and capability allowlist — any attempt to add other endpoints requires a code change visible in the public repository.
+The webview's CSP remains restricted: it does not fetch weights or contact recognition servers. Rust accepts model IDs from a fixed catalog, never arbitrary download URLs. Downloads require HTTPS, exact size and pinned SHA-256 hashes before installation; runtime archive entries cannot escape the destination. The Windows DLL loader uses the verified package directory and system DLL directories. Native inference uses the pinned transcribe.cpp C ABI and serializes model access.
+
+Office servers may use HTTP on explicit private IPs or loopback. This is **unencrypted** and intended only for trusted office networks; hostnames and public addresses require HTTPS. Redirects are disabled for recognition requests. Cloud and server credentials are separate and endpoint-bound; office traffic bypasses system proxies unless the user explicitly configures one.
 
 ### Dependencies Security
 
@@ -156,10 +161,10 @@ Glagol — **локальное desktop-приложение**, обрабаты
 - **Кражу API-ключей** — Authorization Keys хранятся в Windows Credential Manager (шифрование на уровне ОС), никогда в plain text
 - **MITM-атаки** на соединение с SaluteSpeech — TLS-пиннинг с встроенным корневым сертификатом НУЦ Минцифры РФ
 - **Вредоносное содержимое файлов** — DOCX/PDF парсятся через memory-safe Rust crates; JavaScript в PDF не исполняется
-- **Code injection** — строгая Content Security Policy ограничивает сетевые запросы только эндпоинтами SaluteSpeech
+- **Code injection** — строгая Content Security Policy ограничивает webview; запросы к провайдерам и загрузка моделей реализованы в Rust
 - **Supply chain атаки** — `pnpm-lock.yaml` и `Cargo.lock` закоммичены; Dependabot включён; release-артефакты подписаны Ed25519
 - **Неподписанные обновления** — Tauri updater требует подпись Ed25519
-- **Утечку данных** — никакой телеметрии по умолчанию; никаких данных не отправляется никуда кроме SaluteSpeech (под аккаунтом самого пользователя)
+- **Утечку данных** — телеметрии нет; текст озвучки отправляется в SaluteSpeech, а аудио удалённой диктовки — только на настроенный сервер распознавания. Локальное распознавание не делает сетевых запросов
 
 #### ❌ От чего НЕ защищаем
 
@@ -198,10 +203,15 @@ Glagol делает сетевые запросы **только** к этим �
 | `https://ngw.devices.sberbank.ru:9443/api/v2/oauth` | Получение OAuth токена | При истечении токена (~30 мин) |
 | `https://smartspeech.sber.ru/rest/v1/text:synthesize` | Синтез речи | По запросу пользователя |
 | `https://api.github.com/repos/dimasiksuleyman-sudo/glagol/releases/latest` | Проверка обновлений | При запуске (отключаемо в настройках) |
+| Настроенный пользователем OpenAI-совместимый адрес | Облачная или офисная диктовка | При диктовке или проверке подключения |
+| `github.com/handy-computer/transcribe.cpp/releases` и CDN релизов GitHub | Фиксированная версия нативного движка | Пользователь запрашивает загрузку модели |
+| `huggingface.co/handy-computer/…` и файловый CDN Hugging Face | Фиксированная версия весов модели | Пользователь запрашивает загрузку модели |
 
 **Никаких аналитических сервисов. Никаких рекламных сетей. Никакого CDN-трекинга.**
 
-Это обеспечено CSP и allowlist'ом capability в Tauri — попытка добавить другие эндпоинты требует изменения кода, видимого в публичном репозитории.
+CSP webview остаётся ограниченной: интерфейс не скачивает веса и не обращается к серверам распознавания. Rust принимает только ID модели из фиксированного каталога, а не произвольный URL загрузки. До установки проверяются HTTPS, точный размер и фиксированная SHA-256; пути в архиве движка не могут выйти за каталог установки. DLL загружаются из проверенного пакета и системных каталогов Windows. Нативное распознавание использует C ABI фиксированной версии transcribe.cpp; обращения к модели сериализованы.
+
+Для офисного сервера разрешён HTTP по частному IP или loopback. Это **незашифрованное** соединение для доверенных сетей; доменные имена и публичные адреса требуют HTTPS. Редиректы запросов распознавания отключены. Ключи облака и сервера раздельны и привязаны к адресу; офисный трафик не использует системный прокси, если пользователь не задал прокси явно.
 
 ### Сторонние сервисы
 

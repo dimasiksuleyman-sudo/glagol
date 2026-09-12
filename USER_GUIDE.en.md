@@ -98,7 +98,17 @@ Everything is configured on the **Dictation** (Диктовка) page:
 - **History** — **off** by default. Turn it on to keep the last 10 transcripts (the "Copy" button puts a transcript back on the clipboard so you can re-paste something you said earlier). Turning it off stops new lines being written, but what's already there stays visible until you press "Clear history."
 - **Total dictated** — a lifetime minute counter.
 
-Recognition runs through an OpenAI-compatible provider (key and endpoint under **Settings → Dictation (STT)**), so it works even without a system-wide VPN.
+Under **Settings → Dictation**, choose where recognition runs:
+
+- **On this computer (На этом компьютере).** Choose GigaAM v3 CTC or RNNT and click “Download and use”. Both recognize Russian with punctuation. Each model is about 272–274 MB; the shared engine adds a 20 MB download. Keep at least 500 MB free. Settings shows progress; you can cancel and resume. After verification, dictation works offline. No separate Python or server installation is needed. Currently supported on Windows x64 using the CPU.
+- **Organization server (Сервер организации).** Enter the shared server URL, e.g. `http://192.168.1.10:8000/v1`, its model name and an API key if required. `http://localhost:8000/v1` also works. The server must implement OpenAI-compatible `/audio/transcriptions`; `/models` is optional. One server can serve multiple office computers without downloading models to each. Your administrator installs the server itself. HTTP is allowed for localhost and private IPs; it carries audio and keys unencrypted, so use it only on trusted networks. Hostnames require HTTPS with a trusted certificate. System proxies are bypassed in this mode; an explicit proxy can be configured.
+- **Cloud service (Облачный сервис).** Choose a preset or enter your own endpoint, model and key. A dictation-only proxy can be configured without a system-wide VPN.
+
+Server and cloud settings and keys are stored separately. Choosing a mode in the list opens its settings; “Save and use” or “Download and use” activates it. When changing endpoints, the old key is not sent to the new service; enter the appropriate key again.
+
+Downloaded models live in `%LOCALAPPDATA%\app.glagol.desktop\speech_models`, separately from the installer and audio library, and survive application updates. Downloads use GitHub and Hugging Face, with size and SHA-256 verification; on-device dictation makes no network requests. Remove unused models from Settings; switch model or mode before removing the active model. “Verify files and repair” repairs a damaged download. The engine package is shared and retained.
+
+The model loads into memory when selected or on the first dictation after launch. Long recordings are split near quiet boundaries into segments of up to 24 seconds; punctuation and rare words may suffer at those boundaries. Check foreign terms manually.
 
 ### Known limitations
 

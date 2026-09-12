@@ -141,6 +141,9 @@ pub fn run() {
             );
 
             app.manage(state::AppState::new(http_client.clone(), conn, recorder));
+            app.manage(std::sync::Arc::new(stt::local::LocalModels::new(
+                paths::local_models_root(app.handle())?,
+            )));
 
             // Park the log-flush guard for the process lifetime (D-L4).
             app.state::<state::AppState>().set_log_guard(log_guard);
@@ -224,6 +227,14 @@ pub fn run() {
             commands::backup::relaunch_app,
             commands::usage::get_current_month_usage,
             commands::dictation::get_stt_settings,
+            commands::speech::get_speech_settings,
+            commands::speech::save_speech_settings,
+            commands::speech::test_speech_settings,
+            commands::speech::delete_speech_key,
+            stt::local::local_models_status,
+            stt::local::download_local_model,
+            stt::local::cancel_model_download,
+            stt::local::remove_local_model,
             commands::dictation::save_stt_settings,
             commands::dictation::set_stt_key,
             commands::dictation::delete_stt_key,
