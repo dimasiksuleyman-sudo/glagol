@@ -63,8 +63,8 @@ const OVERLAY_BOTTOM_MARGIN: f64 = 80.0;
 const KEY_TRAY_NOTICE_SHOWN: &str = "tray_notice_shown";
 
 /// Embedded tray icons (D11/D15). 32×32 RGBA PNGs decoded via `Image::from_bytes`
-/// (the `image-png` tauri feature). Placeholder mic-on-disc glyphs — blue idle,
-/// red recording — replaceable by design assets without code changes.
+/// (the `image-png` tauri feature). Idle uses the Glagol app icon; recording
+/// uses the distinct circular red microphone indicator.
 const TRAY_IDLE_PNG: &[u8] = include_bytes!("../../icons/tray-idle.png");
 const TRAY_RECORDING_PNG: &[u8] = include_bytes!("../../icons/tray-recording.png");
 

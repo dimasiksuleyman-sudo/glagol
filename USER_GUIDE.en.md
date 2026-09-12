@@ -10,10 +10,14 @@ Built for people who'd rather listen than read off a screen. If you love audiobo
 
 ## Installation
 
-1. Download `Glagol_0.1.0_x64-setup.exe` from the [Releases page](../../releases).
+1. Download the `Glagol_<version>_x64-setup.exe` installer from the [Releases page](../../releases).
 2. Run the installer.
 3. Windows will show a SmartScreen warning ("Windows protected your PC"). This is normal for new apps without a commercial signing certificate. Click **"More info"** → **"Run anyway"**.
 4. Done — Glagol launches automatically.
+
+Glagol's icon is a white microphone on a red-orange background. It appears
+on the application, shortcut and idle tray icon; during recording, the tray
+switches to a circular red microphone indicator.
 
 **What you need:**
 - Windows 10 or 11 (64-bit)

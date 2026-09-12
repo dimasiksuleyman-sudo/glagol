@@ -13,6 +13,9 @@ the per-session master logs under [`docs/day-logs/`](docs/day-logs/).
 
 ## [v0.3.0] — 2026-09-12
 
+### Changed
+- **Собственная иконка / Original app icon.** Белый микрофон на красно-оранжевом фоне заменяет стандартную иконку Tauri в приложении и установщике; обновлены значок трея в покое, favicon и заголовок окна. / A white microphone on a red-orange background replaces the default Tauri app and installer icon; the idle tray icon, favicon and window title now use Glagol branding.
+
 ### Added
 - **Локальная диктовка по желанию / Optional offline dictation.** GigaAM v3 E2E CTC и RNNT скачиваются из настроек вместе с нативным CPU-движком, без Python и увеличения установщика на размер моделей. Прогресс, отмена, продолжение, проверка SHA-256 и удаление неиспользуемых моделей. / Download GigaAM v3 E2E CTC or RNNT and the native CPU engine from Settings, with progress, cancellation, resume, SHA-256 verification and removal of unused models. Models are excluded from the installer.
 - **Сервер организации / Organization server.** Отдельные профили и ключи для облака и общего офисного сервера; HTTP для частных IP и localhost, HTTPS для остальных адресов. / Separate cloud and office-server profiles and keys; private-IP/localhost HTTP and HTTPS endpoints supported.
