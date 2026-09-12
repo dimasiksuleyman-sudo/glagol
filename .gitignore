@@ -171,6 +171,8 @@ audio_cache/
 # Local development helpers
 # ----------------------------------------------------------------------------
 .scratch/
+__pycache__/
+*.pyc
 TODO.local.md
 NOTES.local.md
 *.local.md
