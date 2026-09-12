@@ -1,20 +1,4 @@
-//! Windows Credential Manager wrapper for storing the SaluteSpeech
-//! Authorization Key (the `base64(client_id:client_secret)` blob Sber
-//! displays in the developer console).
-//!
-//! Production code uses the real `keyring-rs` backend (Wincred on
-//! Windows, enabled via the `windows-native` feature). Unit tests use
-//! the always-available `keyring::mock` backend with one important
-//! caveat: in keyring 3.x, mock state lives **inside the `Entry`
-//! object itself**, not in a shared store. Therefore unit tests below
-//! create one `Entry` per test and reuse it across set/get/delete —
-//! see the test module comment for details.
-//!
-//! NOTE on naming: this module is called `keyring` after the
-//! `keyring-rs` crate it wraps. References inside this file to
-//! `keyring::Entry` and `keyring::Error` resolve to the external
-//! crate; the module's own scope does not collide.
-
+//! OS credentials for dictation and narrow legacy TTS cleanup.
 use keyring::Entry;
 use thiserror::Error;
 
@@ -62,50 +46,14 @@ pub enum KeyringError {
 
 pub type KeyringResult<T> = Result<T, KeyringError>;
 
-// ───────────────────────────────────────────────────────────────
-// Public API — single SaluteSpeech Authorization Key per install.
-// ───────────────────────────────────────────────────────────────
-
-/// Store the SaluteSpeech Authorization Key in the OS keyring.
-///
-/// Overwrites any existing value silently. The key should be the
-/// `base64(client_id:client_secret)` string Sber displays in the
-/// developer console — Glagol does NOT decode or split it.
-///
-/// # Errors
-/// - [`KeyringError::Internal`] if `key` is empty or whitespace-only
-/// - [`KeyringError::Backend`] on platform failure (Wincred error)
-pub fn set_auth_key(key: &str) -> KeyringResult<()> {
+/// Idempotently remove only the retired TTS credential. Never read its value.
+pub fn cleanup_legacy_tts_key() -> KeyringResult<()> {
     let entry = auth_key_entry()?;
-    set_with(&entry, key)
+    match delete_with(&entry) {
+        Ok(()) | Err(KeyringError::NotFound) => Ok(()),
+        Err(e) => Err(e),
+    }
 }
-
-/// Retrieve the SaluteSpeech Authorization Key from the OS keyring.
-///
-/// Returns `Ok(None)` if no key has been stored yet (normal first-run
-/// state); callers should NOT treat this as an error.
-///
-/// # Errors
-/// - [`KeyringError::Backend`] on platform failure
-pub fn get_auth_key() -> KeyringResult<Option<String>> {
-    let entry = auth_key_entry()?;
-    get_with(&entry)
-}
-
-/// Remove the SaluteSpeech Authorization Key from the OS keyring.
-///
-/// # Errors
-/// - [`KeyringError::NotFound`] if no key was stored — lets the caller
-///   surface "nothing to delete" cleanly without a panic
-/// - [`KeyringError::Backend`] on platform failure
-pub fn delete_auth_key() -> KeyringResult<()> {
-    let entry = auth_key_entry()?;
-    delete_with(&entry)
-}
-
-// ───────────────────────────────────────────────────────────────
-// Dictation (STT) provider API key — second credential, Sprint 6 PR1.
-// ───────────────────────────────────────────────────────────────
 
 /// Store the Dictation (STT) provider API key in the OS keyring. Overwrites
 /// any existing value.

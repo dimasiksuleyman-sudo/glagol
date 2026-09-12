@@ -12,13 +12,13 @@ use serde::{Deserialize, Serialize};
 const INSERT_SQL: &str = "
     INSERT INTO documents (
         id, title, source_type, char_count, voice, status,
-        error_message, created_at, audio_path, audio_duration_ms
-    ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
+        error_message, created_at, audio_path, audio_duration_ms, provider
+    ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
 ";
 
 const SELECT_COLUMNS: &str = "
     id, title, source_type, char_count, voice, status,
-    error_message, created_at, audio_path, audio_duration_ms
+    error_message, created_at, audio_path, audio_duration_ms, provider
 ";
 
 /// Persisted document record. Matches the `documents` table schema 1:1.
@@ -35,11 +35,17 @@ pub struct DocumentRecord {
     pub source_type: String,
     pub char_count: i64,
     pub voice: String,
+    #[serde(default = "legacy_provider")]
+    pub provider: String,
     pub status: String,
     pub error_message: Option<String>,
     pub created_at: i64,
     pub audio_path: Option<String>,
     pub audio_duration_ms: Option<i64>,
+}
+
+fn legacy_provider() -> String {
+    "salutespeech-legacy".into()
 }
 
 impl DocumentRecord {
@@ -50,6 +56,7 @@ impl DocumentRecord {
             source_type: row.get("source_type")?,
             char_count: row.get("char_count")?,
             voice: row.get("voice")?,
+            provider: row.get("provider")?,
             status: row.get("status")?,
             error_message: row.get("error_message")?,
             created_at: row.get("created_at")?,
@@ -75,6 +82,7 @@ pub fn insert(conn: &Connection, doc: &DocumentRecord) -> Result<()> {
             doc.created_at,
             doc.audio_path,
             doc.audio_duration_ms,
+            doc.provider,
         ],
     )?;
     Ok(())
@@ -115,22 +123,11 @@ pub fn update_title(conn: &Connection, id: &str, title: &str) -> Result<usize> {
 
 // ── api_usage table ────────────────────────────────────────────────────
 //
-// Sprint 5d. The `api_usage` table tracks per-month SaluteSpeech
-// consumption so the Settings page can show "X / 200 000 chars used
-// this month". One row per `YYYY-MM` calendar month (local timezone).
-// `recognitions_seconds` is reserved for a future STT feature; Sprint
-// 5d only writes `chars_used`.
+// Historical synthesis character ledger and current dictation seconds.
+// Preserve old counters during migration; there is no active TTS quota UI.
 
-/// Add `chars_added` to the running `chars_used` total for `month`,
-/// inserting a fresh row at zero if this is the first synthesis of the
-/// month. `month` is expected to be in `YYYY-MM` form; the function
-/// does not validate the shape (the caller — `commands::usage` — owns
-/// that). `updated_at` is the current Unix millisecond timestamp.
-///
-/// Advisory write: the synthesis pipeline calls this *after* a
-/// successful audio write, so a failure here means the counter is
-/// merely stale, not that the document is missing. Callers should log
-/// rather than surface a user-facing error.
+/// Add historical synthesis character usage. Retained for existing data/tests;
+/// local Silero does not increment a cloud quota.
 pub fn record_usage(
     conn: &Connection,
     month: &str,
@@ -389,6 +386,7 @@ mod tests {
             source_type: "paste".to_string(),
             char_count: 1234,
             voice: "Nec_24000".to_string(),
+            provider: "salutespeech-legacy".into(),
             status: "ready".to_string(),
             error_message: None,
             created_at,
@@ -476,6 +474,7 @@ mod tests {
             source_type: "paste".to_string(),
             char_count: 0,
             voice: "Nec_24000".to_string(),
+            provider: "salutespeech-legacy".into(),
             status: "error".to_string(),
             error_message: Some("HTTP 500 from Sberbank".to_string()),
             created_at: 1_700_000_000_000,

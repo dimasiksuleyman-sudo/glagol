@@ -1,236 +1,81 @@
 # Security Policy / Политика безопасности
 
-[English](#english) · [Русский](#русский)
-
----
-
 ## English
 
-### Supported Versions
+Report vulnerabilities privately through [GitHub Security Advisories](https://github.com/dimasiksuleyman-sudo/glagol/security/advisories/new), not public issues.
+We aim to acknowledge within 72 hours, assess within seven days and address
+reports within the existing 90-day responsible disclosure window. Do not send
+API keys, private documents or microphone recordings in public reports.
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 0.1.x   | :white_check_mark: (current development) |
-| < 0.1   | :x: (pre-release)  |
+Current development line: 0.4.x. Historical releases may still use retired
+providers; use the current code/release when testing fixes.
 
-Once we reach v1.0, we will commit to supporting the latest major version with security fixes.
+- Glagol processes local documents and audio. Local Silero TTS and local GigaAM
+  inference require no network after component installation. Office/cloud STT
+  sends recordings to the explicitly configured endpoint under its own terms.
+- Python, CPU PyTorch, dependencies and Silero weights download only by choice
+  from pinned HTTPS URLs with byte-count/SHA-256 checks. A `.pt` package contains
+  executable model code: only the pinned v5.5 file can be imported.
+- Archives extract into staging with path/link checks. Runtime files are compared
+  with a compiled inventory before first process launch. No hub, pip or arbitrary
+  script execution; no system Python search; no SAPI registration or HTTP listener.
+- The worker uses bounded JSON over private stdin/stdout; WAV stays on disk.
+  Input/output bounds, cancellation, timeouts and parent-lifetime monitoring limit
+  failures. Idle workers unload. These are process controls, not an OS sandbox.
+- Logs contain operational metadata, not document text, audio, transcripts or keys.
+  Optional dictation history is off by default and stored locally when enabled.
+- STT credentials use OS keyring slots separate from server/cloud profiles.
+  The retired TTS key is narrowly deleted without reading it; failures retry at
+  startup without blocking the app. Salute OAuth and custom root CA are removed.
+- Webview CSP permits app/IPC/asset traffic; audio scope is limited to the cache.
+  Production frontend does not execute remote scripts or call TTS providers.
+- Backups include SQLite/library WAV, not downloaded runtimes/models, OS secrets
+  or Silero licence acknowledgement. Existing library metadata is migrated, not
+  rewritten as a new provider. Make backups before upgrading important libraries.
 
-### Reporting a Vulnerability
+Downloaded components retain their own licences: Glagol code is MIT; Silero
+v5.5 is CC BY-NC-SA 4.0 for noncommercial use. Licence acknowledgement is local
+and provider-specific; it does not restrict independent organizational dictation.
+Future Yandex SpeechKit v3 is not yet integrated.
 
-**Please do NOT open a public GitHub issue for security vulnerabilities.**
-
-If you discover a security vulnerability in Glagol, please report it responsibly:
-
-1. **Email:** @yandex.ru
-2. **GitHub Security Advisories:** Use the [private vulnerability reporting](https://github.com/dimasiksuleyman-sudo/glagol/security/advisories/new) feature
-3. **Encrypted contact:** PGP key available upon request
-
-We follow a **90-day responsible disclosure** policy. We aim to:
-
-- Acknowledge your report within 72 hours
-- Provide an initial assessment within 7 days
-- Issue a fix or mitigation within 90 days
-- Credit you in the security advisory (unless you prefer to remain anonymous)
-
-### Threat Model — What We Protect Against
-
-Glagol is a **local desktop application** that processes user documents and communicates with a third-party API (SaluteSpeech). Our threat model includes:
-
-#### ✅ Threats we mitigate
-
-- **API credential theft** — Authorization Keys stored in Windows Credential Manager (OS-level encryption), never in plain text, never in files
-- **Man-in-the-middle attacks** on SaluteSpeech connections — TLS pinning with embedded Russian Ministry of Digital Development root certificate
-- **Malicious file content** — DOCX/PDF parsed via memory-safe Rust crates; no JavaScript execution in PDFs; no `dangerouslySetInnerHTML` in React
-- **Code injection** — strict Content Security Policy limits webview access; provider requests and model downloads are implemented in Rust
-- **Supply chain attacks** — `pnpm-lock.yaml` and `Cargo.lock` committed; Dependabot enabled; release artifacts signed with Ed25519
-- **Unsigned updates** — Tauri updater requires Ed25519 signature; cannot be disabled
-- **Data exfiltration** — no telemetry; TTS text goes to SaluteSpeech and remote dictation audio goes only to the configured recognition endpoint. On-device recognition makes no network requests
-
-#### ❌ Threats we do NOT mitigate
-
-- **Compromised user machine** — if your Windows account is compromised, attacker has access to Windows Credential Manager
-- **Compromised SaluteSpeech account** — security of your Sberbank account is your responsibility
-- **Malicious contributors** — we review PRs but cannot guarantee zero-day in dependencies
-- **Physical access** to your machine
-
-### What We Don't Collect
-
-Glagol does **NOT** collect, transmit, or store on any remote server:
-
-- ❌ Your text content (sent only to SaluteSpeech under your own account)
-- ❌ Generated audio (kept only on your machine)
-- ❌ Document library metadata
-- ❌ Usage telemetry
-- ❌ Error reports (Sentry is **opt-in**, disabled by default)
-- ❌ IP addresses, device fingerprints, hardware IDs
-
-### Secrets Management
-
-| Secret | Storage | Encryption |
-| ------ | ------- | ---------- |
-| SaluteSpeech `Authorization Key` | Windows Credential Manager (`keyring-rs`) | OS-level (DPAPI on Windows) |
-| OAuth `access_token` | RAM only, never persisted | n/a (volatile) |
-| User documents and audio | Local filesystem (`%LOCALAPPDATA%\Glagol\`) | No (user's choice for full-disk encryption) |
-
-**We never log, transmit, or display secrets anywhere.**
-
-### Network Boundaries
-
-Glagol makes network requests **only** to these endpoints:
-
-| Endpoint | Purpose | When |
-| -------- | ------- | ---- |
-| `https://ngw.devices.sberbank.ru:9443/api/v2/oauth` | Get OAuth access token | When token expires (every ~30 min) |
-| `https://smartspeech.sber.ru/rest/v1/text:synthesize` | Synthesize speech | When user requests TTS |
-| `https://api.github.com/repos/dimasiksuleyman-sudo/glagol/releases/latest` | Check for updates | On app start (can be disabled in settings) |
-| User-configured OpenAI-compatible endpoint | Cloud or office-server dictation | On dictation or connection test |
-| `github.com/handy-computer/transcribe.cpp/releases` and GitHub release CDN | Pinned native recognition runtime | User requests a model download |
-| `huggingface.co/handy-computer/…` and Hugging Face file CDN | Pinned model weights | User requests a model download |
-
-**No analytics services. No advertising networks. No CDN tracking.**
-
-The webview's CSP remains restricted: it does not fetch weights or contact recognition servers. Rust accepts model IDs from a fixed catalog, never arbitrary download URLs. Downloads require HTTPS, exact size and pinned SHA-256 hashes before installation; runtime archive entries cannot escape the destination. The Windows DLL loader uses the verified package directory and system DLL directories. Native inference uses the pinned transcribe.cpp C ABI and serializes model access.
-
-Office servers may use HTTP on explicit private IPs or loopback. This is **unencrypted** and intended only for trusted office networks; hostnames and public addresses require HTTPS. Redirects are disabled for recognition requests. Cloud and server credentials are separate and endpoint-bound; office traffic bypasses system proxies unless the user explicitly configures one.
-
-### Dependencies Security
-
-- `cargo audit` runs in CI on every PR
-- `pnpm audit` runs in CI on every PR
-- Dependabot enabled for both ecosystems
-- Major dependency updates reviewed manually
-
-### Build Reproducibility
-
-Release builds are produced by GitHub Actions from a tagged commit. Build logs are public. Anyone can audit the build process at `.github/workflows/release.yml`.
-
-### Disclosure of Third-Party Services
-
-Glagol integrates with **SaluteSpeech API** by PJSC Sberbank. When you use the app:
-
-- Your text is sent to Sberbank servers for synthesis
-- Sberbank's [Privacy Policy](https://www.sberbank.com/privacy) and [EULA](https://developers.sber.ru/docs/ru/policies/eula) apply to that processing
-- Your relationship with Sberbank is independent of your use of Glagol
-- We have no visibility into or control over Sberbank's data handling
-
-For SaluteSpeech-specific concerns, contact Sberbank directly: `SaluteSpeech@sberbank.ru`.
-
-### Contact
-
-Until a dedicated security email is configured:
-
-- **GitHub Security Advisories** (preferred): https://github.com/dimasiksuleyman-sudo/glagol/security/advisories/new
-- **GitHub Discussions** (for general questions): https://github.com/dimasiksuleyman-sudo/glagol/discussions
-
----
+This app cannot protect against malware running as the same user/admin,
+compromised OS/devices, hostile edits to installed executable code, or a breach
+of a user-selected external STT server. OS permissions and provider selection
+remain part of the deployment's security boundary.
 
 ## Русский
 
-### Поддерживаемые версии
+Сообщайте об уязвимостях конфиденциально через [GitHub Security Advisories](https://github.com/dimasiksuleyman-sudo/glagol/security/advisories/new), а не в публичных Issues.
+Цель: подтвердить получение за 72 часа, оценить за семь дней и исправить в рамках
+90-дневного ответственного раскрытия. Не публикуйте ключи, личные документы и записи.
 
-| Версия  | Поддержка          |
-| ------- | ------------------ |
-| 0.1.x   | :white_check_mark: (текущая разработка) |
-| < 0.1   | :x: (pre-release)  |
+Текущая ветка разработки — 0.4.x; в исторических выпусках могли использоваться
+удалённые провайдеры. Для проверки исправлений используйте актуальную версию.
 
-После релиза v1.0 мы будем поддерживать актуальную мажорную версию с security-патчами.
+- Silero и GigaAM после загрузки работают локально без сети. При office/cloud STT
+  аудио уходит на явно выбранный пользователем сервер на условиях этого сервиса.
+- Python, CPU PyTorch, зависимости и веса скачиваются по выбору с закреплённых
+  HTTPS-адресов. Размеры и SHA-256 проверяются. `.pt` содержит исполняемый код:
+  импортируется только точный закреплённый файл v5.5.
+- Распаковка в staging проверяет пути/ссылки; перед запуском файлы сравниваются с
+  встроенной описью. Нет hub/pip, поиска системного Python, регистрации SAPI,
+  произвольных скриптов или HTTP-порта для озвучки.
+- Ограниченный JSON идёт по stdin/stdout, WAV остаётся на диске. Отмена, таймаут,
+  ограничения ввода/вывода, завершение с родителем и выгрузка по простою управляют
+  процессом. Это не полноценная песочница операционной системы.
+- В логах нет текста, аудио, распознанной речи и ключей. История диктовок локальна,
+  необязательна и по умолчанию выключена.
+- STT-ключи находятся в OS keyring и разделены по профилям. Старый TTS-ключ
+  удаляется адресно без чтения; ошибка не блокирует запуск. OAuth и корневой
+  сертификат SaluteSpeech больше не используются.
+- CSP ограничивает webview приложением/IPC/asset; аудио доступно только из кэша.
+  Бэкап содержит SQLite и WAV библиотеки, а не модели/runtime, ключи и подтверждение
+  условий Silero. Старые данные сохраняют своего провайдера.
 
-### Как сообщить об уязвимости
+Лицензия кода — MIT, модели Silero v5.5 — CC BY-NC-SA 4.0 для некоммерческого
+использования. Локальное подтверждение относится только к Silero и не ограничивает
+независимую диктовку организаций. Yandex SpeechKit v3 пока не внедрён.
 
-**Пожалуйста, НЕ открывайте публичный issue для уязвимостей безопасности.**
-
-Если вы обнаружили уязвимость:
-
-1. **GitHub Security Advisories** (предпочтительный способ): [приватный отчёт](https://github.com/dimasiksuleyman-sudo/glagol/security/advisories/new)
-2. **Email:** security@glagol.app *(placeholder)*
-3. **PGP-шифрованный контакт:** доступен по запросу
-
-Мы следуем **90-дневной политике ответственного раскрытия**:
-
-- Подтверждение получения отчёта в течение 72 часов
-- Первичная оценка в течение 7 дней
-- Исправление или mitigation в течение 90 дней
-- Упоминание исследователя в security advisory (если не предпочитает анонимность)
-
-### Модель угроз — от чего защищаем
-
-Glagol — **локальное desktop-приложение**, обрабатывающее документы пользователя и взаимодействующее со сторонним API (SaluteSpeech).
-
-#### ✅ От чего защищаем
-
-- **Кражу API-ключей** — Authorization Keys хранятся в Windows Credential Manager (шифрование на уровне ОС), никогда в plain text
-- **MITM-атаки** на соединение с SaluteSpeech — TLS-пиннинг с встроенным корневым сертификатом НУЦ Минцифры РФ
-- **Вредоносное содержимое файлов** — DOCX/PDF парсятся через memory-safe Rust crates; JavaScript в PDF не исполняется
-- **Code injection** — строгая Content Security Policy ограничивает webview; запросы к провайдерам и загрузка моделей реализованы в Rust
-- **Supply chain атаки** — `pnpm-lock.yaml` и `Cargo.lock` закоммичены; Dependabot включён; release-артефакты подписаны Ed25519
-- **Неподписанные обновления** — Tauri updater требует подпись Ed25519
-- **Утечку данных** — телеметрии нет; текст озвучки отправляется в SaluteSpeech, а аудио удалённой диктовки — только на настроенный сервер распознавания. Локальное распознавание не делает сетевых запросов
-
-#### ❌ От чего НЕ защищаем
-
-- **Скомпрометированный компьютер** — при компрометации Windows-аккаунта атакующий получает доступ к Credential Manager
-- **Скомпрометированный аккаунт SaluteSpeech** — безопасность Сбер-аккаунта на ответственности пользователя
-- **Вредоносных контрибьюторов** — мы ревьюим PR, но не можем гарантировать отсутствие zero-day в зависимостях
-- **Физический доступ** к машине
-
-### Что мы НЕ собираем
-
-Glagol **НЕ** собирает, не передаёт и не хранит ни на каких удалённых серверах:
-
-- ❌ Содержимое ваших текстов (отправляется только в SaluteSpeech под вашим аккаунтом)
-- ❌ Сгенерированное аудио (хранится только на вашей машине)
-- ❌ Метаданные библиотеки документов
-- ❌ Телеметрию использования
-- ❌ Отчёты об ошибках (Sentry — **opt-in**, отключён по умолчанию)
-- ❌ IP-адреса, fingerprint устройства, hardware ID
-
-### Управление секретами
-
-| Секрет | Хранение | Шифрование |
-| ------ | -------- | ---------- |
-| `Authorization Key` от SaluteSpeech | Windows Credential Manager (`keyring-rs`) | На уровне ОС (DPAPI) |
-| OAuth `access_token` | Только в RAM, не персистится | n/a |
-| Документы и аудио | Локальная файловая система (`%LOCALAPPDATA%\Glagol\`) | Нет (на усмотрение пользователя — full-disk encryption) |
-
-**Мы никогда не логируем, не передаём и не отображаем секреты нигде.**
-
-### Сетевые границы
-
-Glagol делает сетевые запросы **только** к этим адресам:
-
-| Эндпоинт | Назначение | Когда |
-| -------- | ---------- | ----- |
-| `https://ngw.devices.sberbank.ru:9443/api/v2/oauth` | Получение OAuth токена | При истечении токена (~30 мин) |
-| `https://smartspeech.sber.ru/rest/v1/text:synthesize` | Синтез речи | По запросу пользователя |
-| `https://api.github.com/repos/dimasiksuleyman-sudo/glagol/releases/latest` | Проверка обновлений | При запуске (отключаемо в настройках) |
-| Настроенный пользователем OpenAI-совместимый адрес | Облачная или офисная диктовка | При диктовке или проверке подключения |
-| `github.com/handy-computer/transcribe.cpp/releases` и CDN релизов GitHub | Фиксированная версия нативного движка | Пользователь запрашивает загрузку модели |
-| `huggingface.co/handy-computer/…` и файловый CDN Hugging Face | Фиксированная версия весов модели | Пользователь запрашивает загрузку модели |
-
-**Никаких аналитических сервисов. Никаких рекламных сетей. Никакого CDN-трекинга.**
-
-CSP webview остаётся ограниченной: интерфейс не скачивает веса и не обращается к серверам распознавания. Rust принимает только ID модели из фиксированного каталога, а не произвольный URL загрузки. До установки проверяются HTTPS, точный размер и фиксированная SHA-256; пути в архиве движка не могут выйти за каталог установки. DLL загружаются из проверенного пакета и системных каталогов Windows. Нативное распознавание использует C ABI фиксированной версии transcribe.cpp; обращения к модели сериализованы.
-
-Для офисного сервера разрешён HTTP по частному IP или loopback. Это **незашифрованное** соединение для доверенных сетей; доменные имена и публичные адреса требуют HTTPS. Редиректы запросов распознавания отключены. Ключи облака и сервера раздельны и привязаны к адресу; офисный трафик не использует системный прокси, если пользователь не задал прокси явно.
-
-### Сторонние сервисы
-
-Glagol интегрируется с **SaluteSpeech API** от ПАО Сбербанк. При использовании:
-
-- Ваш текст отправляется на серверы Сбербанка для синтеза
-- Применяются [Политика конфиденциальности](https://www.sberbank.com/privacy) и [EULA](https://developers.sber.ru/docs/ru/policies/eula) Сбербанка
-- Ваши отношения со Сбером независимы от использования Glagol
-- Мы не имеем доступа к данным, обрабатываемым Сбербанком
-
-По вопросам, специфичным для SaluteSpeech, обращайтесь в Сбер напрямую: `SaluteSpeech@sberbank.ru`.
-
-### Контакты
-
-До настройки выделенного email для безопасности:
-
-- **GitHub Security Advisories** (предпочтительно): https://github.com/dimasiksuleyman-sudo/glagol/security/advisories/new
-- **GitHub Discussions** (для общих вопросов): https://github.com/dimasiksuleyman-sudo/glagol/discussions
-
----
-
-*Last updated: 2026-05*
+Приложение не защищает от вредоносного ПО с правами пользователя/администратора,
+скомпрометированной ОС или устройств, подмены исполняемого кода и взлома выбранного
+внешнего STT-сервера. Для важных библиотек делайте резервную копию перед обновлением.

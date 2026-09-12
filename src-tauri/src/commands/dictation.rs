@@ -453,8 +453,7 @@ pub(crate) async fn test_stt_key_impl(state: &AppState, force: bool) -> Result<(
 
 // ── Helpers ────────────────────────────────────────────────────────────
 
-/// Build a dedicated STT HTTP client. Separate from the SaluteSpeech
-/// (`AppState.http_client`) client so a proxy applies to STT traffic only
+/// Build a dedicated STT HTTP client so a proxy applies to STT traffic only
 /// (kickoff D5). Uses rustls; standard public CAs (no Sber cert needed).
 pub(crate) fn build_stt_client(proxy: Option<&str>) -> Result<Client, String> {
     let mut builder = Client::builder().use_rustls_tls();
@@ -822,7 +821,6 @@ pub(crate) fn set_dictation_hotkey_impl<R: HotkeyRegistrar>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::salute::http;
     use std::sync::Once;
 
     static INIT: Once = Once::new();
@@ -834,13 +832,8 @@ mod tests {
     }
 
     fn fresh_state() -> AppState {
-        let client = http::build_client().expect("client builds");
         let conn = crate::db::test_connection();
-        AppState::new(
-            client,
-            conn,
-            crate::dictation::RecorderHandle::disconnected(),
-        )
+        AppState::new(conn, crate::dictation::RecorderHandle::disconnected())
     }
 
     // ── settings ──

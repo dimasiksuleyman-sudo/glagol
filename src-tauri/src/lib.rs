@@ -1,8 +1,8 @@
 use tauri::{Emitter, Manager, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 use tauri_plugin_global_shortcut::GlobalShortcutExt;
 
-// SaluteSpeech API client (OAuth + sync synthesis).
-pub mod salute;
+// Optional local TTS; separate from dictation.
+pub mod tts;
 
 // Speech-to-text (STT) client for the Dictation feature (Sprint 6).
 pub mod stt;
@@ -83,9 +83,6 @@ impl dictation::pipeline::DictationEmitter for tauri::AppHandle {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let http_client = salute::http::build_client()
-        .expect("failed to build HTTP client (embedded НУЦ Минцифры cert may be malformed)");
-
     tauri::Builder::default()
         // Single-instance lock (v0.2.1). MUST be registered FIRST so it runs
         // before `global-shortcut` (and every other plugin) can act: a second
@@ -140,10 +137,27 @@ pub fn run() {
                 app.handle().clone(),
             );
 
-            app.manage(state::AppState::new(http_client.clone(), conn, recorder));
+            app.manage(state::AppState::new(conn, recorder));
             app.manage(std::sync::Arc::new(stt::local::LocalModels::new(
                 paths::local_models_root(app.handle())?,
             )));
+
+            app.manage(std::sync::Arc::new(tts::silero::Silero::new(
+                paths::tts_models_root(app.handle())?,
+            )));
+            tts::silero::Silero::idle_task(app.handle().clone());
+            let cleanup_marker = db_path.with_file_name("legacy-tts-key-cleaned");
+            tauri::async_runtime::spawn_blocking(move || {
+                if !cleanup_marker.exists() {
+                    if secrets::keyring::cleanup_legacy_tts_key().is_err() {
+                        tracing::warn!(
+                            "legacy TTS credential cleanup failed; retry on next startup"
+                        );
+                    } else if std::fs::write(cleanup_marker, b"1").is_err() {
+                        tracing::warn!("legacy TTS cleanup marker could not be saved");
+                    }
+                }
+            });
 
             // Park the log-flush guard for the process lifetime (D-L4).
             app.state::<state::AppState>().set_log_guard(log_guard);
@@ -211,10 +225,12 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            commands::credentials::set_credentials,
-            commands::credentials::test_credentials,
-            commands::credentials::delete_credentials,
             commands::synthesize::synthesize_document,
+            commands::tts::tts_status,
+            commands::tts::install_tts,
+            commands::tts::cancel_tts,
+            commands::tts::remove_tts,
+            commands::tts::preview_tts,
             commands::storage::get_audio_path,
             commands::storage::export_audio,
             commands::storage::list_documents,
@@ -225,7 +241,6 @@ pub fn run() {
             commands::backup::validate_backup,
             commands::backup::restore_backup,
             commands::backup::relaunch_app,
-            commands::usage::get_current_month_usage,
             commands::dictation::get_stt_settings,
             commands::speech::get_speech_settings,
             commands::speech::save_speech_settings,
@@ -255,6 +270,9 @@ pub fn run() {
             // detached zombie (D2/lib.rs). Best-effort — the process is leaving.
             if let tauri::RunEvent::Exit = event {
                 app_handle.state::<state::AppState>().recorder.shutdown();
+                app_handle
+                    .state::<std::sync::Arc<tts::silero::Silero>>()
+                    .stop();
             }
         });
 }

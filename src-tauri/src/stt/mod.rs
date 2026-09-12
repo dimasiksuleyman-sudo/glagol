@@ -43,7 +43,7 @@ use thiserror::Error;
 /// The dictation session passes this to
 /// [`openai_compat::OpenAiCompatStt::with_prompt`]; the Settings key-check probe
 /// (silence) leaves the prompt unset.
-pub const DICTATION_PROMPT: &str = "Глагол, Привезём, SaluteSpeech.";
+pub const DICTATION_PROMPT: &str = "Глагол, Привезём.";
 
 /// A successful transcription result.
 ///

@@ -5,9 +5,9 @@
 
 ## Project overview
 
-**Glagol** is an open source Windows desktop application for synthesizing speech from long Russian texts and documents using the SaluteSpeech API by Sberbank. It is built with Tauri 2.x (Rust backend) + React 19 + TypeScript (frontend). The MIT-licensed project is independent and NOT affiliated with Sberbank.
+**Glagol** is an open source Windows desktop application for synthesizing speech from long Russian texts and documents using optional offline Silero TTS v5.5, plus independent local/office/cloud dictation. It is built with Tauri 2.x (Rust backend) + React 19 + TypeScript (frontend). The MIT-licensed project is independent and NOT affiliated with Sberbank.
 
-**Core value proposition:** local library of synthesized documents with resume-playback, free for most users (200,000 chars/month SaluteSpeech free tier).
+**Core value proposition:** local library of synthesized documents with resume-playback, MIT application with optional CC BY-NC-SA 4.0 noncommercial Silero model; dictation remains independent.
 
 **Primary target:** Windows 10/11 x64. macOS/Linux are stretch goals after v1.0.
 
@@ -21,7 +21,7 @@
 | Styling | **Tailwind CSS + shadcn/ui** | Copy-paste components, no vendor lock-in |
 | State (frontend) | **Zustand** | Light, no boilerplate, works with Tauri |
 | Build / package manager | **pnpm** | Fast, disk-efficient, lockfile committed |
-| HTTP client (Rust) | **reqwest + rustls** | Pure-Rust TLS, works with embedded cert |
+| HTTP client (Rust) | **reqwest + rustls** | Pure-Rust TLS for STT and artifact downloads |
 | Local database | **SQLite via rusqlite + rusqlite_migration** | Battle-tested, embedded, sync (chose over `tauri-plugin-sql` for security/test reasons) |
 | Secret storage | **keyring-rs** (NOT Stronghold) | Windows Credential Manager, OS-level encryption |
 | PDF parsing | **pdfium-render** | Same lib as Chromium, highest quality. Pdfium shared library downloaded by `build.rs` from `bblanchon/pdfium-binaries` and cached in `OUT_DIR/pdfium/`; path baked in via `PDFIUM_LIBRARY_PATH`. |
@@ -40,88 +40,12 @@
 - Tesseract / OCR libraries (out of scope for MVP)
 - `tauri-plugin-sql` (was original plan, replaced with rusqlite in Sprint 2 — see PR #15 logical for rationale)
 
-## Repository layout (as of Sprint 2 closure)
+## Repository layout (0.4.0)
 
-```
-glagol/
-├── .github/
-│   ├── workflows/          # CI/CD: build.yml, release.yml (Sprint 5)
-│   ├── ISSUE_TEMPLATE/     # bug_report.yml, feature_request.yml
-│   ├── PULL_REQUEST_TEMPLATE.md
-│   └── dependabot.yml
-├── .claude/                # AI agent commands and settings (when added)
-│   ├── commands/           # /check, /add-tauri-cmd, etc
-│   └── settings.json
-├── .scratch/               # Gitignored — kickoffs, master logs in progress, personal notes
-├── docs/                   # Documentation
-│   └── day-logs/           # Per-day/per-session master logs (published via docs PR after Sprint closure)
-├── src/                    # React frontend
-│   ├── components/
-│   │   ├── ui/             # shadcn/ui primitives (Card, Button, Skeleton, ...)
-│   │   ├── library/        # Library page components (when split)
-│   │   ├── player/         # audio player (Sprint 5)
-│   │   └── settings/       # settings UI components
-│   ├── contexts/           # CredentialsContext (tri-state)
-│   ├── hooks/              # React hooks
-│   ├── stores/             # Zustand stores (when needed)
-│   ├── lib/                # tauri.ts wrappers + format.ts + voices.ts + types
-│   ├── locales/            # i18n: en.json, ru.json (Sprint 7)
-│   ├── pages/              # route components: Settings, Synthesize, Library
-│   ├── App.tsx
-│   └── main.tsx
-├── src-tauri/              # Rust backend
-│   ├── src/
-│   │   ├── main.rs
-│   │   ├── lib.rs
-│   │   ├── paths.rs        # Single source of truth for filesystem locations
-│   │   ├── state.rs        # AppState: Mutex<Connection> + tokio::sync::Mutex<Option<Arc<SaluteAuth>>>
-│   │   ├── commands/       # Tauri commands exposed to frontend
-│   │   │   ├── credentials.rs   # set/test/delete with force-bypass cache-first
-│   │   │   ├── synthesize.rs    # synthesize_document returns document_id
-│   │   │   ├── storage.rs       # list_documents/get_audio_path/delete_document/export_audio
-│   │   │   └── file.rs          # read_and_parse_file (size/content caps + extension dispatch)
-│   │   ├── salute/         # SaluteSpeech client
-│   │   │   ├── auth.rs     # OAuth flow with embedded cert
-│   │   │   ├── synthesize.rs    # /synthesize endpoint
-│   │   │   ├── errors.rs   # SaluteError enum
-│   │   │   └── http.rs     # shared HTTP client with cert pinning + RqUID
-│   │   ├── parser/         # File parsers (Sprint 4)
-│   │   │   ├── mod.rs           # ParsedDocument + ParseError + try_all dispatcher
-│   │   │   ├── txt.rs           # BOM → UTF-8 strict → Windows-1251 fallback
-│   │   │   ├── md.rs            # pulldown-cmark event filter; code blocks → «фрагмент кода»
-│   │   │   ├── docx.rs          # docx-rust paragraph + table (row-by-row) extraction
-│   │   │   └── pdf.rs           # pdfium-render dynamic bind; scanned PDFs flagged
-│   │   ├── text/
-│   │   │   ├── chunker.rs       # text splitting for API limits
-│   │   │   └── preprocessor.rs  # URL/email/abbreviation humanization (Sprint 3)
-│   │   ├── audio/
-│   │   │   └── wav_join.rs # WAV concatenation with streaming header normalization
-│   │   ├── db/             # SQLite layer
-│   │   │   ├── mod.rs           # init_database + test_connection() helper
-│   │   │   ├── migrations.rs    # rusqlite_migration runner + schema
-│   │   │   └── repository.rs    # DocumentRecord CRUD free functions
-│   │   └── secrets/
-│   │       └── keyring.rs  # Windows Credential Manager wrapper
-│   ├── assets/
-│   │   └── russiantrustedca.pem  # Russian Ministry of Digital Development root cert (committed!)
-│   ├── capabilities/
-│   │   └── main.json       # Tauri 2 permissions
-│   ├── icons/
-│   ├── Cargo.toml
-│   └── tauri.conf.json
-├── CHANGELOG.md            # Maintained from Sprint 5 onward (batched)
-├── CLAUDE.md               # this file
-├── CODE_OF_CONDUCT.md
-├── CONTRIBUTING.md
-├── LICENSE
-├── README.md
-├── SECURITY.md
-├── package.json
-├── pnpm-lock.yaml          # committed!
-├── tailwind.config.ts
-├── tsconfig.json
-└── vite.config.ts
-```
+See [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md). TTS lives in `tts/silero`,
+`commands/tts.rs`, `commands/synthesize.rs`, `TtsContext` and `TtsSection`.
+STT remains in `stt`, `dictation`, `commands/speech.rs` and `DictationSection`.
+Historical module names in day logs describe previous versions only.
 
 ## Architecture invariants
 
@@ -130,8 +54,8 @@ These rules MUST hold across all PRs. If a change requires breaking one, escalat
 ### Security invariants
 
 1. **No secrets in code, config files, or environment variables.** Authorization Keys live in Windows Credential Manager (`keyring-rs`). Access tokens live only in RAM.
-2. **All HTTP to Sberbank goes through `src-tauri/src/salute/http.rs`** — that module handles cert pinning, RqUID generation, retries, and auth. No other module makes raw `reqwest` calls to Sberbank.
-3. **No network requests outside the allowlist:** `ngw.devices.sberbank.ru:9443`, `smartspeech.sber.ru`, `api.github.com` (updater only). Enforced via Tauri CSP and `capabilities/main.json`.
+2. **STT HTTP and artifact downloads use verified TLS.** No retired OAuth endpoints or custom Sber root certificate.
+3. **No TTS inference network access.** Pin downloadable artifacts; the webview uses IPC, not direct provider calls.
 4. **No telemetry by default.** Sentry is opt-in, off by default. No analytics. No tracking pixels. No fingerprinting.
 5. **No `unsafe` Rust without a `// SAFETY:` comment** explaining the invariants.
 6. **No `dangerouslySetInnerHTML` in React.** Ever.
@@ -152,10 +76,10 @@ These rules MUST hold across all PRs. If a change requires breaking one, escalat
 
 1. **Tauri commands return `Result<T, String>`.** Errors become strings on the frontend boundary. Use `thiserror` for internal Rust error types, convert to `String` at the boundary.
 2. **Long-running operations (>100ms) must report progress** via `tauri::ipc::Channel<T>` (high-frequency) or `app.emit()` (broadcast).
-3. **Concurrent SaluteSpeech requests are limited to 3** via `tokio::sync::Semaphore`. The API allows 5 for personal tier, we leave headroom. (Implementation: Sprint 4 parallel synthesis.)
-4. **OAuth tokens are cached** in `tokio::sync::RwLock<Option<(String, i64)>>`. Refresh only when `expires_at < now + 60 seconds`.
-5. **`test_credentials` supports cache-first short-circuit with `force: bool` parameter.** Mount-time probes use `force=false` (trust process-lifetime cache); user-initiated Test button uses `force=true` (fresh OAuth call). Established Sprint 2 PR #18.
-6. **SaluteSpeech sync API hard limit is 4000 chars per request.** Our chunker targets ≤3500 to leave room for SSML overhead.
+3. **One local TTS operation at a time.** A separate mutex protects installation, inference and removal without blocking dictation.
+4. **TTS worker unloads after idle and exits with its parent.** No TTS worker or downloads at application startup.
+5. **Readiness is not an OAuth probe.** TTS checks local installation/consent; STT retains its own validation cache.
+6. **TTS limits belong to the backend.** Silero uses 280 input characters per request and segments normalized text below 480.
 7. **Audio bytes never leave Rust over IPC.** `synthesize_document` returns `document_id` (UUID string). Frontend uses `get_audio_path` + asset protocol for playback, `export_audio` (server-side `fs::copy`) for disk export. Established Sprint 2 PR #16.
 
 ### Documentation invariants
@@ -164,7 +88,7 @@ These rules MUST hold across all PRs. If a change requires breaking one, escalat
 
 2. **RU and EN are edited as a pair, always.** Every user-facing claim exists in both languages saying the same thing. Editing one language's guide without the other is a defect, not a follow-up. This applies to `README.md` too (its RU and EN halves).
 
-3. **App is free; the API is paid.** Glagol itself is free/MIT. Providers are paid or free-with-limits per their own terms (SaluteSpeech/TTS by subscription, Groq/others/STT per-usage or free-tier). Every pricing sentence keeps these two facts distinct — never let "the provider became paid" become "Glagol became paid."
+3. **App is free; the API is paid.** Glagol itself is free/MIT. Providers are paid or free-with-limits per their own terms (cloud STT per provider terms; Silero is offline and has a separate noncommercial model license). Every pricing sentence keeps these two facts distinct — never let "the provider became paid" become "Glagol became paid."
 
 4. **Factual doc edits use the `glagol-docs` skill and commit direct to `main`.** Real-world facts the code doesn't enforce (a provider cancelled its free tier, a price changed) are applied via the `glagol-docs` skill: grep every occurrence across all three docs, fix all, keep RU/EN in sync. Docs-only → direct commit to `main`, no PR. One fact = one commit (`docs: <the fact>`). Master logs in `docs/day-logs/` and `CHANGELOG.md` are exempt — they follow their own conventions and are never retro-edited.
 
@@ -177,39 +101,24 @@ These rules MUST hold across all PRs. If a change requires breaking one, escalat
 5. **Public Rust APIs documented with `///` doc comments.**
 6. **No `console.log` in production code.** Use proper logging (`tracing` on Rust side, dev-only `console.*` in TS).
 
-## SaluteSpeech API — critical reference
+## TTS 0.4.0 — current contract
 
-**Auth endpoint:** `POST https://ngw.devices.sberbank.ru:9443/api/v2/oauth`
-- Headers: `Authorization: Basic <base64(client_id:client_secret)>`, `RqUID: <new-uuid-v4-each-time>`, `Content-Type: application/x-www-form-urlencoded`
-- Body: `scope=SALUTE_SPEECH_PERS`
-- Response: `{access_token, expires_at}` — `expires_at` is Unix milliseconds, token lives 30 minutes
-
-**Synthesize endpoint:** `POST https://smartspeech.sber.ru/rest/v1/text:synthesize?format=wav16&voice=Nec_24000`
-- Headers: `Authorization: Bearer <access_token>`, `Content-Type: application/text`
-- Body: raw UTF-8 text, ≤4000 chars, optional SSML wrapped in `<speak>...</speak>`
-- Response: binary WAV/PCM/OPUS stream
-
-**Voices (use the `_24000` suffix for quality):**
-- `Nec_24000` — Natalia (female, default, supports stress marks `+`)
-- `Bys_24000` — Boris (male)
-- `May_24000` — Marfa (female)
-- `Tur_24000` — Taras (male)
-- `Ost_24000` — Alexandra (female)
-- `Pon_24000` — Sergey (male, supports stress marks `+`)
-- `Kin_24000` — Kira (en-US only)
-
-**Free tier limit:** 200,000 characters/month synthesis, resets monthly, doesn't roll over. Track in `api_usage` table (Sprint 5+).
-
-**TLS:** Sberbank uses the Russian Ministry of Digital Development root CA. Embed `russiantrustedca.pem` in the binary and add it as a root certificate to the `reqwest::Client` via `Certificate::from_pem`. Do NOT disable certificate verification.
-
-**Error handling:**
-- 200 OK → audio stream
-- 400 → request too large or malformed SSML — show user-friendly error
-- 401 → token expired — refresh and retry once
-- 429 → rate limit — exponential backoff (start 2s, max 30s, 3 retries)
-- 500 → Sberbank-side error — retry once after 5s, then fail with X-Request-ID logged
-
-**Observed smart prosody (Sprint 2 finding):** SaluteSpeech ignores decorative trailing punctuation in numbers (e.g. "1.1." → spoken as "1.1"). Preprocessing should not duplicate Sber's smart behavior — only fix things Sber objectively mishandles (URLs, emails, technical abbreviations).
+- `tts/silero` owns optional files, consent, worker and download state; STT is separate.
+- `TtsBackend` defines provider, voices, chunk limit and on-disk WAV result. Future
+  Yandex SpeechKit v3 is out of scope until separately requested.
+- Silero v5.5 is CC BY-NC-SA 4.0, not MIT. Unchecked acknowledgement before first
+  download; backend checks model/license hash. No consent in transferred backups.
+- Model/runtime excluded from installer. Pin all artifacts, verify before execution;
+  read `docs/local-tts-runtime.md`. No hub, pip, arbitrary model or SAPI installation.
+- Hidden owned Python process, bounded stdio JSON, mono PCM 24 kHz; no text/audio
+  logging or network inference. Cancel/timeout/parent exit terminate the worker.
+- Pipeline streams chunks to a temporary WAV and transactionally publishes one row.
+  Keep legacy audio/provider metadata, dictation profiles, keys and usage seconds.
+- New database migration only; old rows use `salutespeech-legacy`, new TTS `silero`.
+- Retired OAuth/client/certificate and quota UI are gone. Only a narrow one-time
+  cleanup of `Glagol/salutespeech_auth_key` remains; never touch STT keys.
+- Version sources: package.json, Cargo.toml, Cargo.lock, tauri.conf.json; run
+  `node scripts/check-version.mjs`. User may request local commits without a PR.
 
 ## Development workflow
 
@@ -344,7 +253,7 @@ These patterns emerged from specific implementations and apply to similar future
   ```
   Drop semantics auto-rollback on early return (file write failure → row not committed).
 
-- **Cache-first short-circuit with `force: bool` parameter** for repeatedly-invoked validation commands. Mount-time probes trust process-lifetime cache; user-initiated actions explicitly bypass via `force: true`. See `commands::credentials::test_credentials_impl` for canonical example.
+- **Cache-first short-circuit with `force: bool` parameter** for repeatedly-invoked validation commands. Mount-time probes trust process-lifetime cache; user-initiated actions explicitly bypass via `force: true`. See the independent STT validation commands for this pattern.
 
 - **Discriminated union state machines** for async UI states. Pattern: `{ kind: 'loading' } | { kind: 'empty' } | { kind: 'ready', data } | { kind: 'error', message }`. Cleaner than boolean stews (`loading && !error && data`). Scales to status additions without rewrite.
 
@@ -533,7 +442,8 @@ These will be added as the project progresses:
 ## Glossary
 
 - **TTS** — text-to-speech (text → audio)
-- **SaluteSpeech** — Sberbank's speech synthesis API (third-party)
+- **Silero v5.5** — optional CC BY-NC-SA 4.0 noncommercial TTS model
+- **SaluteSpeech** — retired provider, retained only as legacy document attribution
 - **SSML** — Speech Synthesis Markup Language (XML-like, for controlling pronunciation)
 - **Chunker** — module that splits long text into ≤3500-char pieces respecting sentence boundaries
 - **Preprocessor** — module that humanizes mechanical pronunciation issues (URLs, emails, abbreviations) before chunking

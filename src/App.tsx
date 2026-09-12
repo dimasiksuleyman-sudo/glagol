@@ -11,7 +11,7 @@ import { Synthesize } from "@/pages/Synthesize";
  * layout (sidebar + Outlet); `/` redirects to `/synthesize` as the
  * default landing page.
  *
- * `<BrowserRouter>` lives in {@link ./main.tsx} so the credentials
+ * `<BrowserRouter>` lives in {@link ./main.tsx} so the TTS readiness
  * context provider can sit outside (and survive route changes).
  */
 function App() {

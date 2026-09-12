@@ -59,12 +59,12 @@ pnpm install
 pnpm tauri dev
 ```
 
-#### Get SaluteSpeech credentials for testing
+#### Local TTS testing
 
-1. Register at [developers.sber.ru](https://developers.sber.ru/studio)
-2. Create a SaluteSpeech API project
-3. Copy your `Authorization Key`
-4. Enter it in Glagol's Settings on first launch
+Ordinary tests require no model or credentials. For opt-in real Silero testing,
+follow [runtime instructions](docs/local-tts-runtime.md), including the separate
+noncommercial model license. Do not commit weights, Python, WAVs or secrets.
+Keep STT and future commercial TTS providers independent of Silero.
 
 ### Branch and commit conventions
 
@@ -84,7 +84,7 @@ We use [Conventional Commits](https://www.conventionalcommits.org/):
 ```
 feat: add support for EPUB file format
 fix: handle empty SSML tags in chunker
-docs: clarify SaluteSpeech setup steps
+docs: clarify optional Silero setup
 refactor: extract OAuth logic into separate module
 chore: bump Tauri to 2.10
 test: add unit tests for text chunker
@@ -140,7 +140,7 @@ UI strings are i18n-ready. New strings:
 To keep the project focused:
 
 - ❌ Telemetry, analytics, or any non-opt-in data collection
-- ❌ Bundling additional API providers besides SaluteSpeech (without prior discussion)
+- ❌ Bundling model weights or adding providers without a reviewed scope and license
 - ❌ Code obfuscation or anti-modification measures
 - ❌ Dependencies with non-OSI-approved licenses
 - ❌ Features that compromise user privacy
@@ -207,12 +207,12 @@ pnpm install
 pnpm tauri dev
 ```
 
-#### Получить credentials SaluteSpeech для тестирования
+#### Проверка локальной озвучки
 
-1. Зарегистрируйтесь на [developers.sber.ru](https://developers.sber.ru/studio)
-2. Создайте проект SaluteSpeech API
-3. Скопируйте `Authorization Key`
-4. Введите его в настройках Glagol при первом запуске
+Обычные тесты не требуют модели или ключей. Для настоящего Silero используйте
+[инструкцию runtime](docs/local-tts-runtime.ru.md), учитывая отдельную лицензию
+модели для некоммерческого использования. Веса, Python, WAV и секреты не коммитить.
+Диктовку и будущие коммерческие TTS-провайдеры не связывать с условиями Silero.
 
 ### Conventions для веток и коммитов
 
@@ -232,7 +232,7 @@ pnpm tauri dev
 ```
 feat: add support for EPUB file format
 fix: handle empty SSML tags in chunker
-docs: clarify SaluteSpeech setup steps
+docs: clarify optional Silero setup
 ```
 
 Типы: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`, `ci`, `build`.
@@ -276,7 +276,7 @@ Subject — до 72 символов. Body — если нужен контек�
 Чтобы проект оставался сфокусированным:
 
 - ❌ Телеметрия, аналитика, любой не-opt-in сбор данных
-- ❌ Дополнительные API-провайдеры кроме SaluteSpeech (без предварительного обсуждения)
+- ❌ Встраивание весов моделей или добавление провайдеров без согласованного объёма и лицензии
 - ❌ Обфускация кода или anti-modification меры
 - ❌ Зависимости с non-OSI лицензиями
 - ❌ Фичи, нарушающие приватность пользователя

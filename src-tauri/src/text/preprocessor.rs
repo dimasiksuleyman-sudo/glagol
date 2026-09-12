@@ -1,6 +1,6 @@
-//! Text preprocessing for SaluteSpeech narration.
+//! Shared preprocessing for Russian narration.
 //!
-//! Humanises patterns that SaluteSpeech otherwise reads mechanically
+//! Humanises patterns that TTS engines may read mechanically
 //! (URLs spelled out letter by letter, emails punctuated awkwardly,
 //! common Russian abbreviations read literally) so the synthesised
 //! audio flows naturally. Runs before the chunker in the synthesis
@@ -41,8 +41,7 @@
 //! - Bare-domain matching is restricted to a curated TLD whitelist for
 //!   the same reason: it prevents `1.5` (numbers) and `file.pdf`
 //!   (filenames) from being treated as URLs.
-//! - Number formatting and smart-quotes / em-dash normalisation are
-//!   deliberately skipped — SaluteSpeech already handles them well.
+//! - Provider-specific number/Latin conversion is handled by the Silero adapter.
 
 use regex::Regex;
 use std::sync::LazyLock;

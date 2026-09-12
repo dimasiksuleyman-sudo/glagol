@@ -54,7 +54,7 @@ body:
     attributes:
       label: Glagol version / Версия Glagol
       description: Found in About menu / Можно посмотреть в меню "О программе"
-      placeholder: "v0.1.0"
+      placeholder: "0.4.0"
     validations:
       required: true
 
@@ -89,6 +89,12 @@ body:
         - Not applicable / Не применимо
     validations:
       required: false
+
+  - type: input
+    id: speech-component
+    attributes:
+      label: Speech component / Речевой компонент
+      description: "Silero v5.5, GigaAM, office server or cloud STT; include CPU/RAM for local issues. / Silero v5.5, GigaAM, офисный сервер или облачный STT; для локальных проблем укажите CPU/RAM."
 
   - type: textarea
     id: logs

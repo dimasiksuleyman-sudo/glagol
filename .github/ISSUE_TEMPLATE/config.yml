@@ -17,9 +17,3 @@ contact_links:
     about: |
       Check the README first — many common questions are answered there.
       Сначала проверьте README — там есть ответы на многие вопросы.
-
-  - name: 🆘 SaluteSpeech API issues / Проблемы с SaluteSpeech API
-    url: https://developers.sber.ru/
-    about: |
-      For issues with the SaluteSpeech API itself (not Glagol), contact Sberbank directly.
-      По проблемам самого SaluteSpeech API (не Glagol) обращайтесь напрямую в Сбер.

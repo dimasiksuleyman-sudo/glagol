@@ -1,7 +1,7 @@
 //! Secrets storage for Glagol.
 //!
 //! Currently provides Windows Credential Manager access for the
-//! SaluteSpeech Authorization Key via `secrets::keyring`. Future
+//! independent STT credentials via `secrets::keyring`. Future
 //! modules may add encrypted local cache or session token storage —
 //! see SECURITY.md.
 //!

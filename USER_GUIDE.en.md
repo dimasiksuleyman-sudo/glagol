@@ -4,7 +4,7 @@ Glagol turns long Russian texts into audio. Paste text or load a file — get a 
 
 Built for people who'd rather listen than read off a screen. If you love audiobooks but want to listen to *your own* documents — articles, contracts, books in PDF — Glagol is made for exactly that.
 
-> **Note:** Glagol synthesizes **Russian** text. It runs on Sber's SaluteSpeech, a Russian-language TTS service. Latin script and other languages come out "hit or miss." This is a Russian-first product by design.
+> **Note:** Glagol is Russian-first. Optional local Silero TTS v5.5 is for noncommercial use under CC BY-NC-SA 4.0.
 
 ---
 
@@ -21,28 +21,30 @@ switches to a circular red microphone indicator.
 
 **What you need:**
 - Windows 10 or 11 (64-bit)
-- ~26 MB on disk
-- A free SaluteSpeech key from Sber (how to get one — below)
-- Internet (synthesis runs through Sber's cloud)
+- Allow 1.9 GB of additional free space for optional Silero.
+- Internet for downloads; local inference works offline afterwards.
 
 ---
 
-## Setting up your SaluteSpeech key
+## Optional local Silero TTS
 
-Glagol uses Sber's SaluteSpeech for speech synthesis. To get it working you need a free key.
+Silero TTS v5.5 is **for noncommercial use**, CC BY-NC-SA 4.0, Silero Team.
+Dictation and office servers do not require it. Glagol's MIT license and the
+selected STT provider's terms apply independently.
 
-1. Go to [developers.sber.ru](https://developers.sber.ru), create a **SaluteSpeech API** project.
-2. Copy the ready-made **Authorization Key** string (it's Base64 of `client_id:client_secret`).
-3. In Glagol, open **Settings** → paste the key into the **SaluteSpeech Authorization Key** field → **Save**.
-4. Click **Verify** — the status should change to "confirmed by Sber."
+1. Settings → “Локальная озвучка — Silero v5.5”.
+2. Read the full license and acknowledge noncommercial use.
+3. Download and enable: 145.4 MB model + 249.3 MB runtime; allow 1.9 GB free space.
+4. Select a voice and use the preview button.
 
-The key is stored locally, in Windows Credential Manager. It's never sent anywhere except Sber itself, during synthesis.
+No manual Python, pip or CUDA installation. Download happens only by choice;
+subsequent synthesis is offline. If the server is unreachable, choose an exact
+previously downloaded `v5_5_ru.pt`. Resume preserves downloaded parts; repair
+reinstalls verified components; removal frees space and resets acknowledgement
+without removing the library or dictation.
 
-![Settings](docs/screenshots/settings-page.png)
-
-**Sber free tier:** 200,000 characters of synthesis per month. The counter in Settings shows how much is left (approximate — exact figures are in your dashboard at developers.sber.ru).
-
----
+Yandex SpeechKit v3 for commercial TTS is planned later, not included in 0.4.0.
+SaluteSpeech and its key are no longer used.
 
 ## Your first synthesis
 
@@ -53,11 +55,11 @@ The key is stored locally, in Windows Credential Manager. It's never sent anywhe
 
 In a few seconds the finished audio appears in your Library.
 
-![Synthesize](docs/screenshots/synthesize-page.png)
+Synthesis supports cancellation. Numbers become words; unknown Latin words are spelled out and dates may be read component by component.
 
 **Supported file formats:** `.txt`, `.md`, `.docx`, `.pdf`.
 
-**Voices (6 of them):** Natalya, Boris, Marfa, Taras, Aleksandra, Sergey. Each has its own manner — try a few and pick the one that's easiest on your ears.
+**Voices (5):** Aidar, Baya, Kseniya, Xenia, Eugene.
 
 **Language:** Glagol is made for **Russian text**. Latin script and other languages are "an acquired taste."
 
@@ -77,14 +79,6 @@ All your recordings live in the Library. Here you can:
 ![Library](docs/screenshots/library-page.png)
 
 Documents are sorted newest first. Each shows its voice, character count, and when it was created.
-
----
-
-## Usage counter
-
-Settings includes a counter for Sber's free tier: how many synthesis characters you've used this month out of 200,000.
-
-It updates automatically after each synthesis and resets on the 1st of every month. It's just a hint — to keep an eye on the limit so you don't hit it unexpectedly.
 
 ---
 
@@ -138,7 +132,7 @@ Glagol can save your entire library (documents + audio files) into a single arch
 Settings → **"Create backup"** → choose a folder. You get one `.zip` file with everything inside.
 
 **Restore / move to a new computer:**
-1. On the new computer, install Glagol and set up your SaluteSpeech key.
+1. On the new computer, install Glagol and enable optional Silero separately if you need new synthesis.
 2. Settings → **"Restore from backup"** → select your `.zip`.
 3. Glagol shows what it will replace and asks for confirmation.
 4. After restoring, the app restarts — your whole library is back in place.
@@ -149,14 +143,14 @@ Before restoring, Glagol automatically creates a backup of the current state —
 
 ## If something doesn't work
 
-**Synthesis won't start / key error**
-Check the key in Settings (the "Verify" button). Make sure you have internet. Check the counter — you may have hit the monthly 200,000-character limit.
+**Synthesis does not start**
+Check Silero installation and acknowledgement in Settings. Repair damaged components, or import the exact downloaded model if its server is unreachable.
 
 **Installer won't run — Windows warning**
 That's SmartScreen. "More info" → "Run anyway." See the Installation section.
 
 **A voice sounds odd**
-Try another of the six voices — each has its own manner. If you're synthesizing non-Russian text, that won't work well — Glagol is Russian-only.
+Try another of the five voices — each has its own manner. If you're synthesizing non-Russian text, that won't work well — Glagol is Russian-only.
 
 ---
 

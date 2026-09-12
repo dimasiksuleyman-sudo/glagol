@@ -11,10 +11,8 @@
 //!   parsing so a 200 MB DOCX is rejected without spending time
 //!   unzipping it.
 //! * **500 000 characters** of extracted text — measured post-parse
-//!   via `chars().count()` so Cyrillic is counted correctly. Anchored
-//!   to the SaluteSpeech monthly quota (200 000 chars × ~2.5
-//!   documents) — both numbers can be relaxed in Sprint 5+ once we
-//!   have real-world usage data.
+//!   via `chars().count()` so Cyrillic is counted correctly. This bounds
+//!   text parsing/memory independently of provider quotas.
 
 use std::fs;
 use std::path::Path;

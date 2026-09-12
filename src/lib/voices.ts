@@ -1,28 +1,10 @@
-/** A SaluteSpeech voice that Glagol exposes in the UI. */
-export interface Voice {
-  /** Sber API identifier sent over the wire, e.g. `"Nec_24000"`. */
-  id: string;
-  /** Display name shown in the voice picker (Russian). */
-  label: string;
-}
-
+/** Active Silero voices; legacy labels only identify existing library items. */
+export interface Voice { id: string; label: string }
 export const VOICES: readonly Voice[] = [
-  { id: "Nec_24000", label: "Наталья" },
-  { id: "Bys_24000", label: "Борис" },
-  { id: "May_24000", label: "Марфа" },
-  { id: "Tur_24000", label: "Тарас" },
-  { id: "Ost_24000", label: "Александра" },
-  { id: "Pon_24000", label: "Сергей" },
-] as const;
-
-/** Default voice selected on first visit to the Synthesize page. */
-export const DEFAULT_VOICE_ID = "Nec_24000";
-
-/**
- * Look up the Russian display label for a SaluteSpeech voice API id.
- * Falls back to the raw id if the voice isn't in our catalogue —
- * forward-safe for new voices Sberbank may roll out.
- */
-export function getVoiceLabel(voiceApiId: string): string {
-  return VOICES.find((v) => v.id === voiceApiId)?.label ?? voiceApiId;
-}
+  { id: "aidar", label: "Айдар" }, { id: "baya", label: "Бая" },
+  { id: "kseniya", label: "Ксения" }, { id: "xenia", label: "Ксения (Xenia)" },
+  { id: "eugene", label: "Евгений" },
+];
+export const DEFAULT_VOICE_ID = "xenia";
+const legacy: Record<string,string> = { Nec_24000: "Наталья", Bys_24000: "Борис", May_24000: "Марфа", Tur_24000: "Тарас", Ost_24000: "Александра", Pon_24000: "Сергей", Kin_24000: "Кира" };
+export function getVoiceLabel(id: string): string { return VOICES.find(v => v.id === id)?.label ?? legacy[id] ?? id; }

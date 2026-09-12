@@ -1580,11 +1580,10 @@ dependencies = [
 
 [[package]]
 name = "glagol"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "arboard",
- "base64 0.22.1",
  "chrono",
  "cpal",
  "docx-rust",

@@ -290,6 +290,7 @@ mod tests {
                     source_type: "paste".to_string(),
                     char_count: 100,
                     voice: "Nec_24000".to_string(),
+                    provider: "salutespeech-legacy".into(),
                     status: "ready".to_string(),
                     error_message: None,
                     created_at: 1_700_000_000_000 + i as i64,
@@ -389,6 +390,44 @@ mod tests {
 
         let _ = fs::remove_dir_all(&source);
         let _ = fs::remove_dir_all(&target);
+    }
+
+    #[test]
+    fn backup_excludes_tts_components_consent_and_previews() {
+        let source = seed_data_dir(1, 1);
+        let target = fresh_target_dir();
+        let components = source.join("tts_models");
+        fs::create_dir_all(components.join("runtime")).unwrap();
+        fs::write(components.join("acknowledgement.json"), "local consent").unwrap();
+        fs::write(components.join("v5_5_ru.pt"), "model").unwrap();
+        fs::write(components.join("runtime/python.exe"), "runtime").unwrap();
+        let previews = source.join("audio_cache/previews");
+        fs::create_dir_all(&previews).unwrap();
+        fs::write(previews.join("tts-preview.wav"), "preview").unwrap();
+
+        let path = create_backup_impl(
+            &source,
+            &target,
+            "0.4.0-test",
+            BACKUP_FILENAME_PREFIX,
+            |_, _| {},
+        )
+        .unwrap();
+        let mut archive = zip::ZipArchive::new(File::open(path).unwrap()).unwrap();
+        let manifest = read_manifest_from_zip(&mut archive).unwrap();
+        assert_eq!(manifest.document_count, 1);
+        assert_eq!(manifest.audio_file_count, 1);
+        assert_eq!(archive.len(), 3, "only manifest, database and library WAV");
+        assert!(archive.file_names().all(|name| {
+            name == MANIFEST_FILENAME
+                || name == DB_FILENAME
+                || (name.starts_with(AUDIO_DIR_PREFIX)
+                    && name.ends_with(".wav")
+                    && !name.contains("previews"))
+        }));
+        drop(archive);
+        fs::remove_dir_all(source).unwrap();
+        fs::remove_dir_all(target).unwrap();
     }
 
     #[test]

@@ -1,314 +1,143 @@
-<div align="center">
+# Глагол / Glagol
 
-# 📖 Glagol
+Диктовка и локальная озвучка русских текстов для Windows 10/11 x64.
+Russian dictation and local text-to-speech for Windows 10/11 x64.
 
-**Локальная озвучка и голосовой ввод на русском языке** · **Local Russian text-to-speech and voice dictation**
+[MIT — приложение / application](LICENSE) · [Руководство / Guide](USER_GUIDE.md) · [Релизы / Releases](https://github.com/dimasiksuleyman-sudo/glagol/releases) · [Безопасность / Security](SECURITY.md)
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tauri](https://img.shields.io/badge/Tauri-2.x-24c8db?logo=tauri)](https://tauri.app/)
-[![Rust](https://img.shields.io/badge/Rust-stable-orange?logo=rust)](https://www.rust-lang.org/)
-[![React](https://img.shields.io/badge/React-19-61dafb?logo=react)](https://react.dev/)
-[![Made with love](https://img.shields.io/badge/made_with-♥-red.svg)](https://github.com/dimasiksuleyman-sudo/glagol)
+## Русский
 
-[Русский](#-русский) · [English](#-english) · [Disclaimer](#️-disclaimer--юридический-статус)
+### Использование в организациях и лицензии
 
-![Glagol — Библиотека](docs/screenshots/library-page.png)
+**Глагол можно использовать для диктовки, в том числе в организации.**
+Локальная GigaAM, свой офисный сервер и облачный STT настраиваются независимо
+от озвучки. Условия выбранного провайдера/модели действуют отдельно.
 
-</div>
+**Озвучка Silero TTS v5.5 — необязательный компонент для некоммерческого
+использования**, CC BY-NC-SA 4.0, Silero Team. Модель и движок скачиваются
+только по выбору пользователя после ознакомления с условиями. Они не входят
+в установщик, не загружаются при обновлении и не нужны для диктовки.
+Отдельное скачивание не отменяет ограничений лицензии.
+[Полная лицензия](docs/third-party/Silero-LICENSE.txt) · [Silero](https://github.com/snakers4/silero-models).
 
-> ⚠️ **Glagol — независимый open source проект. Не аффилирован, не связан и не поддерживается ПАО Сбербанк.** Использует публичный API SaluteSpeech на условиях самого пользователя. Подробности — в [секции Disclaimer](#️-disclaimer--юридический-статус).
+Сам Глагол остаётся MIT-проектом. Для коммерческой озвучки позже планируется
+**Yandex SpeechKit v3**; в 0.4.0 его интеграции ещё нет. Интеграция SaluteSpeech
+удалена. Глагол — независимый проект, не аффилированный с поставщиками моделей.
 
-> 💼 **Доступен для контрактной работы** — десктоп-приложения на Rust/Tauri, voice/TTS/LLM-пайплайны. · **Available for contract work** — Rust/Tauri desktop apps, voice/TTS/LLM pipelines. — `kiss2tri@hotmail.com`
+### Возможности
 
----
+- Диктовка по хоткею `Ctrl+Shift+Space`: дождитесь сигнала записи после подготовки
+  микрофона, говорите, отпустите. Автовставка в активное окно или буфер обмена.
+- Локальная GigaAM v3 CTC/RNNT с загрузкой по выбору: 272–274 МБ и движок около
+  20 МБ. Модели MIT, авторство [Sber GigaAM](https://github.com/salute-developers/GigaAM)
+  и лицензия сохраняются; удаление SaluteSpeech их не затрагивает.
+- Офисный OpenAI-совместимый сервер для нескольких компьютеров; отдельный ключ
+  и настройки. Облачный STT имеет собственный профиль, модель и прокси.
+- Необязательная локальная история диктовок; по умолчанию выключена.
+- Пять голосов Silero: Айдар, Бая, Ксения, Xenia, Евгений. Предпрослушивание,
+  ударения, вопросительные фразы, преобразование чисел и латинских сокращений.
+- Вставка текста или TXT/MD/DOCX/PDF; длинные документы озвучиваются по частям
+  с прогрессом и отменой, без накопления всей аудиокниги в памяти.
+- Локальная библиотека, переименование, плеер, скорость 0.5–2×, экспорт WAV,
+  резервные копии. Старые озвучки продолжают воспроизводиться.
 
-## 🇷🇺 Русский
+### Установка и первый запуск
 
-📘 **[Руководство пользователя](USER_GUIDE.md)** · 📦 **[Скачать последний релиз](https://github.com/dimasiksuleyman-sudo/glagol/releases)**
+Исходники этой версии — **0.4.0**. Готовые опубликованные сборки находятся
+в [Releases](https://github.com/dimasiksuleyman-sudo/glagol/releases);
+проверяйте номер версии выбранного установщика.
 
-### Что это?
+1. Запустите `Glagol_<версия>_x64-setup.exe` и прочитайте пояснение о компонентах.
+2. Для диктовки выберите локальную модель, офисный сервер или облако в настройках.
+3. Для некоммерческой озвучки откройте «Локальная озвучка — Silero v5.5»,
+   ознакомьтесь с лицензией и нажмите «Скачать и включить».
+4. Если сервер модели недоступен, можно выбрать заранее скачанный
+   `v5_5_ru.pt`; приложение проверит его размер и SHA-256.
 
-**Glagol** — desktop-приложение для Windows, которое озвучивает длинные тексты и документы качественными русскими голосами и сохраняет аудио в локальную библиотеку, чтобы вы могли вернуться к прослушиванию когда угодно.
+Silero: модель **145,4 МБ** + runtime **249,3 МБ**, суммарно **394,8 МБ**
+загрузки. Освободите не менее **1,9 ГБ** для установки и временных файлов.
+Системные Python/pip/CUDA и регистрация SAPI не нужны. После загрузки синтез
+работает без сети. На Ryzen 7 7730U / 16 ГБ проверен CPU-режим с двумя потоками;
+на других машинах скорость зависит от CPU и доступной памяти.
 
-**Две функции:** озвучка текста (TTS) через SaluteSpeech API от Сбера и голосовой ввод (диктовка, STT) с автоматической вставкой в активное окно.
+Числа преобразуются в слова; даты и дроби могут читаться по компонентам,
+неизвестные латинские слова — по буквам. Проверяйте важные тексты на слух.
+Нет обещания грамматически идеального чтения произвольных обозначений.
 
-Glagol — бесплатное open source приложение (MIT). За распознавание и синтез вы платите провайдеру напрямую по своему ключу: озвучка — по подписке SaluteSpeech; диктовку можно подключить к разным провайдерам (оплата по потреблению — копейки за час аудио) или к Groq с бесплатным тарифом и лимитами.
+Данные: `%LOCALAPPDATA%\app.glagol.desktop\`. Библиотека — `audio_cache` и
+`glagol.db`, STT-модели — `speech_models`, Silero — `tts_models`.
+Бэкап библиотеки не переносит модели, runtime, OS-ключи и подтверждение условий
+Silero. На другом ПК компонент включается отдельно.
 
-### Зачем?
+### Разработка
 
-Существующие решения для озвучки русских текстов имеют проблемы:
+Tauri 2, Rust, React 19, TypeScript, SQLite. [Структура](PROJECT_STRUCTURE.md),
+[вклад в проект](CONTRIBUTING.md), [TTS runtime](docs/local-tts-runtime.ru.md),
+[STT runtime](docs/local-dictation-runtime.md), [изменения](CHANGELOG.md).
+Сборка: `pnpm install`, `pnpm tauri build`. Проверка версий:
+`node scripts/check-version.mjs`.
 
-- 🌐 **Speechify, NaturalReader** — платные ($99–$330/год), слабые русские голоса
-- 🎙️ **Balabolka** — бесплатный, но устаревшие SAPI-голоса
-- 💻 **SaluteSpeech App от Сбера** — отличные голоса, но без библиотеки документов и кэша
-- 🤖 **Яндекс.Браузер «Прочитать вслух»** — только в браузере, требует Яндекс-аккаунт
+## English
 
-**Glagol сочетает лучшее:** качественные нейросетевые голоса Сбера, локальная библиотека прослушанных документов, резервное копирование — плюс голосовой ввод без системного VPN. Приложение бесплатно и с открытым кодом; за API вы платите провайдеру напрямую.
+### Organization use and licenses
 
-### Кому это нужно?
+**Glagol can be used for dictation in organizations.** Local GigaAM, your office
+server and cloud STT are independent of TTS. Each provider/model's own terms apply.
 
-- 📚 **Читателям книг и статей**, которые хотят слушать вместо чтения
-- 💼 **Менеджерам и юристам** с длинными документами и отчётами
-- 👁️ **Людям со сниженным зрением**, которым нужна альтернатива чтению
-- 🎓 **Студентам и исследователям**, чтобы слушать научные статьи
-- 🎧 **Тем, кто переучивает мозг** воспринимать через аудио
+**Silero TTS v5.5 is optional and for noncommercial use**, CC BY-NC-SA 4.0,
+Silero Team. Model/runtime download only after the user chooses the component
+and acknowledges its terms. They are excluded from the installer and updates;
+dictation does not require them. Separate downloads do not waive license terms.
+[Full license](docs/third-party/Silero-LICENSE.txt) · [Silero](https://github.com/snakers4/silero-models).
 
-### Что умеет
+Glagol itself remains MIT licensed. **Yandex SpeechKit v3** for commercial TTS
+is planned for a later stage and is not integrated in 0.4.0. SaluteSpeech has
+been removed. Glagol is independent of its model/service providers.
 
-- 🎙️ **6 нейросетевых голосов** на русском — Наталья, Борис, Марфа, Тарас, Александра, Сергей
-- 📋 **Вставка текста или загрузка файла** — TXT, Markdown, Word (`.docx`), PDF
-- 📚 **Локальная библиотека** прослушанных документов с автоматическим сохранением
-- ✏️ **Inline-переименование** документов прямо в библиотеке
-- ▶️ **Воспроизведение** через нативный плеер с потоковой передачей из локального кэша
-- 🎚️ **Скорость воспроизведения** 0.5x–2x
-- 💾 **Экспорт аудио** в WAV-файл в любую папку
-- 🗑️ **Управление библиотекой** — удаление документов одним кликом
-- 💼 **Резервное копирование** — вся библиотека (документы + аудио) в один `.zip`-архив, удобно для бэкапа и переноса на другой компьютер
-- 📊 **Счётчик использования** — сколько символов из бесплатного лимита потрачено в текущем месяце
-- 🧹 **Гуманизация текста** — числа, даты, URL'ы, email и распространённые аббревиатуры (`т.е.`, `и т.д.`, `т.к.`) произносятся естественно, а не побуквенно
-- 🔒 **Безопасность** — Authorization Key хранится в Windows Credential Manager, тексты не покидают вашу машину (кроме отправки в SaluteSpeech для синтеза)
-- 🇷🇺 **Только русский.** Латиница и другие языки озвучиваются «на любителя» — это особенность SaluteSpeech
+### Features
 
-#### 🎤 Голосовой ввод (диктовка)
-
-- ⌨️ **Push-to-talk диктовка** — зажмите хоткей, дождитесь индикатора записи после подготовки микрофона, говорите, отпустите; текст сам появится в активном окне (Notepad, Chrome, Word, Telegram)
-- 📋 **Автовставка или буфер** — на выбор: текст вставляется автоматически или копируется в буфер
-- 🎹 **Настраиваемый хоткей** — по умолчанию `Ctrl+Shift+Space`, меняется на странице «Диктовка»
-- 🎙️ **Выбор микрофона** из списка устройств
-- 💻 **Диктовка без интернета** — GigaAM v3 CTC или RNNT с пунктуацией скачивается из настроек по желанию (около 272–274 МБ + движок 20 МБ); модели не входят в установщик
-- 🏢 **Сервер организации** — общий OpenAI-совместимый распознаватель для компьютеров офиса, с отдельными настройками и необязательным API-ключом
-- 🔌 **Выбор STT-провайдера** — Groq (бесплатный тариф) и другие OpenAI-совместимые эндпоинты; base URL, модель и прокси настраиваются
-- 📝 **Локальная история** последних 10 расшифровок — по умолчанию **выключена**, тексты не касаются диска без необходимости
-- 🌐 **Без системного VPN** — работает через провайдеров, доступных из РФ
-
-### Что планируется
-
-- 🖱️ **Drag & drop** файлов в окно
-- ▶️ **Возобновление прослушивания** с точки остановки
-- 🌙 **Тёмная и светлая темы**
-- 🔍 **Поиск по библиотеке**
-- 🔊 **Другие движки синтеза** — на рассмотрении
-
-### Установка
-
-1. Скачайте `Glagol_0.2.0_x64-setup.exe` из последнего [GitHub Release](https://github.com/dimasiksuleyman-sudo/glagol/releases) (~8 МБ, ~26 МБ после установки).
-2. Запустите файл.
-
-**При первом запуске Windows покажет предупреждение SmartScreen.** Поскольку установщик не подписан коммерческим сертификатом, Windows встретит вас синим окном «Система Windows защитила ваш компьютер». Это нормально для новых приложений:
-
-1. Нажмите **«Подробнее»**.
-2. Появится кнопка **«Выполнить в любом случае»** — нажмите её.
-3. Откроется обычный установщик NSIS — стандартная установка (язык, лицензия MIT, папка, ярлыки). Права администратора не нужны — установка для текущего пользователя.
-
-После установки запустите Glagol из меню «Пуск», в Настройках вставьте свой `Authorization Key` от SaluteSpeech (бесплатно на [developers.sber.ru/studio](https://developers.sber.ru/studio)) — и можно загружать документы.
-
-Подробности — в **[Руководстве пользователя](USER_GUIDE.md)**.
-
-### Технологический стек
-
-- **Tauri 2.x** — фреймворк desktop-приложений
-- **Rust** — backend (логика, парсинг, аудио)
-- **React 19 + TypeScript** — frontend
-- **Tailwind CSS + shadcn/ui** — стили и компоненты
-- **SQLite** (через `rusqlite` + `rusqlite_migration`) — локальная база данных
-- **Tauri Asset Protocol** — потоковая передача аудио из локального кэша
-- **SaluteSpeech API** — синтез речи
-
-### Дорожная карта
-
-- [x] Sprint 0: Setup проекта
-- [x] Sprint 1: Backend клиент SaluteSpeech + минимальный UI (`v0.1.0-alpha`)
-- [x] Sprint 2: Локальное хранилище + UI библиотеки + asset protocol playback (`v0.1.0-rc.1`)
-- [x] Sprint 3a: Препроцессор текста — URL/email/аббревиатуры/числа/даты (`v0.1.0-rc.2`)
-- [x] Sprint 4: Парсинг файлов — TXT, MD, DOCX, PDF (`v0.1.0-rc.3`)
-- [x] Sprint 5b: Inline-переименование + фокус MVP (`v0.1.0-rc.5`)
-- [x] Sprint 5c: Резервное копирование и восстановление (`v0.1.0-rc.6`)
-- [x] Sprint 5d: Счётчик символов + русские сообщения об ошибках (`v0.1.0-rc.7`)
-- [x] Первый публичный релиз — `v0.1.0-rc.7`
-- [x] **Sprint 6: Голосовой ввод — STT-клиент, рекордер, хоткей, автовставка, страница настроек (`v0.2.0`)**
-- [ ] Иконки и миграция провайдеров
-- [ ] **`v1.0.0`**
-
-### Вклад в проект
-
-Контрибьюторам рады! См. [CONTRIBUTING.md](CONTRIBUTING.md) и [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
-
-#### Где Glagol хранит данные
-
-Дев-сборки (через `pnpm tauri dev`) и установленные через NSIS-установщик одинаково используют папку `%LOCALAPPDATA%\app.glagol.desktop\` для базы документов и аудио-кэша. Имя берётся из поля `bundle.identifier` в `src-tauri/tauri.conf.json` (исторически `app.glagol.desktop`; переименование в просто `Glagol` — техдолг, отложенный на будущий Sprint, чтобы не сломать существующие установки). Файл базы — `glagol.db`, аудио — в `audio_cache/{uuid}.wav`.
-
-### Безопасность
-
-Нашли уязвимость? Не открывайте публичный issue. См. [SECURITY.md](SECURITY.md).
-
----
-
-## 🇬🇧 English
-
-📘 **[User Guide](USER_GUIDE.md)** · 📦 **[Download latest release](https://github.com/dimasiksuleyman-sudo/glagol/releases)**
-
-### What is it?
-
-**Glagol** (Russian for "verb", "to speak") is a Windows desktop app that reads long texts and documents aloud using high-quality Russian neural voices, and saves audio to a local library so you can resume listening anytime.
-
-**Two functions:** text-to-speech (TTS) via Sberbank's SaluteSpeech API, and voice dictation (STT) that types straight into your active window.
-
-Glagol is free open source software (MIT). You pay the provider directly with your own key: TTS via a SaluteSpeech subscription; dictation works with several STT providers (pay-per-usage — pennies per audio-hour) or with Groq's free tier with limits.
-
-### Why?
-
-Existing Russian TTS solutions have gaps:
-
-- 🌐 **Speechify, NaturalReader** — paid ($99–$330/year), weak Russian voices
-- 🎙️ **Balabolka** — free but outdated SAPI voices
-- 💻 **SaluteSpeech App by Sber** — great voices, no document library or cache
-- 🤖 **Yandex Browser TTS** — only in the browser, requires a Yandex account
-
-**Glagol combines the best:** quality neural voices from Sber, a local library of synthesized documents, backup/restore — plus voice dictation with no system VPN. The app is free and open source; you pay the API provider directly.
-
-### Who is it for?
-
-- 📚 **Readers** who'd rather listen than read off a screen
-- 💼 **Managers and lawyers** with long documents and reports
-- 👁️ **People with reduced vision** who need an alternative to reading
-- 🎓 **Students and researchers** listening to papers
-- 🎧 **Anyone retraining their brain** to absorb via audio
-
-### What it does
-
-- 🎙️ **6 Russian neural voices** — Natalya, Boris, Marfa, Taras, Aleksandra, Sergey
-- 📋 **Paste text or load a file** — TXT, Markdown, Word (`.docx`), PDF
-- 📚 **Local library** of synthesized documents with automatic saving
-- ✏️ **Inline rename** of documents right in the library
-- ▶️ **Playback** via native player streaming from a local cache
-- 🎚️ **Playback speed** 0.5x–2x
-- 💾 **Audio export** to a WAV file in any folder
-- 🗑️ **Library management** — single-click deletion
-- 💼 **Backup/restore** — the entire library (documents + audio) in one `.zip`, handy for backups and moving to another computer
-- 📊 **Usage counter** — how many characters of your free monthly tier you've used
-- 🧹 **Text humanization** — numbers, dates, URLs, emails, and common Russian abbreviations are spoken naturally, not letter-by-letter
-- 🔒 **Security** — Authorization Key stored in Windows Credential Manager; your texts never leave your machine (except synthesis requests to SaluteSpeech)
-- 🇷🇺 **Russian only.** Latin script and other languages come out "hit or miss" — that's a SaluteSpeech trait
-
-#### 🎤 Voice dictation
-
-- ⌨️ **Push-to-talk dictation** — hold the hotkey, wait for the recording indicator after microphone preparation, speak, release; text appears in your active window (Notepad, Chrome, Word, Telegram)
-- 📋 **Auto-paste or clipboard** — your choice
-- 🎹 **Configurable hotkey** — `Ctrl+Shift+Space` by default, changeable on the Dictation page
-- 🎙️ **Microphone selection** from the device list
-- 💻 **Offline dictation** — optionally download GigaAM v3 CTC or RNNT with punctuation from Settings (about 272–274 MB + a 20 MB engine); models are not bundled with the installer
-- 🏢 **Organization server** — a shared OpenAI-compatible recognizer for office computers, with separate settings and an optional API key
-- 🔌 **Choose your STT provider** — Groq (free tier) and other OpenAI-compatible endpoints; base URL, model and proxy are configurable
-- 📝 **Local history** of the last 10 transcripts — **off by default**, text never touches disk unless you opt in
-- 🌐 **No system VPN** — works through providers reachable from Russia
-
-### Planned
-
-- 🖱️ **Drag & drop** files
-- ▶️ **Resume playback** from where you stopped
-- 🌙 **Dark and light themes**
-- 🔍 **Library search**
-- 🔊 **Additional synthesis engines** — under consideration
+- Push-to-talk with `Ctrl+Shift+Space`; wait for the recording signal after
+  microphone preparation. Auto-paste into the active window or copy to clipboard.
+- Optional local GigaAM v3 CTC/RNNT: 272–274 MB plus a roughly 20 MB runtime.
+  [Sber GigaAM](https://github.com/salute-developers/GigaAM) attribution and MIT
+  license remain; removing SaluteSpeech does not remove local dictation.
+- Shared OpenAI-compatible office server and a separate cloud STT profile,
+  model, credentials and proxy. Dictation history is optional and off by default.
+- Five Silero voices, preview, stress/question support, number/Latin conversion.
+- Paste text or import TXT/MD/DOCX/PDF; long documents process sequentially with
+  progress and cancellation, without buffering an entire audiobook in memory.
+- Local library, rename, player, 0.5–2× speed, WAV export and backups. Existing
+  audio remains playable after the update.
 
 ### Installation
 
-1. Download `Glagol_0.2.0_x64-setup.exe` from the latest [GitHub Release](https://github.com/dimasiksuleyman-sudo/glagol/releases) (~8 MB, ~26 MB installed).
-2. Run the file.
+These sources are **0.4.0**. Check the version of published installers in
+[Releases](https://github.com/dimasiksuleyman-sudo/glagol/releases).
+Run `Glagol_<version>_x64-setup.exe`, read the component information, then
+choose local, office-server or cloud dictation in Settings. For noncommercial
+TTS, read Silero's terms and choose its separate download. If its server is
+unreachable, select a previously downloaded `v5_5_ru.pt`; size/SHA-256 are checked.
 
-**Windows SmartScreen warning on first launch.** Because the installer isn't signed with a commercial certificate, Windows shows a blue "Windows protected your PC" dialog. This is normal for new apps:
+Silero downloads: **145.4 MB model + 249.3 MB runtime = 394.8 MB**.
+Allow at least **1.9 GB** for installation/staging. No system Python, pip,
+CUDA or SAPI registration. Synthesis is offline after installation. CPU mode
+with two threads was tested on Ryzen 7 7730U / 16 GB; performance varies.
 
-1. Click **"More info"**.
-2. A **"Run anyway"** button appears — click it.
-3. The normal NSIS installer opens — standard flow (language, MIT license, folder, shortcuts). No administrator privileges needed — per-user install.
+Numbers become words; dates/fractions may be read component by component and
+unknown Latin words are spelled out. Listen to important text; arbitrary
+notation is not guaranteed to be read with perfect grammar.
 
-After installing, launch Glagol from the Start Menu, paste your SaluteSpeech `Authorization Key` in Settings (free at [developers.sber.ru/studio](https://developers.sber.ru/studio)), and you're ready to load documents.
+Data: `%LOCALAPPDATA%\app.glagol.desktop\`; `audio_cache`/`glagol.db` for the
+library, `speech_models` for STT, `tts_models` for Silero. Library backups exclude
+models/runtime, OS credentials and Silero acknowledgement. Enable TTS separately
+on another computer.
 
-Details in the **[User Guide](USER_GUIDE.md)**.
+### Development
 
-### Tech Stack
+Tauri 2, Rust, React 19, TypeScript, SQLite. [Contributing](CONTRIBUTING.md),
+[TTS runtime](docs/local-tts-runtime.md), [STT runtime](docs/local-dictation-runtime.md),
+[changelog](CHANGELOG.md). Build with `pnpm install` and `pnpm tauri build`;
+check version consistency with `node scripts/check-version.mjs`.
 
-- **Tauri 2.x** — desktop framework
-- **Rust** — backend
-- **React 19 + TypeScript** — frontend
-- **Tailwind CSS + shadcn/ui** — styling
-- **SQLite** (via `rusqlite` + `rusqlite_migration`) — local database
-- **Tauri Asset Protocol** — streaming audio playback from local cache
-- **SaluteSpeech API** — speech synthesis
-
-### Contributing
-
-Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
-
-#### Where Glagol stores data
-
-Both dev builds (`pnpm tauri dev`) and NSIS-installed builds use `%LOCALAPPDATA%\app.glagol.desktop\` for the document database and audio cache. The folder name comes from `bundle.identifier` in `src-tauri/tauri.conf.json` (historically `app.glagol.desktop`; renaming to plain `Glagol` is tracked as tech debt for a future Sprint so existing installations don't lose their libraries). The database file is `glagol.db`; audio lives under `audio_cache/{uuid}.wav`.
-
-### Security
-
-Found a vulnerability? Don't open a public issue. See [SECURITY.md](SECURITY.md).
-
----
-
-## ⚖️ Disclaimer / Юридический статус
-
-### 🇷🇺 Русский
-
-**Glagol — независимый open source проект**, созданный сообществом разработчиков (Glagol Contributors) и распространяемый под лицензией MIT.
-
-Проект **НЕ является:**
-
-- ❌ Официальным продуктом ПАО Сбербанк или его дочерних компаний
-- ❌ Аффилированным с ПАО Сбербанк, SberDevices, SaluteSpeech или их сотрудниками
-- ❌ Финансируемым, поддерживаемым или одобренным Сбером
-
-**Проект использует** публичный API сервиса SaluteSpeech, доступный любому пользователю на условиях [Лицензионного соглашения](https://developers.sber.ru/docs/ru/policies/overview) и [Политики обработки персональных данных](https://developers.sber.ru/docs/ru/policies/privacy-policy) ПАО Сбербанк. Каждый пользователь Glagol самостоятельно регистрируется на [developers.sber.ru](https://developers.sber.ru) и получает свои собственные авторизационные данные.
-
-**Товарные знаки.** «SaluteSpeech», «Сбер», «SberDevices» и связанные обозначения являются товарными знаками ПАО Сбербанк или связанных лиц. Упоминание этих знаков в проекте Glagol носит **исключительно информационный характер** в рамках добросовестного использования (fair use) и описания совместимости.
-
-**Ответственность.** Программное обеспечение распространяется «как есть» (AS IS) без каких-либо гарантий. Разработчики Glagol не несут ответственности:
-
-- За работоспособность API SaluteSpeech и изменения в его условиях
-- За расходы пользователя, превысившие бесплатный лимит SaluteSpeech
-- За соблюдение пользователем авторских прав на тексты, которые он озвучивает
-- За использование сгенерированного аудио в коммерческих целях (правила определяются лицензией SaluteSpeech)
-
-**Контакты для вопросов по API SaluteSpeech:** обращайтесь напрямую в Сбер — `SaluteSpeech@sberbank.ru` или через форму поддержки на developers.sber.ru.
-
-### 🇬🇧 English
-
-**Glagol is an independent open source project** developed by community contributors (Glagol Contributors) and distributed under the MIT License.
-
-**This project is NOT:**
-
-- ❌ An official product of PJSC Sberbank or its subsidiaries
-- ❌ Affiliated with PJSC Sberbank, SberDevices, SaluteSpeech, or their employees
-- ❌ Funded, supported, or endorsed by Sberbank in any way
-
-**The project uses** the public SaluteSpeech API, available to any user under the terms of [PJSC Sberbank's License Agreement](https://developers.sber.ru/docs/ru/policies/overview). Each Glagol user independently registers at [developers.sber.ru](https://developers.sber.ru) and obtains their own credentials.
-
-**Trademarks.** "SaluteSpeech", "Sber", "SberDevices", and related marks are trademarks of PJSC Sberbank or affiliated entities. Their use in this project is **for informational and interoperability purposes only** under fair use principles.
-
-**Liability.** The software is provided "AS IS" without warranty of any kind. Glagol contributors are not responsible for:
-
-- The operability or terms of the SaluteSpeech API
-- Costs incurred by users exceeding SaluteSpeech free tier limits
-- Copyright compliance for texts users choose to synthesize
-- Commercial use of generated audio (governed by SaluteSpeech license)
-
-**Contact for SaluteSpeech API questions:** Contact Sberbank directly — `SaluteSpeech@sberbank.ru` or via developers.sber.ru support.
-
----
-
-<div align="center">
-
-**Создано Дмитрием в паре с Claude (Anthropic) — ИИ как инструмент под человеческим контролем**
-**Built by Dmitriy together with Claude (Anthropic) — AI as a tool under human control**
-
-[Сообщить о баге](https://github.com/dimasiksuleyman-sudo/glagol/issues/new) ·
-[Предложить фичу](https://github.com/dimasiksuleyman-sudo/glagol/issues/new) ·
-[Обсуждения](https://github.com/dimasiksuleyman-sudo/glagol/discussions)
-
-💼 **Доступен для контрактной работы / Available for contract work** — `kiss2tri@hotmail.com`
-Rust/Tauri desktop · voice/TTS/LLM pipelines
-
-</div>
+Доступен для контрактной работы / Available for contract work — Rust/Tauri,
+voice/TTS/LLM applications: `kiss2tri@hotmail.com`.

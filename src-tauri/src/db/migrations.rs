@@ -80,6 +80,7 @@ const MIGRATIONS_SLICE: &[M<'static>] = &[
     CREATE INDEX IF NOT EXISTS idx_dictations_created_at ON dictations(created_at);
     "#,
     ),
+    M::up("ALTER TABLE documents ADD COLUMN provider TEXT NOT NULL DEFAULT 'salutespeech-legacy';"),
 ];
 
 /// Apply every pending migration to `conn`. Idempotent: calling twice on the
@@ -94,6 +95,42 @@ pub fn apply_migrations(conn: &mut Connection) -> Result<(), rusqlite_migration:
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn v4_upgrade_preserves_legacy_audio_settings_and_dictation_usage() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        Migrations::from_slice(MIGRATIONS_SLICE)
+            .to_version(&mut conn, 4)
+            .unwrap();
+        conn.execute("INSERT INTO documents (id,title,source_type,char_count,voice,status,created_at,audio_path,audio_duration_ms) VALUES ('old','Книга','paste',123,'Nec_24000','ready',1,'old.wav',4000)", []).unwrap();
+        conn.execute("INSERT INTO api_usage VALUES ('2026-09',123,75,1)", [])
+            .unwrap();
+        conn.execute(
+            "INSERT INTO app_settings VALUES ('speech_mode','server',1)",
+            [],
+        )
+        .unwrap();
+        apply_migrations(&mut conn).unwrap();
+        apply_migrations(&mut conn).unwrap();
+        let row = crate::db::repository::get(&conn, "old").unwrap().unwrap();
+        assert_eq!(row.provider, "salutespeech-legacy");
+        assert_eq!(row.voice, "Nec_24000");
+        assert_eq!(row.audio_path.as_deref(), Some("old.wav"));
+        assert_eq!(row.audio_duration_ms, Some(4000));
+        assert_eq!(
+            count(&conn, "SELECT recognitions_seconds FROM api_usage"),
+            75
+        );
+        assert_eq!(
+            conn.query_row(
+                "SELECT value FROM app_settings WHERE key='speech_mode'",
+                [],
+                |r| r.get::<_, String>(0)
+            )
+            .unwrap(),
+            "server"
+        );
+    }
 
     fn count(conn: &Connection, sql: &str) -> i64 {
         conn.query_row(sql, [], |row| row.get(0)).unwrap()

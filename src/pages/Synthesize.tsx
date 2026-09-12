@@ -24,7 +24,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 
 import { ScannedPdfDialog } from "@/components/ScannedPdfDialog";
-import { useCredentials } from "@/contexts/CredentialsContext";
+import { useTts } from "@/contexts/TtsContext";
+import { cancelTts } from "@/lib/tts";
 import {
   exportAudio,
   readAndParseFile,
@@ -42,15 +43,14 @@ import { DEFAULT_VOICE_ID, VOICES } from "@/lib/voices";
  * successful synthesis so the user can still export the WAV to a
  * path of their choosing.
  *
- * Gated by the credentials context: while the mount-time probe is in
- * flight (`"unknown"`) we render nothing distracting; on `"invalid"`
- * we point the user at Settings.
+ * Readiness depends on optional local TTS, independently of dictation.
  */
 export function Synthesize() {
-  const { state } = useCredentials();
+  const { status, error } = useTts();
+  const state = !status && !error ? "unknown" : status?.installed && status.accepted ? "valid" : "invalid";
   const navigate = useNavigate();
   const [text, setText] = useState<string>("");
-  const [voice, setVoice] = useState<string>(DEFAULT_VOICE_ID);
+  const [voice, setVoice] = useState<string>(() => { const saved = localStorage.getItem("tts-voice"); return VOICES.some(v => v.id === saved) ? saved! : DEFAULT_VOICE_ID; });
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [progress, setProgress] = useState<ProgressEvent | null>(null);
   // The document_id of the most recent successful synthesis — drives
@@ -161,9 +161,9 @@ export function Synthesize() {
         <Header />
         <Card>
           <CardHeader>
-            <CardTitle>Ключ не настроен</CardTitle>
+            <CardTitle>Установите локальную озвучку</CardTitle>
             <CardDescription>
-              Чтобы озвучить текст, сначала добавьте Authorization Key SaluteSpeech.
+              Silero v5.5 скачивается отдельно и предназначена для некоммерческого использования. Диктовка доступна без неё. {error}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -177,7 +177,7 @@ export function Synthesize() {
   }
 
   const trimmedTextLength = text.trim().length;
-  const canSynthesize = !isLoading && trimmedTextLength > 0;
+  const canSynthesize = !isLoading && !status?.progress && trimmedTextLength > 0;
   const canExport = !isLoading && !isExporting && lastDocumentId !== null;
 
   return (
@@ -215,7 +215,7 @@ export function Synthesize() {
 
           <div className="space-y-2">
             <Label htmlFor="voice">Голос</Label>
-            <Select value={voice} onValueChange={setVoice} disabled={isLoading}>
+            <Select value={voice} onValueChange={value => { setVoice(value); localStorage.setItem("tts-voice", value); }} disabled={isLoading}>
               <SelectTrigger id="voice" className="w-full">
                 <SelectValue />
               </SelectTrigger>
@@ -244,6 +244,7 @@ export function Synthesize() {
             </Button>
           )}
 
+          {isLoading && <Button variant="outline" onClick={() => void cancelTts().catch(e => toast.error(String(e)))}>Отменить озвучку</Button>}
           {progress !== null && <ProgressIndicator event={progress} />}
         </CardContent>
       </Card>
@@ -275,6 +276,9 @@ function ProgressIndicator({ event }: ProgressIndicatorProps) {
   let percent = 0;
   let label = "";
   switch (event.kind) {
+    case "preparing":
+      label = "Подготовка локальной озвучки…";
+      break;
     case "chunked":
       percent = 5;
       label = `Текст разбит на ${event.total.toLocaleString("ru-RU")} фрагментов`;

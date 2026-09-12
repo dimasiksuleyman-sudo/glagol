@@ -49,3 +49,12 @@ pub fn database_path(app: &AppHandle) -> Result<PathBuf, String> {
 pub fn resolve_audio_path(app: &AppHandle, relative: &str) -> Result<PathBuf, String> {
     Ok(audio_cache_root(app)?.join(relative))
 }
+
+/// Optional TTS assets and consent; not included in database/library backups.
+pub fn tts_models_root(app: &AppHandle) -> Result<PathBuf, String> {
+    Ok(app
+        .path()
+        .app_local_data_dir()
+        .map_err(|e| e.to_string())?
+        .join("tts_models"))
+}

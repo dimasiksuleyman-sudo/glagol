@@ -537,13 +537,8 @@ mod tests {
     /// A minimal `AppState` for the advisory-history tests: real in-memory DB, no
     /// recorder thread. Mirrors `commands::dictation::tests::fresh_state`.
     fn fresh_state() -> AppState {
-        let client = crate::salute::http::build_client().expect("client builds");
         let conn = test_connection();
-        AppState::new(
-            client,
-            conn,
-            crate::dictation::RecorderHandle::disconnected(),
-        )
+        AppState::new(conn, crate::dictation::RecorderHandle::disconnected())
     }
 
     fn dictation_rows(state: &AppState) -> Vec<repository::Dictation> {

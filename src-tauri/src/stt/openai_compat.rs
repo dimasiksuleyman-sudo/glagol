@@ -1,6 +1,6 @@
 //! OpenAI-compatible STT client.
 //!
-//! Mirrors the shape of `salute::synthesize::SynthesisClient`: a cheap,
+//! A cheap,
 //! cloneable struct wrapping a shared [`reqwest::Client`], with a
 //! `with_base_url` constructor for `mockito` tests. It speaks the stable
 //! `/audio/transcriptions` + `/models` contract shared by OVH, Lemonfox,

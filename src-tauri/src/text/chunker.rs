@@ -1,6 +1,6 @@
-//! Text chunking for SaluteSpeech sync API.
+//! Provider-sized UTF-8 text chunks at natural boundaries.
 //!
-//! SaluteSpeech sync `/text:synthesize` accepts up to 4000 chars per request.
+//! The selected backend supplies its input limit.
 //! [`chunk_text`] splits arbitrary UTF-8 text into chunks small enough for
 //! the API, preferring natural boundaries (paragraphs > sentences > words).
 //!
@@ -33,11 +33,8 @@
 //!
 //! See Issue #5 for preprocessing pipeline (Sprint 3).
 
-/// Default chunk size for the SaluteSpeech sync API.
-///
-/// 3500 leaves a 500-char safety margin under the 4000-char API limit
-/// (room for future SSML overhead and UTF-8 variance in error messages).
-pub const DEFAULT_MAX_CHARS: usize = 3500;
+/// Conservative default for local Silero; other backends supply their own limit.
+pub const DEFAULT_MAX_CHARS: usize = 280;
 
 /// Threshold under which a paragraph is considered "short" and may be
 /// merged forward with the next paragraph (heading-like blocks).
@@ -71,7 +68,7 @@ pub fn chunk_text(text: &str, max_chars: usize) -> Vec<String> {
             let next = paragraphs[i + 1];
             let next_len = next.chars().count();
             // "\n\n" between (2 chars) preserves paragraph semantics for
-            // the TTS engine (Sberbank renders \n as a brief pause).
+            // the TTS engine (line boundaries represent a brief pause).
             if p_len + 2 + next_len <= max_chars {
                 let mut joined = String::with_capacity(p.len() + 2 + next.len());
                 joined.push_str(p);
@@ -150,7 +147,7 @@ fn is_sentence_end_char(ch: char) -> bool {
 ///
 /// Note: multiple consecutive whitespace characters between
 /// sentences are normalized to a single space in the output.
-/// This is intentional — Sberbank's TTS engine ignores whitespace
+/// This is intentional — the synthesis pipeline ignores whitespace
 /// runs, and normalization keeps a tight bound on chunk lengths.
 fn chunk_paragraph(paragraph: &str, max_chars: usize) -> Vec<String> {
     if paragraph.chars().count() <= max_chars {

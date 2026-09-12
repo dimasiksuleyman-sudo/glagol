@@ -11,6 +11,21 @@ the per-session master logs under [`docs/day-logs/`](docs/day-logs/).
 
 ## [Unreleased]
 
+## [v0.4.0] — 2026-09-12
+
+### Added
+- **Локальная озвучка Silero v5.5 / Offline Silero v5.5 TTS.** Пять русских голосов, образец голоса, прогресс и отмена. Модель (145,4 МБ) и CPU-движок (249,3 МБ) скачиваются отдельно из настроек с проверкой целостности и продолжением загрузки; можно выбрать уже скачанный точный файл модели. / Five Russian voices, voice preview, progress and cancellation. Download the model (145.4 MB) and CPU runtime (249.3 MB) separately from Settings with integrity checks and resume, or import the exact previously downloaded model.
+- **Условия необязательного компонента / Optional component terms.** Установщик сообщает об отдельной лицензии Silero CC BY-NC-SA 4.0 для некоммерческого использования; включение требует явного подтверждения в настройках. Диктовка, включая офисный сервер, работает независимо. / The installer explains Silero's separate CC BY-NC-SA 4.0 noncommercial license; enabling it requires explicit acknowledgement in Settings. Dictation, including the office server, remains independent.
+
+### Changed
+- **Библиотека / Library.** Старые WAV и названия голосов сохраняются; новые записи используют Silero. Компоненты и подтверждение лицензии не включаются в резервную копию. / Existing WAV files and voice labels are preserved; new entries use Silero. Backups exclude downloaded components and license acknowledgement.
+
+### Removed
+- **SaluteSpeech.** Удалены облачная озвучка СберСалют, OAuth, настройки ключа и квоты TTS; старый ключ озвучки очищается отдельно от ключей диктовки. / Removed SaluteSpeech cloud TTS, OAuth, TTS key settings and quotas; the legacy TTS credential is cleaned up separately from dictation credentials.
+
+### Fixed
+- **Иконка при обновлении / Update icon.** Установщик обновляет ссылки на оригинальную иконку у существующих ярлыков. / The installer refreshes existing shortcuts to use Glagol's original icon.
+
 ## [v0.3.0] — 2026-09-12
 
 ### Changed

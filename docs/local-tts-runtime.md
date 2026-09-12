@@ -1,9 +1,9 @@
-# Silero local TTS preparation
+# Silero local TTS in Glagol 0.4.0
 
 [Русский](local-tts-runtime.ru.md)
 
-This is preparation for 0.4.0, **not an available application feature**.
-Glagol 0.3.0 is unchanged. See the [migration plan](plans/silero-tts-migration.md).
+Implemented in 0.4.0 source; a Windows NSIS installer is built locally.
+See the [migration plan](plans/silero-tts-migration.md).
 Yandex SpeechKit v3 for commercial TTS is a separate future stage. Dictation,
 including GigaAM and the office server, is independent of this work.
 
@@ -13,7 +13,9 @@ An isolated Windows x64 runtime was assembled on Ryzen 7 7730U / 16 GB RAM:
 
 - Embedded Python 3.11.9 and PyTorch 2.7.1+cpu; no system Python, pip or CUDA.
 - All 13 archives verified against pinned sizes and SHA-256 before extraction.
-- Download: **249,346,278 bytes**, excluding the model.
+- Runtime download: **249,346,278 bytes**. Model: **145,420,684 bytes**.
+  Combined download: **394,766,962 bytes** (~395 MB); about 1.9 GB on disk
+  including retained archives. Neither weights nor Python/PyTorch enter NSIS.
 - Extracted: **1,319,448,970 bytes**, 14,483 files, excluding the JSON inventory.
   This includes PyTorch SDK files; reducing it has not been validated yet.
 - Isolated imports of torch, numpy, num2words and docopt succeeded, as did a
@@ -22,10 +24,31 @@ An isolated Windows x64 runtime was assembled on Ryzen 7 7730U / 16 GB RAM:
   preserving neighbouring files, and activation/inventory.
 - The model probe rejects a wrong SHA-256 before importing PyTorch or writing WAV.
 
-**Real synthesis remains untested.** Connections to the official
-`models.silero.ai` server time out. A working PyTorch import does not establish
-model compatibility. Model startup, synthesis speed/RAM, voices and concurrent
-dictation have not been measured.
+The user-supplied `v5_5_ru.pt` matches the pinned SHA-256 below. Real model tests
+produced valid WAV for all five voices and 32 cases across two/four CPU threads.
+With two threads, Python/torch/model loading took 3.25 s (excluding the app's
+runtime integrity scan). First inference took 1.48 s for 5.15 s of audio;
+warm Xenia took 0.27 s for 4.53 s. A longer paragraph took 1.81 s for 22.39 s.
+Peak worker working set was about 752 MB. Four threads offered little benefit;
+the app uses two. These are measurements on this laptop, not minimum requirements.
+
+GigaAM CTC inference on the same public test WAV took about 0.30 s alone and
+0.40 s during TTS, with identical transcripts. This tests concurrent inference,
+not live microphone readiness. Adapter-produced numbers and Windows/USB words
+also survived the STT check. Number/date grammar and Latin pronunciation remain
+heuristic; valid audio and ASR checks do not replace listening.
+
+The release-mode native test also assembled all runtime archives through the
+application's Rust code, verified its embedded inventory, synthesized a multi-chunk
+document into the library and cancelled active inference. Migration and backup
+tests cover preservation of existing documents and exclusion of TTS consent,
+components and previews. Visual UI, clean-install/update and listening checks
+remain manual: the computer-use helper was unavailable during implementation.
+
+The official model server timed out from the development shell. Settings support
+both automatic download and importing the exact verified model file downloaded
+in a browser; an arbitrary `.pt` file is rejected. Runtime downloads use the
+verified sources below. No promise is made that the network issue is resolved.
 
 The official GitHub SAPI installer was inspected without executing/installing
 it: it contains `v5_5_ts.bin` and separate modules, not `v5_5_ru.pt`. It is not
@@ -66,13 +89,35 @@ independent dictation. The selected STT provider's own terms still apply.
 
 The official model URL appears in upstream `models.yml`:
 `https://models.silero.ai/models/tts/ru/v5_5_ru.pt`.
-The probe provisionally pins SHA-256
+The catalog pins SHA-256
 `50081637b602126ee06cb3bc8a744d25651d2da149ee8864b9a379bfdd934437`,
 matching two independently published integrations:
 [bootstrap](https://github.com/ganiushin/parakeet-stt-silero-tts-addons-haos/blob/main/wyoming_silero_tts/silero/scripts/bootstrap.py)
 and [bridge](https://github.com/Krablante/silero-tts-bridge).
-This **does not claim verification of our downloaded model**: no model file has
-been obtained yet. Confirm provenance, size and compatibility before product use.
+The supplied model was checked against this hash and the exact byte count above
+before execution. Its model code remains in the separately downloaded package.
+
+## Application behavior
+
+Settings require explicit noncommercial-use acknowledgement tied to the model
+and license hash before installation/import; Rust checks it again before loading
+or synthesis. The installer shows an informational notice without opting in.
+Consent stays in `tts_models/acknowledgement.json` and is excluded from backups.
+Dictation, library playback/export and file import do not depend on consent.
+
+Artifacts download with progress, cancellation, resume and SHA-256 validation.
+Safe staging extraction is activated only after every expected file matches the
+compiled inventory. The app launches an isolated portable interpreter with no
+pip, hub, SAPI registration or inference network calls. It exchanges bounded
+JSON metadata and private WAV files, not audio over IPC. This is process ownership
+and Python path isolation, not an OS security sandbox. The worker exits with its
+parent, on cancellation/error, or after three minutes idle.
+
+Text is chunked sequentially and WAV is written incrementally. A cancelled or
+failed job does not create a successful library row. Old WAV/voice metadata stays
+playable with provider `salutespeech-legacy`; new documents use `silero`. OAuth,
+SaluteSpeech API/TLS material and TTS quota UI are removed. Only the legacy TTS
+credential is deleted once; dictation profiles, keys and usage remain independent.
 
 ## Developer reproduction
 
@@ -92,10 +137,18 @@ an adjacent `.staging`, rejects links/unsafe paths, and activates only on succes
 `python311._pth` excludes user site-packages and Python environment paths.
 No `setup.py` is executed.
 
-Once the exact model is available, run `probe.py` with this runtime and arguments
+Run `probe.py` with this runtime and arguments
 `--model <absolute v5_5_ru.pt path> --output <new directory> --threads 2`, then
 repeat with four threads in another process/directory. Apply an external process
 timeout. The probe writes mono 24 kHz PCM WAV and `report.json` with timings,
 RTF and peak working set. Only public test sentences are used. Listen to the
-WAVs: valid audio does not establish pronunciation quality. Also test concurrent
-dictation before replacing the application pipeline.
+WAVs: valid audio does not establish pronunciation quality.
+
+Run adapter checks with `python.exe -I -B scripts/silero/test_worker.py`.
+To regenerate Rust's pinned catalog/inventory after intentionally updating and
+verifying the runtime, run `node scripts/silero/generate-catalog.mjs <runtime.json>`.
+For the native smoke test, prepare an isolated `GLAGOL_TTS_SMOKE_ROOT` containing
+the model and all 13 archives at its top level, set `GLAGOL_TTS_ASSEMBLE_SMOKE=1`,
+and run `cargo test --release --manifest-path src-tauri/Cargo.toml native_silero_pipeline_and_cancel -- --ignored --nocapture`.
+Set `PDFIUM_LIBRARY_PATH` to the absolute local `src-tauri/resources/pdfium.dll`
+if the normal build-time download is unavailable. Never point smoke tests at user data.

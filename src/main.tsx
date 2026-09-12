@@ -5,7 +5,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 
 import App from "./App";
 import { OverlayPill } from "@/components/dictation/OverlayPill";
-import { CredentialsProvider } from "@/contexts/CredentialsContext";
+import { TtsProvider } from "@/contexts/TtsContext";
 import "./index.css";
 
 // Both the main window and the dictation overlay load this same bundle
@@ -28,11 +28,11 @@ if (isOverlay) {
 } else {
   root.render(
     <React.StrictMode>
-      <CredentialsProvider>
+      <TtsProvider>
         <BrowserRouter>
           <App />
         </BrowserRouter>
-      </CredentialsProvider>
+      </TtsProvider>
     </React.StrictMode>,
   );
 }
