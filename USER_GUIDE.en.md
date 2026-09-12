@@ -86,7 +86,9 @@ It updates automatically after each synthesis and resets on the 1st of every mon
 
 ## Dictation (voice input)
 
-Glagol also does the reverse — turns your speech into text and inserts it into any application. Hold the hotkey, speak, release — the recognized text appears wherever your cursor is.
+Glagol also does the reverse — turns your speech into text and inserts it into any application. Hold the hotkey, wait until the microphone is ready, speak, then release — the recognized text appears wherever your cursor is.
+
+When you press the hotkey, the pill first shows **"Подготовка микрофона…" (Preparing microphone)**. Start speaking when the **red dot and audio-level bars** appear: audio is now arriving from the microphone. Preparation may take about a second on some Windows 11 devices. Speech before the microphone is ready is not recorded. Releasing the hotkey during preparation cancels the attempt without transcription. The microphone opens for each dictation and is released when it ends; there is no capture between dictations.
 
 Everything is configured on the **Dictation** (Диктовка) page:
 

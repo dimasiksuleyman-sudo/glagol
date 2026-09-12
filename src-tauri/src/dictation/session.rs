@@ -93,7 +93,7 @@ pub fn handle_shortcut(app: &AppHandle, event_state: ShortcutState) {
 /// `Pressed`: start a dictation session unless one is already running (D4).
 ///
 /// Synchronous and fast — it only claims the phase, stores the release sender,
-/// makes the pill appear, and swaps the tray icon, then spawns the async
+/// makes the preparation pill appear, then spawns the async
 /// pipeline. A second `Pressed` (autorepeat is suppressed by `MOD_NOREPEAT`, but
 /// a genuine double-press during processing is possible) finds a non-`Idle`
 /// phase and is dropped at `trace` — no toast, no spam (D4).
@@ -130,11 +130,11 @@ fn on_pressed(app: &AppHandle) {
             .expect("dictation_stop mutex poisoned") = Some(release_tx);
     }
 
-    // Pill appears instantly (lowest latency — the pipeline's `recording` event
-    // fills in content a few ms later); tray shows the recording state.
+    // Acknowledge the hotkey without claiming capture is ready. The pipeline
+    // announces Recording only after the recorder receives its first packet.
+    app.emit_state(DictationState::Starting);
     position_overlay(app);
     show_overlay(app);
-    set_tray_recording(app, true);
 
     let app = app.clone();
     tauri::async_runtime::spawn(async move {
@@ -442,7 +442,7 @@ pub fn build_tray(app: &AppHandle) -> tauri::Result<()> {
 
 /// Swap the tray icon between idle and recording (D11). Best-effort: a missing
 /// tray or a decode failure is logged, never fatal.
-fn set_tray_recording(app: &AppHandle, recording: bool) {
+pub(crate) fn set_tray_recording(app: &AppHandle, recording: bool) {
     let Some(tray) = app.tray_by_id(TRAY_ID) else {
         return;
     };

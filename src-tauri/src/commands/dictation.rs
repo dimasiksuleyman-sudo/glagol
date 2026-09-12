@@ -571,6 +571,9 @@ pub(crate) fn list_audio_input_devices_impl() -> Result<Vec<String>, RecorderErr
 /// mirrors [`stt_error_to_user_facing_ru`]).
 pub(crate) fn recorder_error_to_user_facing_ru(err: &RecorderError) -> String {
     match err {
+        RecorderError::StartupTimeout => {
+            "Микрофон не начал передавать звук. Проверьте устройство и попробуйте ещё раз.".into()
+        }
         RecorderError::NoDevice => {
             "Микрофон не найден. Подключите устройство ввода звука.".to_string()
         }

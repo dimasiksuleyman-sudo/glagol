@@ -136,6 +136,8 @@ pub enum Disposition {
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum DictationState {
+    /// Device is opening; no signal to speak until the first audio packet.
+    Starting,
     /// Capturing — the pill shows live RMS bars (fed by `dictation-level`).
     Recording,
     /// Recording stopped, transcription in flight — the pill shows «Распознаю…».
@@ -168,7 +170,7 @@ pub trait DictationEmitter: Clone + Send + 'static {
 /// capture thread or hardware.
 #[allow(async_fn_in_trait)]
 pub trait RecorderControl {
-    /// Open the device (`None` = system default) and begin capture.
+    /// Open the device and wait until the first audio packet has been retained.
     async fn start(&self, device: Option<String>) -> Result<StartedInfo, RecorderError>;
     /// Stop capture and return the finalized 16 kHz mono clip.
     async fn stop(&self) -> Result<PcmAudio, RecorderError>;
@@ -190,6 +192,8 @@ impl RecorderControl for RecorderHandle {
 /// the pill disappear (a `done` event with [`Disposition::Discarded`]).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DiscardReason {
+    /// Hotkey released before the microphone delivered its first packet.
+    ReleasedDuringStartup,
     /// Shorter than [`MIN_DICTATION_MS`] — an accidental tap.
     TooShort,
     /// Whole-clip RMS below [`SILENCE_RMS_THRESHOLD`] — silence.
@@ -303,7 +307,7 @@ fn set_phase(phase: &Mutex<DictationPhase>, next: DictationPhase) {
 
 /// Run one dictation from `Start` to delivery (D13).
 ///
-/// Sequence: emit `recording` → start the recorder → wait for `Released` *or*
+/// Sequence: emit `starting` → await first audio → emit `recording` → wait for `Released` *or*
 /// the watchdog → stop the recorder → silence filter (D8) → emit `processing`
 /// → transcribe (PR1) → insert the text into the active window behind the
 /// [`TextInserter`] + [`ClipboardAccess`] seams (D6) → emit the terminal
@@ -317,7 +321,7 @@ fn set_phase(phase: &Mutex<DictationPhase>, next: DictationPhase) {
 pub async fn run_dictation<R, P, I, C, E>(
     deps: DictationDeps<'_, R, P, I, C, E>,
     opts: DictationOpts,
-    released: oneshot::Receiver<()>,
+    mut released: oneshot::Receiver<()>,
 ) -> DictationOutcome
 where
     R: RecorderControl,
@@ -327,13 +331,25 @@ where
     E: DictationEmitter,
 {
     set_phase(deps.phase, DictationPhase::Recording);
-    deps.emitter.emit_state(DictationState::Recording);
+    deps.emitter.emit_state(DictationState::Starting);
 
     // Start capture. A start failure (no mic, permission denied) is the first
     // thing the user can hit — surface it in the pill (test #9). A successful
     // start that fell back to the system default (the pinned device is gone,
     // D6) is a warning, never an error — dictation proceeds on the default mic.
-    match deps.recorder.start(opts.device).await {
+    let started = tokio::select! {
+        // If both are already ready, complete the successful start and stop
+        // normally below. While the device is still opening, release cancels.
+        biased;
+        result = deps.recorder.start(opts.device) => result,
+        _ = &mut released => {
+            // Stop is queued behind Start on the recorder thread. Await cleanup
+            // before allowing another session; never submit an unready clip.
+            let _ = deps.recorder.stop().await;
+            return discard(&deps, DiscardReason::ReleasedDuringStartup);
+        }
+    };
+    match started {
         Ok(info) => {
             if info.fell_back_to_default {
                 tracing::warn!(
@@ -344,6 +360,7 @@ where
         }
         Err(e) => return fail(&deps, recorder_error_to_user_facing_ru(&e)),
     }
+    deps.emitter.emit_state(DictationState::Recording);
 
     // Wait for the hotkey release or the watchdog, whichever comes first (D10).
     tokio::select! {
@@ -624,6 +641,108 @@ mod tests {
 
     // ── happy path ──
 
+    #[derive(Default)]
+    struct DelayedRecorder {
+        entered: tokio::sync::Notify,
+        ready: tokio::sync::Notify,
+        stopped: std::sync::atomic::AtomicBool,
+    }
+
+    impl RecorderControl for DelayedRecorder {
+        async fn start(&self, _device: Option<String>) -> Result<StartedInfo, RecorderError> {
+            self.entered.notify_one();
+            self.ready.notified().await;
+            Ok(StartedInfo {
+                device_name: "delayed".into(),
+                fell_back_to_default: false,
+            })
+        }
+
+        async fn stop(&self) -> Result<PcmAudio, RecorderError> {
+            self.stopped
+                .store(true, std::sync::atomic::Ordering::SeqCst);
+            Ok(loud_clip(1000, 8000, false))
+        }
+    }
+
+    #[tokio::test]
+    async fn recording_signal_waits_for_recorder_readiness() {
+        let recorder = DelayedRecorder::default();
+        let provider = FakeStt::text("Первое слово");
+        let inserter = FakeInserter::default();
+        let clipboard = FakeClipboard::empty();
+        let emitter = FakeEmitter::default();
+        let phase = Mutex::new(DictationPhase::Idle);
+        let (release, rx) = oneshot::channel();
+        let task = run_dictation(
+            DictationDeps {
+                recorder: &recorder,
+                provider: &provider,
+                inserter: &inserter,
+                clipboard: &clipboard,
+                emitter: &emitter,
+                phase: &phase,
+            },
+            DictationOpts::new(None, None, InsertionMode::ClipboardOnly),
+            rx,
+        );
+        tokio::pin!(task);
+        tokio::select! {
+            biased;
+            _ = &mut task => panic!("must wait for microphone readiness"),
+            _ = recorder.entered.notified() => {}
+        }
+        assert_eq!(
+            emitter.states(),
+            vec![DictationState::Starting],
+            "no recording signal while the microphone is opening"
+        );
+        recorder.ready.notify_one();
+        release.send(()).unwrap();
+        assert!(matches!(task.await, DictationOutcome::Delivered { .. }));
+        assert_eq!(emitter.states()[1], DictationState::Recording);
+        assert_eq!(clipboard.content().as_deref(), Some("Первое слово"));
+    }
+
+    #[tokio::test]
+    async fn release_during_startup_stops_capture_without_recording_or_stt() {
+        let recorder = DelayedRecorder::default();
+        let provider = FakeStt::text("unused");
+        let inserter = FakeInserter::default();
+        let clipboard = FakeClipboard::empty();
+        let emitter = FakeEmitter::default();
+        let phase = Mutex::new(DictationPhase::Idle);
+        let (release, rx) = oneshot::channel();
+        let task = run_dictation(
+            DictationDeps {
+                recorder: &recorder,
+                provider: &provider,
+                inserter: &inserter,
+                clipboard: &clipboard,
+                emitter: &emitter,
+                phase: &phase,
+            },
+            DictationOpts::new(None, None, InsertionMode::ClipboardOnly),
+            rx,
+        );
+        tokio::pin!(task);
+        tokio::select! {
+            biased;
+            _ = &mut task => panic!("must wait for microphone readiness"),
+            _ = recorder.entered.notified() => {}
+        }
+        release.send(()).unwrap();
+        let outcome = tokio::time::timeout(Duration::from_secs(1), task)
+            .await
+            .expect("release must cancel a pending start");
+        assert!(matches!(outcome, DictationOutcome::Discarded(_)));
+        assert!(recorder.stopped.load(std::sync::atomic::Ordering::SeqCst));
+        assert!(!emitter.states().contains(&DictationState::Recording));
+        assert_eq!(*provider.calls.lock().unwrap(), 0);
+        assert!(clipboard.writes().is_empty());
+        assert_eq!(*phase.lock().unwrap(), DictationPhase::Idle);
+    }
+
     #[tokio::test]
     async fn delivers_text_to_clipboard_on_success() {
         let recorder = FakeRecorder::ok(Ok(loud_clip(1000, 8000, false)));
@@ -654,6 +773,7 @@ mod tests {
         assert_eq!(
             emitter.states(),
             vec![
+                DictationState::Starting,
                 DictationState::Recording,
                 DictationState::Processing,
                 DictationState::Done {
@@ -707,6 +827,7 @@ mod tests {
         assert_eq!(
             emitter.states(),
             vec![
+                DictationState::Starting,
                 DictationState::Recording,
                 DictationState::Done {
                     disposition: Disposition::Discarded,
@@ -823,6 +944,10 @@ mod tests {
         .await;
         assert!(matches!(outcome, DictationOutcome::Failed { .. }));
         let states = emitter.states();
+        assert!(
+            !states.contains(&DictationState::Recording),
+            "a failed start must never signal readiness"
+        );
         assert!(matches!(states.last(), Some(DictationState::Error { .. })));
         if let Some(DictationState::Error { message }) = states.last() {
             assert!(message.contains("Конфиденциальность"), "got: {message}");
@@ -1150,6 +1275,10 @@ mod tests {
 
     #[test]
     fn recording_processing_error_serialize_with_kind_tag() {
+        assert_eq!(
+            serde_json::to_value(DictationState::Starting).unwrap()["kind"],
+            "starting"
+        );
         assert_eq!(
             serde_json::to_value(DictationState::Recording).unwrap()["kind"],
             "recording"

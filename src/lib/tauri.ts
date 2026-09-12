@@ -473,6 +473,7 @@ export type DictationDisposition = "pasted" | "clipboard" | "discarded";
  * pill can surface «обрезано по 60 с» rather than truncating silently.
  */
 export type DictationState =
+  | { kind: "starting" }
   | { kind: "recording" }
   | { kind: "processing" }
   | { kind: "done"; disposition: DictationDisposition; truncated: boolean }

@@ -71,6 +71,12 @@ impl dictation::LevelSink for tauri::AppHandle {
 /// separate window that never `invoke`s, so there is no channel to bind.
 impl dictation::pipeline::DictationEmitter for tauri::AppHandle {
     fn emit_state(&self, state: dictation::pipeline::DictationState) {
+        // The tray and overlay share the same readiness signal. Opening a
+        // stream alone is not evidence that the microphone is capturing audio.
+        dictation::session::set_tray_recording(
+            self,
+            matches!(state, dictation::pipeline::DictationState::Recording),
+        );
         let _ = self.emit(dictation::pipeline::DICTATION_STATE_EVENT, state);
     }
 }

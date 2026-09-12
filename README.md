@@ -71,7 +71,7 @@ Glagol — бесплатное open source приложение (MIT). За р�
 
 #### 🎤 Голосовой ввод (диктовка)
 
-- ⌨️ **Push-to-talk диктовка** — зажмите хоткей, говорите, отпустите; текст сам появится в активном окне (Notepad, Chrome, Word, Telegram)
+- ⌨️ **Push-to-talk диктовка** — зажмите хоткей, дождитесь индикатора записи после подготовки микрофона, говорите, отпустите; текст сам появится в активном окне (Notepad, Chrome, Word, Telegram)
 - 📋 **Автовставка или буфер** — на выбор: текст вставляется автоматически или копируется в буфер
 - 🎹 **Настраиваемый хоткей** — по умолчанию `Ctrl+Shift+Space`, меняется на странице «Диктовка»
 - 🎙️ **Выбор микрофона** из списка устройств
@@ -190,7 +190,7 @@ Existing Russian TTS solutions have gaps:
 
 #### 🎤 Voice dictation
 
-- ⌨️ **Push-to-talk dictation** — hold the hotkey, speak, release; text appears in your active window (Notepad, Chrome, Word, Telegram)
+- ⌨️ **Push-to-talk dictation** — hold the hotkey, wait for the recording indicator after microphone preparation, speak, release; text appears in your active window (Notepad, Chrome, Word, Telegram)
 - 📋 **Auto-paste or clipboard** — your choice
 - 🎹 **Configurable hotkey** — `Ctrl+Shift+Space` by default, changeable on the Dictation page
 - 🎙️ **Microphone selection** from the device list

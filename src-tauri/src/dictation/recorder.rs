@@ -9,7 +9,7 @@
 //! `#[ignore]` test `tests::live_mic` (D14).
 
 use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::SampleFormat;
@@ -24,6 +24,22 @@ use super::{
 /// thread responsive to `Shutdown` / a disconnected channel; the RMS emit and
 /// cap check are driven by `Samples` arrival, not this timeout.
 const RECV_TIMEOUT: Duration = Duration::from_millis(50);
+
+/// A driver may accept `play()` without delivering audio. Bound that wait.
+const START_TIMEOUT: Duration = Duration::from_secs(5);
+
+struct PendingStart {
+    reply: tokio::sync::oneshot::Sender<Result<StartedInfo, RecorderError>>,
+    info: StartedInfo,
+    requested_at: Instant,
+    deadline: Instant,
+}
+
+fn abort_start(pending: &mut Option<PendingStart>, error: RecorderError) {
+    if let Some(start) = pending.take() {
+        let _ = start.reply.send(Err(error));
+    }
+}
 
 /// Recorder thread phase. The captured buffer / level accumulator live as loop
 /// locals; this only tracks *what the thread is doing*, so a stray `Start` is
@@ -96,8 +112,20 @@ pub fn run_recorder<S: SampleSource, L: LevelSink>(
     let mut buffer: Vec<f32> = Vec::new();
     // Rolling window for the RMS level meter (mono, native rate).
     let mut level_acc: Vec<f32> = Vec::new();
+    let mut pending_start: Option<PendingStart> = None;
 
     loop {
+        // Also check on busy queues: empty callbacks must not defeat the timeout.
+        if pending_start
+            .as_ref()
+            .is_some_and(|start| start.reply.is_closed() || Instant::now() >= start.deadline)
+        {
+            source.stop();
+            buffer.clear();
+            level_acc.clear();
+            phase = Phase::Idle;
+            abort_start(&mut pending_start, RecorderError::StartupTimeout);
+        }
         match rx.recv_timeout(RECV_TIMEOUT) {
             Ok(RecorderMsg::Start { device, reply }) => {
                 if !matches!(phase, Phase::Idle) {
@@ -106,6 +134,7 @@ pub fn run_recorder<S: SampleSource, L: LevelSink>(
                 }
                 buffer.clear();
                 level_acc.clear();
+                let requested_at = Instant::now();
                 match source.start(device.as_deref(), self_tx.clone()) {
                     Ok(StartedConfig {
                         info,
@@ -116,7 +145,14 @@ pub fn run_recorder<S: SampleSource, L: LevelSink>(
                             rate: sample_rate,
                             channels,
                         };
-                        let _ = reply.send(Ok(info));
+                        // `play()` only requests capture. The first nonempty
+                        // callback confirms readiness, including a silent packet.
+                        pending_start = Some(PendingStart {
+                            reply,
+                            info,
+                            requested_at,
+                            deadline: Instant::now() + START_TIMEOUT,
+                        });
                     }
                     Err(e) => {
                         phase = Phase::Idle;
@@ -131,6 +167,21 @@ pub fn run_recorder<S: SampleSource, L: LevelSink>(
                     continue;
                 };
                 let mono = downmix_to_mono(&interleaved, channels);
+                if mono.is_empty() {
+                    continue;
+                }
+
+                // Keep the first packet before announcing readiness: it may
+                // already contain the beginning of the user's first word.
+                buffer.extend_from_slice(&mono);
+                if let Some(start) = pending_start.take() {
+                    tracing::info!(
+                        startup_ms = start.requested_at.elapsed().as_millis() as u64,
+                        first_packet_samples = mono.len(),
+                        "dictation capture ready"
+                    );
+                    let _ = start.reply.send(Ok(start.info));
+                }
 
                 // Level meter: emit one RMS value per full ~50 ms window (D6).
                 let window = level_window_samples(rate);
@@ -140,8 +191,6 @@ pub fn run_recorder<S: SampleSource, L: LevelSink>(
                     sink.level(value);
                     level_acc.drain(..window);
                 }
-
-                buffer.extend_from_slice(&mono);
 
                 // 60 s cap: auto-finalize rather than lose the recording (D9).
                 let max_samples = cap_samples(rate);
@@ -165,7 +214,12 @@ pub fn run_recorder<S: SampleSource, L: LevelSink>(
                     source.stop();
                     buffer.clear();
                     level_acc.clear();
-                    phase = Phase::Faulted(msg);
+                    if pending_start.is_some() {
+                        abort_start(&mut pending_start, RecorderError::DeviceLost(msg));
+                        phase = Phase::Idle;
+                    } else {
+                        phase = Phase::Faulted(msg);
+                    }
                 }
                 // A fault outside Recording has nothing to fault — ignore it.
             }
@@ -184,6 +238,10 @@ pub fn run_recorder<S: SampleSource, L: LevelSink>(
                 };
                 buffer.clear();
                 level_acc.clear();
+                abort_start(
+                    &mut pending_start,
+                    RecorderError::DeviceLost("capture stopped before first audio packet".into()),
+                );
                 let _ = reply.send(result);
             }
 
@@ -194,12 +252,20 @@ pub fn run_recorder<S: SampleSource, L: LevelSink>(
                 buffer.clear();
                 level_acc.clear();
                 phase = Phase::Idle;
+                abort_start(
+                    &mut pending_start,
+                    RecorderError::DeviceLost("capture cancelled before first audio packet".into()),
+                );
             }
 
             Ok(RecorderMsg::Shutdown) => {
                 if matches!(phase, Phase::Recording { .. }) {
                     source.stop();
                 }
+                abort_start(
+                    &mut pending_start,
+                    RecorderError::DeviceLost("recorder shutting down".into()),
+                );
                 break;
             }
 
@@ -550,6 +616,7 @@ mod tests {
         rate: u32,
         channels: u16,
         fail: bool,
+        stops: Arc<std::sync::atomic::AtomicUsize>,
     }
 
     impl FakeSource {
@@ -558,6 +625,7 @@ mod tests {
                 rate,
                 channels,
                 fail: false,
+                stops: Arc::default(),
             }
         }
         fn failing() -> Self {
@@ -565,6 +633,7 @@ mod tests {
                 rate: 16_000,
                 channels: 1,
                 fail: true,
+                stops: Arc::default(),
             }
         }
     }
@@ -587,7 +656,9 @@ mod tests {
                 channels: self.channels,
             })
         }
-        fn stop(&mut self) {}
+        fn stop(&mut self) {
+            self.stops.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        }
     }
 
     #[derive(Clone, Default)]
@@ -621,10 +692,141 @@ mod tests {
 
     // ── state machine ──
 
+    /// Drive a real Start/Samples handshake without microphone hardware.
+    async fn start_with_samples(
+        handle: &RecorderHandle,
+        samples: Vec<f32>,
+    ) -> Result<StartedInfo, RecorderError> {
+        let (started, ()) = tokio::join!(handle.start(None), async {
+            handle.sender().send(RecorderMsg::Samples(samples)).unwrap();
+        });
+        started
+    }
+
+    fn request_start(
+        handle: &RecorderHandle,
+    ) -> tokio::sync::oneshot::Receiver<Result<StartedInfo, RecorderError>> {
+        let (reply, rx) = tokio::sync::oneshot::channel();
+        handle
+            .sender()
+            .send(RecorderMsg::Start {
+                device: None,
+                reply,
+            })
+            .unwrap();
+        rx
+    }
+
+    #[tokio::test]
+    async fn readiness_waits_for_first_packet_and_preserves_it() {
+        let (handle, jh) = harness(FakeSource::new(16_000, 1), FakeSink::default());
+        let mut ready = request_start(&handle);
+        handle.sender().send(RecorderMsg::Samples(vec![])).unwrap();
+        // FIFO barrier: the empty callback was processed before this Busy reply.
+        assert_eq!(handle.start(None).await.unwrap_err(), RecorderError::Busy);
+        assert_eq!(
+            ready.try_recv(),
+            Err(tokio::sync::oneshot::error::TryRecvError::Empty),
+            "opening the stream or an empty callback must not announce readiness"
+        );
+        let first = vec![0.25, -0.5, 0.75];
+        handle
+            .sender()
+            .send(RecorderMsg::Samples(first.clone()))
+            .unwrap();
+        ready.await.unwrap().unwrap();
+        let pcm = handle.stop().await.unwrap();
+        assert_eq!(
+            pcm.samples,
+            vec![8192, -16384, 24575],
+            "retain the entire first packet"
+        );
+        handle.shutdown();
+        jh.join().unwrap();
+    }
+
+    #[tokio::test]
+    async fn silent_first_packet_also_confirms_readiness() {
+        let (handle, jh) = harness(FakeSource::new(16_000, 1), FakeSink::default());
+        start_with_samples(&handle, vec![0.0; 160]).await.unwrap();
+        assert_eq!(handle.stop().await.unwrap().samples, vec![0; 160]);
+        handle.shutdown();
+        jh.join().unwrap();
+    }
+
+    #[tokio::test]
+    async fn cancelling_start_releases_waiter_and_allows_clean_restart() {
+        let source = FakeSource::new(16_000, 1);
+        let stops = source.stops.clone();
+        let (handle, jh) = harness(source, FakeSink::default());
+        let ready = request_start(&handle);
+        handle.cancel();
+        handle
+            .sender()
+            .send(RecorderMsg::Samples(vec![0.9; 160]))
+            .unwrap();
+        assert!(ready.await.unwrap().is_err());
+        assert_eq!(stops.load(std::sync::atomic::Ordering::SeqCst), 1);
+        assert!(handle.stop().await.unwrap().samples.is_empty());
+        start_with_samples(&handle, vec![0.25; 160]).await.unwrap();
+        assert_eq!(
+            handle.stop().await.unwrap().samples,
+            f32_to_i16(&[0.25; 160])
+        );
+        handle.shutdown();
+        jh.join().unwrap();
+    }
+
+    #[tokio::test]
+    async fn stream_error_before_first_packet_fails_start_and_allows_retry() {
+        let (handle, jh) = harness(FakeSource::new(16_000, 1), FakeSink::default());
+        let ready = request_start(&handle);
+        handle
+            .sender()
+            .send(RecorderMsg::StreamError("unplugged".into()))
+            .unwrap();
+        assert_eq!(
+            ready.await.unwrap(),
+            Err(RecorderError::DeviceLost("unplugged".into()))
+        );
+        start_with_samples(&handle, vec![0.0; 160]).await.unwrap();
+        handle.stop().await.unwrap();
+        handle.shutdown();
+        jh.join().unwrap();
+    }
+
+    #[tokio::test]
+    async fn startup_timeout_releases_device_and_allows_retry() {
+        let source = FakeSource::new(16_000, 1);
+        let stops = source.stops.clone();
+        let (handle, jh) = harness(source, FakeSink::default());
+        let result =
+            tokio::time::timeout(START_TIMEOUT + Duration::from_secs(2), handle.start(None))
+                .await
+                .expect("startup must not hang");
+        assert_eq!(result, Err(RecorderError::StartupTimeout));
+        assert_eq!(stops.load(std::sync::atomic::Ordering::SeqCst), 1);
+        start_with_samples(&handle, vec![0.0; 160]).await.unwrap();
+        handle.stop().await.unwrap();
+        handle.shutdown();
+        jh.join().unwrap();
+    }
+
+    #[tokio::test]
+    async fn shutdown_while_starting_releases_waiter() {
+        let (handle, jh) = harness(FakeSource::new(16_000, 1), FakeSink::default());
+        let ready = request_start(&handle);
+        handle.shutdown();
+        assert!(ready.await.unwrap().is_err());
+        jh.join().unwrap();
+    }
+
     #[tokio::test]
     async fn start_samples_stop_returns_16k_pcm() {
         let (handle, jh) = harness(FakeSource::new(48_000, 2), FakeSink::default());
-        let info = handle.start(None).await.expect("start ok");
+        let info = start_with_samples(&handle, vec![0.0; 2])
+            .await
+            .expect("start ok");
         assert!(!info.fell_back_to_default);
 
         // 0.5 s of stereo at 48 kHz → ~8000 mono samples at 16 kHz.
@@ -656,7 +858,7 @@ mod tests {
     #[tokio::test]
     async fn start_while_recording_is_busy() {
         let (handle, jh) = harness(FakeSource::new(16_000, 1), FakeSink::default());
-        handle.start(None).await.unwrap();
+        start_with_samples(&handle, vec![0.0]).await.unwrap();
         let err = handle.start(None).await.unwrap_err();
         assert_eq!(err, RecorderError::Busy);
         handle.shutdown();
@@ -666,7 +868,7 @@ mod tests {
     #[tokio::test]
     async fn cancel_discards_buffer() {
         let (handle, jh) = harness(FakeSource::new(16_000, 1), FakeSink::default());
-        handle.start(None).await.unwrap();
+        start_with_samples(&handle, vec![0.0]).await.unwrap();
         handle
             .sender()
             .send(RecorderMsg::Samples(vec![0.5; 1000]))
@@ -681,7 +883,7 @@ mod tests {
     #[tokio::test]
     async fn stream_error_reports_device_lost() {
         let (handle, jh) = harness(FakeSource::new(16_000, 1), FakeSink::default());
-        handle.start(None).await.unwrap();
+        start_with_samples(&handle, vec![0.0]).await.unwrap();
         handle
             .sender()
             .send(RecorderMsg::StreamError("unplugged".to_string()))
@@ -695,7 +897,7 @@ mod tests {
     #[tokio::test]
     async fn cap_truncates_at_60s() {
         let (handle, jh) = harness(FakeSource::new(16_000, 1), FakeSink::default());
-        handle.start(None).await.unwrap();
+        start_with_samples(&handle, vec![0.0]).await.unwrap();
         // 61 s of mono at 16 kHz — one batch past the cap.
         handle
             .sender()
@@ -727,12 +929,8 @@ mod tests {
     async fn level_sink_receives_rms_per_window() {
         let sink = FakeSink::default();
         let (handle, jh) = harness(FakeSource::new(16_000, 1), sink.clone());
-        handle.start(None).await.unwrap();
         // window = 16000 * 50 / 1000 = 800; feed 1600 full-scale → two windows.
-        handle
-            .sender()
-            .send(RecorderMsg::Samples(vec![1.0; 1600]))
-            .unwrap();
+        start_with_samples(&handle, vec![1.0; 1600]).await.unwrap();
         let _ = handle.stop().await.unwrap();
         let vals = sink.values();
         assert_eq!(vals.len(), 2, "two full 50 ms windows expected");

@@ -57,10 +57,9 @@ const HIDE_AFTER_ERROR_MS = 3000;
 const BAR_MULTIPLIERS = [0.45, 0.75, 1.0, 0.85, 1.0, 0.7, 0.4];
 
 export function OverlayPill() {
-  // Default to `recording` so a freshly shown pill never flashes stale terminal
-  // content: Rust shows the window on Pressed, the `recording` event lands a few
-  // ms later, and on hide we reset back to this.
-  const [state, setState] = useState<DictationState>({ kind: "recording" });
+  // Showing the window does not mean the microphone is ready. Only the backend's
+  // first audio packet may switch this view to the recording indicator.
+  const [state, setState] = useState<DictationState>({ kind: "starting" });
   const [level, setLevel] = useState(0);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -83,8 +82,8 @@ export function OverlayPill() {
       }
       hideTimer.current = setTimeout(() => {
         void getCurrentWindow().hide();
-        // Reset so the next show starts on the recording view, flash-free.
-        setState({ kind: "recording" });
+        // The next session starts with device preparation, never false readiness.
+        setState({ kind: "starting" });
         setLevel(0);
       }, delay);
     };
@@ -92,8 +91,9 @@ export function OverlayPill() {
     const stateUnlisten = listen<DictationState>(DICTATION_STATE_EVENT, (event) => {
       const next = event.payload;
       setState(next);
-      if (next.kind === "recording") {
+      if (next.kind === "starting" || next.kind === "recording") {
         clearHideTimer();
+        setLevel(0);
       } else if (next.kind === "done" || next.kind === "error") {
         scheduleHide(next);
       }
@@ -122,6 +122,13 @@ export function OverlayPill() {
 
 function PillContent({ state, level }: { state: DictationState; level: number }) {
   switch (state.kind) {
+    case "starting":
+      return (
+        <>
+          <span style={spinnerStyle} aria-hidden />
+          <span style={labelStyle}>Подготовка микрофона…</span>
+        </>
+      );
     case "recording":
       return (
         <>

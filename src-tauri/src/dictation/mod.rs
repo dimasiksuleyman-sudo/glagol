@@ -101,7 +101,7 @@ impl PcmAudio {
 /// single `recv_timeout`.
 pub enum RecorderMsg {
     /// Begin capture from `device` (`None` = system default). Replies with the
-    /// resolved device info or an error.
+    /// resolved device info after the first nonempty audio packet, or an error.
     Start {
         device: Option<String>,
         reply: oneshot::Sender<Result<StartedInfo, RecorderError>>,
@@ -169,7 +169,8 @@ impl RecorderHandle {
         self.tx.clone()
     }
 
-    /// Start capture. `device = None` uses the system default.
+    /// Start capture and wait for the first nonempty audio packet (silence counts).
+    /// `device = None` uses the system default. The first packet is retained.
     pub async fn start(&self, device: Option<String>) -> Result<StartedInfo, RecorderError> {
         let (reply, rx) = oneshot::channel();
         self.tx
@@ -236,6 +237,9 @@ pub enum DictationPhase {
 /// (`commands::dictation::recorder_error_to_user_facing_ru`).
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
 pub enum RecorderError {
+    /// The stream opened but delivered no audio before the startup deadline.
+    #[error("microphone startup timed out waiting for audio")]
+    StartupTimeout,
     /// No input devices exist at all.
     #[error("no input device available")]
     NoDevice,
