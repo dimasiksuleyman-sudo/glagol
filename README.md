@@ -5,6 +5,10 @@ Russian dictation and local text-to-speech for Windows 10/11 x64.
 
 [MIT — приложение / application](LICENSE) · [Руководство / Guide](USER_GUIDE.md) · [Релизы / Releases](https://github.com/dimasiksuleyman-sudo/glagol/releases) · [Безопасность / Security](SECURITY.md)
 
+**[Скачать / Download Glagol 0.4.0 — Windows x64](https://github.com/dimasiksuleyman-sudo/glagol/releases/download/v0.4.0/Glagol_0.4.0_x64-setup.exe)** · [Что нового / Release notes](docs/releases/v0.4.0.md)
+
+![Глагол 0.4.0: первый запуск / first launch](docs/screenshots/windows10-0.4.0/t19-app-first-launch.png)
+
 ## Русский
 
 ### Использование в организациях и лицензии
@@ -43,9 +47,7 @@ Russian dictation and local text-to-speech for Windows 10/11 x64.
 
 ### Установка и первый запуск
 
-Исходники этой версии — **0.4.0**. Готовые опубликованные сборки находятся
-в [Releases](https://github.com/dimasiksuleyman-sudo/glagol/releases);
-проверяйте номер версии выбранного установщика.
+Текущий выпуск — **0.4.0**: [установщик Windows x64](https://github.com/dimasiksuleyman-sudo/glagol/releases/download/v0.4.0/Glagol_0.4.0_x64-setup.exe), **9,29 МиБ**. [SHA-256 и подробности выпуска](docs/releases/v0.4.0.md). Установщик не подписан; SmartScreen может показать предупреждение — см. [руководство](USER_GUIDE.ru.md#установка).
 
 1. Запустите `Glagol_<версия>_x64-setup.exe` и прочитайте пояснение о компонентах.
 2. Для диктовки выберите локальную модель, офисный сервер или облако в настройках.
@@ -68,6 +70,19 @@ Silero: модель **145,4 МБ** + runtime **249,3 МБ**, суммарно *
 `glagol.db`, STT-модели — `speech_models`, Silero — `tts_models`.
 Бэкап библиотеки не переносит модели, runtime, OS-ключи и подтверждение условий
 Silero. На другом ПК компонент включается отдельно.
+
+### Обновление с 0.2.1 и проверка
+
+Создайте бэкап библиотеки, завершите приложение через трей и запустите установщик
+0.4.0. На экране существующей установки выберите «Не удалять» и прежнюю папку.
+0.3.0 отдельно не публиковалась; её изменения включены в этот выпуск.
+
+На Windows 10 / AMD FX-8300 / 16 ГБ проверены чистая установка, обновление
+с сохранением пяти записей и STT-настроек, бэкап/восстановление, скачивание Silero,
+пять голосов, короткий синтез и экспорт WAV. Ручной прогон приостановлен:
+длинный синтез, оставшиеся проверки компонентов и живая диктовка после обновления
+ещё не завершены. [Покрытие и ограничения](docs/releases/v0.4.0.md#проверено-и-что-осталось) ·
+[Скриншоты установки](docs/screenshots/windows10-0.4.0/README.md).
 
 ### Разработка
 
@@ -111,8 +126,7 @@ been removed. Glagol is independent of its model/service providers.
 
 ### Installation
 
-These sources are **0.4.0**. Check the version of published installers in
-[Releases](https://github.com/dimasiksuleyman-sudo/glagol/releases).
+Current release: **0.4.0**, [Windows x64 installer](https://github.com/dimasiksuleyman-sudo/glagol/releases/download/v0.4.0/Glagol_0.4.0_x64-setup.exe), **9.29 MiB**. [SHA-256 and release notes](docs/releases/v0.4.0.md). The installer is unsigned; SmartScreen may warn — see the [guide](USER_GUIDE.en.md#installation).
 Run `Glagol_<version>_x64-setup.exe`, read the component information, then
 choose local, office-server or cloud dictation in Settings. For noncommercial
 TTS, read Silero's terms and choose its separate download. If its server is
@@ -131,6 +145,19 @@ Data: `%LOCALAPPDATA%\app.glagol.desktop\`; `audio_cache`/`glagol.db` for the
 library, `speech_models` for STT, `tts_models` for Silero. Library backups exclude
 models/runtime, OS credentials and Silero acknowledgement. Enable TTS separately
 on another computer.
+
+### Upgrade from 0.2.1 and verification
+
+Back up the library, exit through the tray menu and run the 0.4.0 installer.
+Choose “Do not uninstall” on the existing-installation page and retain the original
+directory. Version 0.3.0 was unpublished; its changes are included in this release.
+
+Windows 10 / AMD FX-8300 / 16 GB testing confirmed clean installation, upgrade
+preserving five recordings and STT settings, backup/restore, Silero download,
+five voices, short synthesis and WAV export. Manual testing is paused: long
+synthesis, remaining component checks and live dictation after updating are
+not yet complete. [Coverage and limits](docs/releases/v0.4.0.md#verification-and-remaining-coverage) ·
+[Installation screenshots](docs/screenshots/windows10-0.4.0/README.md).
 
 ### Development
 

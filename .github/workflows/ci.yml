@@ -20,6 +20,9 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+
 # Cancel in-flight runs for the same ref when a new push lands.
 # Saves CI minutes on rapid-fire force-pushes during PR review.
 concurrency:
@@ -35,11 +38,22 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Context evidence includes local commits; shallow history cannot prove ancestry.
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
+
+      # Dependency-free context gate runs before install and expensive native builds.
+      # It neither downloads speech models nor checks the user's installed application.
+      - name: Runbook checker tests
+        run: node --test scripts/runbook-check.test.mjs
+
+      - name: Context and runbook integrity
+        run: node scripts/runbook-check.mjs
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4

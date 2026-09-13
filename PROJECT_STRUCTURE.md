@@ -73,6 +73,14 @@ Worker ограничен двумя CPU-потоками, таймаутом 90
 
 ## Сборка, проверки и документация
 
+Рабочий контекст: [AGENTS.md](AGENTS.md) → [docs/STATUS.md](docs/STATUS.md) →
+выбранная серия `docs/workstreams/`. Формат — [docs/context/README.md](docs/context/README.md),
+процедуры — [docs/runbooks/README.md](docs/runbooks/README.md).
+`project.json` и `state.json` — источники статусов; STATUS — генерируемый обзор.
+`scripts/runbook-check.mjs` проверяет согласованность, `runbook-check.test.mjs`
+проверяет сам гейт на временных Git-репозиториях. Продуктовые SQLite-данные
+и пользовательские настройки в эту систему не входят.
+
 - `package.json`, `Cargo.toml`, `Cargo.lock`, `tauri.conf.json`: синхронная версия.
 - `scripts/check-version.mjs`: проверка перед frontend build.
 - `scripts/silero`: воспроизводимая подготовка и opt-in проверки модели/runtime.

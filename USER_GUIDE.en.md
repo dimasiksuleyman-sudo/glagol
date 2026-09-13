@@ -10,9 +10,9 @@ Built for people who'd rather listen than read off a screen. If you love audiobo
 
 ## Installation
 
-1. Download the `Glagol_<version>_x64-setup.exe` installer from the [Releases page](../../releases).
+1. Download the `Glagol_0.4.0_x64-setup.exe` installer from the [Releases page](https://github.com/dimasiksuleyman-sudo/glagol/releases/tag/v0.4.0).
 2. Run the installer.
-3. Windows will show a SmartScreen warning ("Windows protected your PC"). This is normal for new apps without a commercial signing certificate. Click **"More info"** → **"Run anyway"**.
+3. Windows may show a SmartScreen warning ("Windows protected your PC"). This is normal for new apps without a commercial signing certificate. Click **"More info"** → **"Run anyway"**.
 4. Done — Glagol launches automatically.
 
 Glagol's icon is a white microphone on a red-orange background. It appears
@@ -25,6 +25,19 @@ switches to a circular red microphone indicator.
 - Internet for downloads; local inference works offline afterwards.
 
 ---
+
+## Upgrade from 0.2.1
+
+Create a backup in Settings and exit Glagol through its tray menu. Run the
+0.4.0 installer, choose “Do not uninstall” and retain the original application
+directory. Existing WAV recordings play without Silero. Enable Silero separately
+for new synthesis; the old SaluteSpeech key is no longer needed. Dictation
+settings and its key are preserved. Version 0.3.0 was not published separately.
+
+[Release coverage and limitations](docs/releases/v0.4.0.md) ·
+[Installation screenshots](docs/screenshots/windows10-0.4.0/README.md).
+
+![First launch of 0.4.0: Silero installs separately](docs/screenshots/windows10-0.4.0/t19-app-first-launch.png)
 
 ## Optional local Silero TTS
 
@@ -53,7 +66,7 @@ SaluteSpeech and its key are no longer used.
 3. Pick a voice.
 4. Click **"Synthesize and save to library."**
 
-In a few seconds the finished audio appears in your Library.
+The finished audio appears in your Library. Processing time depends on text length and CPU.
 
 Synthesis supports cancellation. Numbers become words; unknown Latin words are spelled out and dates may be read component by component.
 
@@ -76,7 +89,9 @@ All your recordings live in the Library. Here you can:
 - **⬇ Download** — save the WAV file anywhere
 - **🗑 Delete** — remove from the library
 
-![Library](docs/screenshots/library-page.png)
+A new installation starts with an empty library:
+
+![Empty library in 0.4.0](docs/screenshots/windows10-0.4.0/t20-empty-library.png)
 
 Documents are sorted newest first. Each shows its voice, character count, and when it was created.
 
@@ -156,7 +171,7 @@ Try another of the five voices — each has its own manner. If you're synthesizi
 
 ## Feedback
 
-Found a bug or have a suggestion? Open an [Issue](../../issues) on GitHub.
+Found a bug or have a suggestion? Open an [Issue](https://github.com/dimasiksuleyman-sudo/glagol/issues) on GitHub.
 
 ---
 

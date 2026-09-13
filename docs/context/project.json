@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-09-13T14:27:50.246Z",
+  "active_workstream": "release-0.4.0",
+  "links": [
+    "AGENTS.md",
+    "CLAUDE.md",
+    "PROJECT_STRUCTURE.md",
+    "docs/context/README.md",
+    "docs/runbooks/README.md",
+    "docs/findings/README.md",
+    "docs/workstreams/context-system/README.md",
+    "docs/workstreams/context-system/log.md",
+    "docs/workstreams/verification-0.4.0/README.md",
+    "docs/day-logs/day-2026-09-12-silero-integration-master-log.md",
+    "docs/workstreams/release-0.4.0/README.md",
+    "docs/workstreams/release-0.4.0/log.md"
+  ],
+  "observations": [
+    {
+      "id": "build",
+      "label": "Локальная сборка",
+      "status": "observed",
+      "summary": "Установщик 0.4.0: 9 742 481 байт, SHA-256 совпадает с журналом сборки. Локальная 0.3.0 тоже сохранена; новых сборок в этом ходе нет.",
+      "observed_at": "2026-09-13T09:17:57.966Z",
+      "source": "docs/workstreams/verification-0.4.0/environment.md"
+    },
+    {
+      "id": "installed",
+      "label": "Установленная версия",
+      "status": "observed",
+      "summary": "Установлена и запущена 0.4.0. EXE, Uninstall-реестр и путь процесса согласованы; отличия от локального EXE — только метка NSIS. UI QA ещё не выполнена.",
+      "observed_at": "2026-09-13T09:17:57.966Z",
+      "source": "docs/workstreams/verification-0.4.0/environment.md"
+    },
+    {
+      "id": "published",
+      "label": "Публикация",
+      "status": "observed",
+      "summary": "GitHub Releases API: последняя публикация v0.2.1; main 2fa523c, тег v0.4.0 отсутствует. Подготовка согласованного релиза 0.4.0.",
+      "observed_at": "2026-09-13T14:27:50.246Z",
+      "source": "docs/workstreams/release-0.4.0/log.md"
+    },
+    {
+      "id": "qa-environment",
+      "label": "Среда QA",
+      "status": "reported",
+      "summary": "QA Windows 10 приостановлена пользователем после T59. Установка/обновление/бэкап, пять голосов, короткий синтез/экспорт подтверждены. T60 и остаток V3/V4 не пройдены.",
+      "observed_at": "2026-09-13T14:27:50.246Z",
+      "source": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+    },
+    {
+      "id": "library-backup",
+      "label": "Резервная копия библиотеки",
+      "status": "observed",
+      "summary": "ZIP 2026-09-13 проверен по CRC, SQLite integrity и извлечённым хешам; 0 документов, 0 WAV. Подготовлена синтетическая библиотека для обновления. Результаты проверки установки учитываются отдельно в QA.",
+      "observed_at": "2026-09-13T09:27:45.064Z",
+      "source": "docs/workstreams/verification-0.4.0/installation.md"
+    },
+    {
+      "id": "dictation-user-experience",
+      "label": "Опыт автономной диктовки",
+      "status": "reported",
+      "summary": "Пользователь два дня диктует сообщения через Glagol; автономная модель чуть больше 200 МБ устраивает по качеству и скорости. Модель, версия приложения и ПК не уточнены; это не PASS V4 для 0.4.0.",
+      "observed_at": "2026-09-13T10:08:20.081Z",
+      "source": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+    },
+    {
+      "id": "installed-win10-qa",
+      "label": "Установка на втором ПК (QA)",
+      "status": "reported",
+      "summary": "В GlagolQA установлена 0.4.0; FileVersion/ProductVersion подтверждены пользователем. Запуск и пустая библиотека видны на скриншотах, ярлык и повторный запуск подтверждены. Исходная 0.2.1 с пятью записями в другом профиле не обновлялась.",
+      "observed_at": "2026-09-13T11:44:15.128Z",
+      "source": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+    },
+    {
+      "id": "installed-win10-original",
+      "label": "Обновление исходного профиля второго ПК",
+      "status": "reported",
+      "summary": "Проверен сценарий 0.2.1→0.4.0: запуск/версия, пять записей/краткое воспроизведение, экспорт одной, сохранность настроек и работа прежнего ключа STT; Silero не установлена и согласие не отмечено. Результаты manual от пользователя; живая диктовка ещё впереди.",
+      "observed_at": "2026-09-13T13:12:00.564Z",
+      "source": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+    }
+  ],
+  "git_refs": [
+    {
+      "id": "silero-baseline",
+      "sha": "e05c852a163d0ef3d8889926ba31812fcebacb43",
+      "scope": "local"
+    }
+  ]
+}

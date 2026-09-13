@@ -1,0 +1,187 @@
+{
+  "schema_version": 1,
+  "id": "context-system",
+  "title": "Постоянный контекст и ранбуки",
+  "status": "done",
+  "next": null,
+  "reason": null,
+  "claim": null,
+  "links": [
+    "docs/plans/context-runbooks-implementation.md",
+    "docs/workstreams/context-system/recovery.md"
+  ],
+  "steps": [
+    {
+      "id": "R1",
+      "title": "Общий порядок работы и архитектурные инструкции",
+      "status": "done",
+      "depends_on": [],
+      "required": [
+        "validation"
+      ],
+      "checks": [
+        {
+          "id": "validation",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Review AGENTS, CLAUDE, PROJECT_STRUCTURE; git diff --check; rg instruction markers",
+          "cwd": ".",
+          "at": "2026-09-13T08:56:50.187Z",
+          "environment": {
+            "os": "win32",
+            "arch": "x64",
+            "node": "v24.19.0"
+          },
+          "exit_code": null,
+          "output": "Single workflow in AGENTS; historical snapshot retained; current scripts and STT/TTS boundaries checked; diff whitespace check passed.",
+          "evidence": "docs/workstreams/context-system/log.md"
+        }
+      ]
+    },
+    {
+      "id": "R2",
+      "title": "Текущее состояние, шаблон и генератор обзора",
+      "status": "done",
+      "depends_on": [
+        "R1"
+      ],
+      "required": [
+        "validation"
+      ],
+      "checks": [
+        {
+          "id": "validation",
+          "status": "PASS",
+          "method": "command",
+          "command": "node scripts/context-status.mjs write; node scripts/context-status.mjs check; node scripts/check-version.mjs",
+          "cwd": ".",
+          "at": "2026-09-13T08:56:57.602Z",
+          "environment": {
+            "os": "win32",
+            "arch": "x64",
+            "node": "v24.19.0"
+          },
+          "exit_code": 0,
+          "output": "context-status write/check: OK; Glagol 0.4.0: package, Tauri and Cargo versions match. Template and strict JSON format added.",
+          "evidence": "docs/workstreams/context-system/log.md"
+        }
+      ]
+    },
+    {
+      "id": "R3",
+      "title": "Валидатор и отрицательные тесты",
+      "status": "done",
+      "depends_on": [
+        "R2"
+      ],
+      "required": [
+        "validation"
+      ],
+      "checks": [
+        {
+          "id": "validation",
+          "status": "PASS",
+          "method": "command",
+          "command": "node --test scripts/runbook-check.test.mjs",
+          "cwd": ".",
+          "at": "2026-09-13T09:02:36.847Z",
+          "environment": {
+            "os": "win32",
+            "arch": "x64",
+            "node": "v24.19.0"
+          },
+          "exit_code": 0,
+          "output": "47 tests passed; 0 failed, 0 skipped. Negative fixtures asserted CLI exit 1; incomplete Git fixtures asserted exit 2. Local branch, terminal series, Cyrillic paths and CRLF passed.",
+          "evidence": "docs/workstreams/context-system/log.md"
+        }
+      ]
+    },
+    {
+      "id": "R4",
+      "title": "Практические ранбуки, находки и серия QA 0.4.0",
+      "status": "done",
+      "depends_on": [
+        "R3"
+      ],
+      "required": [
+        "validation"
+      ],
+      "checks": [
+        {
+          "id": "validation",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Review runtime source tests and CLI paths; node .scratch/context-review.mjs; node scripts/runbook-check.mjs",
+          "cwd": ".",
+          "at": "2026-09-13T09:06:01.272Z",
+          "environment": {
+            "os": "win32",
+            "arch": "x64",
+            "node": "v24.19.0"
+          },
+          "exit_code": null,
+          "output": "17 current Markdown files, 73 local links, 0 missing; runbook-check OK (2 series). Native test names, input environment flags and Tauri CLI path verified. Application QA remains NOT_RUN.",
+          "evidence": "docs/workstreams/context-system/log.md"
+        }
+      ]
+    },
+    {
+      "id": "R5",
+      "title": "Лёгкий гейт в Windows CI",
+      "status": "done",
+      "depends_on": [
+        "R4"
+      ],
+      "required": [
+        "validation"
+      ],
+      "checks": [
+        {
+          "id": "validation",
+          "status": "PASS",
+          "method": "command",
+          "command": "node .scratch/context-ci-review.mjs; node scripts/runbook-check.mjs",
+          "cwd": ".",
+          "at": "2026-09-13T09:07:25.061Z",
+          "environment": {
+            "os": "win32",
+            "arch": "x64",
+            "node": "v24.19.0"
+          },
+          "exit_code": 0,
+          "output": "CI YAML: OK; 14 existing steps preserved, 2 context steps added; full history and read-only permissions verified. runbook-check OK (2 series). GitHub execution NOT_RUN; local Node 24.19.0, CI retains Node 20.",
+          "evidence": "docs/workstreams/context-system/log.md"
+        }
+      ]
+    },
+    {
+      "id": "R6",
+      "title": "Восстановление по файлам и закрытие серии",
+      "status": "done",
+      "depends_on": [
+        "R5"
+      ],
+      "required": [
+        "validation"
+      ],
+      "checks": [
+        {
+          "id": "validation",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Read AGENTS, STATUS, series files; compare git status/log/staged diff; inspect recovery.md",
+          "cwd": ".",
+          "at": "2026-09-13T09:09:14.532Z",
+          "environment": {
+            "os": "win32",
+            "arch": "x64",
+            "node": "v24.19.0"
+          },
+          "exit_code": null,
+          "output": "Recovery questions answered from files and Git; one NEXT and provenance of historical tests and delivery observations recovered. Same-session read-through, not an independent fresh chat. 49 checker tests passed.",
+          "evidence": "docs/workstreams/context-system/recovery.md"
+        }
+      ]
+    }
+  ]
+}

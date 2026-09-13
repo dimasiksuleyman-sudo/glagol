@@ -1,0 +1,1149 @@
+{
+  "schema_version": 1,
+  "id": "verification-0.4.0",
+  "title": "Проверка локальной сборки 0.4.0",
+  "status": "paused",
+  "next": "V3",
+  "reason": "Пользователь остановил ручные проверки на сегодня и поручил публикацию 0.4.0. Продолжение с T60 после нового указания; T60 не подтверждён.",
+  "claim": null,
+  "links": [
+    "docs/plans/silero-tts-migration.md",
+    "docs/local-tts-runtime.ru.md",
+    "docs/local-dictation-runtime.md",
+    "docs/runbooks/release.md",
+    "docs/workstreams/verification-0.4.0/environment.md",
+    "docs/workstreams/verification-0.4.0/installation.md",
+    "docs/workstreams/verification-0.4.0/windows10-manual.md",
+    "docs/screenshots/windows10-0.4.0/README.md"
+  ],
+  "steps": [
+    {
+      "id": "V1",
+      "title": "Проверить текущую установленную версию и выбрать тестовую среду",
+      "status": "done",
+      "depends_on": [],
+      "required": [
+        "environment"
+      ],
+      "checks": [
+        {
+          "id": "environment",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Review Get-Item versions, Get-FileHash, user Uninstall registry, process path; node .scratch/qa-v1-compare.mjs; sky.list_apps()",
+          "cwd": ".",
+          "at": "2026-09-13T09:17:57.966Z",
+          "environment": {
+            "os": "Windows x64 Core 25H2 build 26200.9445",
+            "powershell": "5.1.26100.9444",
+            "node": "v24.19.0"
+          },
+          "exit_code": null,
+          "output": "Installed 0.4.0 confirmed by EXE, registry and running process; only UNK→NSS differs from local EXE. Current host selected for smoke; isolated install environment not ready; Computer Use unavailable (os error 2).",
+          "evidence": "docs/workstreams/verification-0.4.0/environment.md"
+        }
+      ]
+    },
+    {
+      "id": "V2",
+      "title": "Проверить чистую установку и обновление с сохранением библиотеки",
+      "status": "done",
+      "depends_on": [
+        "V1"
+      ],
+      "required": [
+        "backup",
+        "installation",
+        "upgrade-0-2-1"
+      ],
+      "checks": [
+        {
+          "id": "backup",
+          "status": "PASS",
+          "method": "command",
+          "command": "& 'C:/Users/kiss2/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe' .scratch/qa-v2-backup.py",
+          "cwd": ".",
+          "at": "2026-09-13T09:27:45.064Z",
+          "environment": {
+            "os": "Windows x64 Core 25H2 build 26200.9445",
+            "data": "SQLite snapshot / synthetic fixture; no installed-app mutation"
+          },
+          "exit_code": 0,
+          "output": "0 documents / 0 WAV; ZIP CRC, SQLite integrity, extracted payload hashes PASS; stable read-only snapshot. Application restore UI NOT_RUN.",
+          "evidence": "docs/workstreams/verification-0.4.0/installation.md"
+        },
+        {
+          "id": "fixture",
+          "status": "PASS",
+          "method": "command",
+          "command": "& 'C:/Users/kiss2/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe' .scratch/qa-v2-kit.py",
+          "cwd": ".",
+          "at": "2026-09-13T09:27:45.064Z",
+          "environment": {
+            "os": "Windows x64 Core 25H2 build 26200.9445",
+            "data": "SQLite snapshot / synthetic fixture; no installed-app mutation"
+          },
+          "exit_code": 0,
+          "output": "2 synthetic documents / 2 WAV; source SQL migration v4→v5 preserves rows/settings/usage; installer hashes verified. Installed-app migration NOT_RUN.",
+          "evidence": "docs/workstreams/verification-0.4.0/installation.md"
+        },
+        {
+          "id": "installation",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Review user-confirmed T01–T46: clean install 0.4.0, backup/restore, in-place 0.2.1→0.4.0 update; 0.3.0 scenario explicitly excluded by user.",
+          "cwd": ".",
+          "at": "2026-09-13T13:16:19.950Z",
+          "environment": {
+            "os": "Second desktop: Windows 10 Pro 22H2 build 19045.6456 x64; AMD FX-8300; RAM 16 GB",
+            "execution": "User performs one manual step per confirmation"
+          },
+          "exit_code": null,
+          "output": "PASS in agreed scope: clean install/start/version/shortcut/single-window behavior, empty library and optional TTS state; restore with safety backup, playback/export; 0.2.1 update preserves five records and working STT settings/key. Manual evidence, no full-content/hash/network audit. TTS runtime/live dictation remain V3/V4.",
+          "evidence": "docs/workstreams/verification-0.4.0/installation.md"
+        },
+        {
+          "id": "win10-t01",
+          "status": "PASS",
+          "method": "manual",
+          "command": "User opens winver on second desktop; assistant reads supplied screenshot.",
+          "cwd": ".",
+          "at": "2026-09-13T09:43:46.308Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456",
+            "source": "User screenshot in chat; architecture not shown"
+          },
+          "exit_code": null,
+          "output": "T01 PASS: edition/version/build confirmed. T02 awaiting system type; installation NOT_RUN.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t02",
+          "status": "PASS",
+          "method": "manual",
+          "command": "User opens ms-settings:about on second desktop and reports system type.",
+          "cwd": ".",
+          "at": "2026-09-13T09:55:35.019Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "cpu": "AMD FX-8300 3.30 GHz",
+            "ram": "16 GB",
+            "source": "User supplied system information as text"
+          },
+          "exit_code": null,
+          "output": "T02 PASS: 64-bit OS and x64 processor. Runtime compatibility not tested. T03 awaiting existing Glagol installation status.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t03",
+          "status": "PASS",
+          "method": "manual",
+          "command": "User searches Glagol in ms-settings:appsfeatures on second desktop and reports version.",
+          "cwd": ".",
+          "at": "2026-09-13T09:57:53.020Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "source": "User report: Glagol 0.2.1 found in installed applications"
+          },
+          "exit_code": null,
+          "output": "T03 PASS: existing Glagol 0.2.1 identified. Profile is not clean; library unknown. T04 awaiting library count or launch error.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t04",
+          "status": "PASS",
+          "method": "manual",
+          "command": "User opens existing Glagol 0.2.1 and reports library count and icon.",
+          "cwd": ".",
+          "at": "2026-09-13T10:00:25.352Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "app": "Existing Glagol 0.2.1 on second desktop",
+            "source": "User report in chat"
+          },
+          "exit_code": null,
+          "output": "T04 PASS: app opens, 5 library entries, old icon. Playback/integrity not tested. T05 awaiting desktop library backup creation.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t05",
+          "status": "PASS",
+          "method": "manual",
+          "command": "User creates library backup through Glagol settings and reports result.",
+          "cwd": ".",
+          "at": "2026-09-13T10:04:04.884Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "app": "Glagol 0.2.1; library has 5 entries",
+            "source": "User report; chosen backup path and filename not supplied"
+          },
+          "exit_code": null,
+          "output": "T05 PASS: backup creation succeeded at user-selected path. Archive contents/integrity/restore not verified. T06 awaiting ZIP filename, root entries and WAV count.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t06",
+          "status": "PASS",
+          "method": "manual",
+          "command": "User opens backup ZIP in Explorer and checks root entries and WAV count.",
+          "cwd": ".",
+          "at": "2026-09-13T10:08:20.081Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "archive": "glagol-backup-2026-09-13-130116.zip; about 253 MB, user-reported",
+            "source": "User report in chat; full path unknown"
+          },
+          "exit_code": null,
+          "output": "T06 PASS: manifest.json, glagol.db, audio_cache with 5 WAV confirmed by user. Integrity/restore not tested. T07 awaiting extraction to a new separate directory.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t07",
+          "status": "PASS",
+          "method": "manual",
+          "command": "User extracts backup ZIP to a separate directory in Explorer and checks files.",
+          "cwd": ".",
+          "at": "2026-09-13T10:10:49.886Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "archive": "glagol-backup-2026-09-13-130116.zip",
+            "source": "User report in chat"
+          },
+          "exit_code": null,
+          "output": "T07 PASS: extraction completed without errors, all files present. SQLite integrity, playback and app restore not tested. T08 awaiting creation of a separate local standard Windows account.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t08",
+          "status": "PASS",
+          "method": "manual",
+          "command": "User creates GlagolQA Windows account following T08 and reports success.",
+          "cwd": ".",
+          "at": "2026-09-13T10:19:38.473Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "source": "User report in chat",
+            "account": "GlagolQA requested; account type not independently confirmed"
+          },
+          "exit_code": null,
+          "output": "T08 PASS: user reports account creation succeeded. First sign-in and clean application state not confirmed. T09 awaiting desktop after signing into GlagolQA.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t09",
+          "status": "PASS",
+          "method": "manual",
+          "command": "User signs into GlagolQA and reports desktop readiness and absence of Glagol.",
+          "cwd": ".",
+          "at": "2026-09-13T10:25:25.316Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "account": "GlagolQA",
+            "source": "User report; absence-check method unspecified"
+          },
+          "exit_code": null,
+          "output": "T09 PASS: new desktop ready; user reports Glagol absent. No independent registry/files audit. T10 awaiting installer transfer; installation NOT_RUN.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t10",
+          "status": "PASS",
+          "method": "manual",
+          "command": "User copies the requested 0.4.0 installer to the second PC and reports completion.",
+          "cwd": ".",
+          "at": "2026-09-13T10:33:06.709Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "account": "GlagolQA requested destination",
+            "source": "User report; exact destination path not separately supplied"
+          },
+          "exit_code": null,
+          "output": "T10 PASS: installer transferred according to user. Destination hash not verified. T11 awaiting SHA-256 output; installer launch not instructed yet.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t11",
+          "status": "PASS",
+          "method": "manual",
+          "command": "(Get-FileHash -LiteralPath (Join-Path ([Environment]::GetFolderPath('Desktop')) 'Glagol_0.4.0_x64-setup.exe') -Algorithm SHA256).Hash",
+          "cwd": ".",
+          "at": "2026-09-13T10:44:35.210Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "account": "GlagolQA per procedure",
+            "source": "User supplied PowerShell hash output from second PC; manual review"
+          },
+          "exit_code": null,
+          "output": "T11 PASS: supplied SHA-256 569D707FF2D3BDB0B5F83C6686C6D66889AA6D135ED2161F20BDAA9E2F62F7D3 matches verified source. T12 awaiting first installer/Windows dialog; install completion not verified.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t12",
+          "status": "PASS",
+          "method": "manual",
+          "command": "User launches verified 0.4.0 installer under GlagolQA and supplies first dialog screenshot.",
+          "cwd": ".",
+          "at": "2026-09-13T10:50:02.914Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "account": "GlagolQA per procedure",
+            "source": "User screenshot and report of no other warnings"
+          },
+          "exit_code": null,
+          "output": "T12 PASS: Installer Language dialog visible, Russian selected, new orange microphone icon. User reports no other warnings. T13 awaiting next screen after OK; installation completion not verified.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t13",
+          "status": "PASS",
+          "method": "manual",
+          "command": "User confirms Russian installer language and supplies next screen.",
+          "cwd": ".",
+          "at": "2026-09-13T10:52:40.631Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "account": "GlagolQA per procedure",
+            "source": "User screenshot of installer information page"
+          },
+          "exit_code": null,
+          "output": "T13 PASS: Russian information page explains optional Silero, separate user-selected model/runtime downloads and dictation independence; new icon visible. Actual component download behavior not tested. T14 awaiting next screen.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t14",
+          "status": "PASS",
+          "method": "manual",
+          "command": "User clicks Next on installer information page and supplies next screen.",
+          "cwd": ".",
+          "at": "2026-09-13T11:00:33.285Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "account": "GlagolQA per procedure",
+            "source": "User screenshot of installer welcome page"
+          },
+          "exit_code": null,
+          "output": "T14 PASS: Russian Glagol setup welcome page, text and navigation buttons visible. T15 awaiting next screen after Next; install completion not verified.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t15",
+          "status": "PASS",
+          "method": "manual",
+          "command": "User clicks Next on welcome page and supplies license screen.",
+          "cwd": ".",
+          "at": "2026-09-13T11:03:13.816Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "account": "GlagolQA per procedure",
+            "source": "User screenshot of license page"
+          },
+          "exit_code": null,
+          "output": "T15 PASS: license page visible, MIT License heading and 2026 Glagol Contributors copyright, Russian labels and Accept button. Full license/acceptance not verified. T16 awaiting user decision and next screen.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t16",
+          "status": "PASS",
+          "method": "manual",
+          "command": "User proceeds from license page and supplies installation-directory screen.",
+          "cwd": ".",
+          "at": "2026-09-13T11:05:55.939Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "account": "GlagolQA confirmed by displayed installation path",
+            "source": "User screenshot of installation-directory page"
+          },
+          "exit_code": null,
+          "output": "T16 PASS: destination C:/Users/GlagolQA/AppData/Local/Glagol; installer reports 32.3 MB required, 24.4 GB available. T17 awaiting next screen with path unchanged. Installation completion not verified.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t17",
+          "status": "PASS",
+          "method": "manual",
+          "command": "User proceeds with default GlagolQA installation directory and supplies installer result screen.",
+          "cwd": ".",
+          "at": "2026-09-13T11:09:58.000Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "account": "GlagolQA confirmed by install log",
+            "source": "User screenshot: installation successfully completed"
+          },
+          "exit_code": null,
+          "output": "T17 PASS: installer reports success in C:/Users/GlagolQA/AppData/Local/Glagol, file extraction and shortcut creation shown. First launch and installed EXE version not checked. T18 awaiting next wizard screen.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t18",
+          "status": "PASS",
+          "method": "manual",
+          "command": "User clicks Next on successful installation result and supplies final wizard screen.",
+          "cwd": ".",
+          "at": "2026-09-13T11:15:00.054Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "account": "GlagolQA",
+            "source": "User screenshot saved as docs/screenshots/windows10-0.4.0/t18-installer-finish.png"
+          },
+          "exit_code": null,
+          "output": "T18 PASS: final wizard page reports installation done; Launch Glagol and Add desktop shortcut both checked. T19 awaiting Finish and first app screen. App launch and desktop shortcut not yet verified.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "screenshots-initial",
+          "status": "PASS",
+          "method": "command",
+          "command": "node .scratch/save-win10-screenshots.mjs",
+          "cwd": ".",
+          "at": "2026-09-13T11:15:00.054Z",
+          "environment": {
+            "os": "Primary Windows host",
+            "node": "v24.19.0",
+            "source": "Original PNG user attachments from this conversation only"
+          },
+          "exit_code": 0,
+          "output": "Saved 8 original PNG attachments (408685 bytes); byte comparison PASS; captions, steps, dimensions, timestamps and SHA-256 recorded. No publication performed.",
+          "evidence": "docs/screenshots/windows10-0.4.0/README.md"
+        },
+        {
+          "id": "win10-t19",
+          "status": "PASS",
+          "method": "manual",
+          "command": "User finishes installer with launch option enabled and supplies first app screen.",
+          "cwd": ".",
+          "at": "2026-09-13T11:19:22.118Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "account": "GlagolQA",
+            "source": "User screenshot saved as docs/screenshots/windows10-0.4.0/t19-app-first-launch.png"
+          },
+          "exit_code": null,
+          "output": "T19 PASS: app launched, Speak page shows install-local-TTS prompt and separate Silero notice; navigation visible, no visible error. Network activity, EXE version and desktop shortcut not checked. T20 awaiting library screen.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t20",
+          "status": "PASS",
+          "method": "manual",
+          "command": "User opens Library in new GlagolQA profile and supplies screenshot.",
+          "cwd": ".",
+          "at": "2026-09-13T11:25:57.723Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "account": "GlagolQA",
+            "source": "User screenshot saved as docs/screenshots/windows10-0.4.0/t20-empty-library.png"
+          },
+          "exit_code": null,
+          "output": "T20 PASS: Library shows empty-state message and first-document button, no records or visible errors. T21 awaiting initial Settings screen; no downloads or settings changes instructed.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t21",
+          "status": "PASS",
+          "method": "manual",
+          "command": "User opens Settings and supplies upper and lower page screenshots.",
+          "cwd": ".",
+          "at": "2026-09-13T11:35:05.366Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "account": "GlagolQA",
+            "source": "Two original user screenshots saved in docs/screenshots/windows10-0.4.0"
+          },
+          "exit_code": null,
+          "output": "T21 PASS: cloud AITunnel default, whisper-large-v3-turbo, Russian, API key and proxy empty; Silero Not installed, consent unchecked, download/import disabled; backup section visible. No cloud call/network audit. T22 awaiting desktop shortcut and repeated-launch check; user now confirms expected results with Go.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t22",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Keep Glagol Settings open, Win+D, launch Glagol again using desktop shortcut; confirm icon and existing-window behavior.",
+          "cwd": ".",
+          "at": "2026-09-13T11:37:10.329Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "account": "GlagolQA",
+            "source": "User Go confirms expected result under agreed protocol"
+          },
+          "exit_code": null,
+          "output": "T22 PASS: desktop shortcut has new orange icon; relaunch returns existing Settings window without second window or errors. Separate process count not performed. T23 awaiting installed EXE FileVersion/ProductVersion.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t23",
+          "status": "PASS",
+          "method": "manual",
+          "command": "(Get-Item -LiteralPath (Join-Path $env:LOCALAPPDATA 'Glagol\\glagol.exe')).VersionInfo | Select-Object FileVersion, ProductVersion",
+          "cwd": ".",
+          "at": "2026-09-13T11:44:15.128Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "account": "GlagolQA",
+            "source": "User go confirms both expected values under agreed protocol; command output not supplied"
+          },
+          "exit_code": null,
+          "output": "T23 PASS: installed EXE FileVersion and ProductVersion both 0.4.0. T24 awaiting copy of 5-record backup ZIP to GlagolQA desktop for restore QA.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t24",
+          "status": "PASS",
+          "method": "manual",
+          "command": "User copies glagol-backup-2026-09-13-130116.zip to GlagolQA desktop while retaining original archive.",
+          "cwd": ".",
+          "at": "2026-09-13T11:45:50.549Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "account": "GlagolQA",
+            "source": "User go confirms expected result under agreed protocol"
+          },
+          "exit_code": null,
+          "output": "T24 PASS: backup ZIP about 253 MB is available on GlagolQA desktop, original retained. T25 awaiting built-in archive validation and confirmation counts 0 current / 5 backup; final restore not yet instructed.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t25",
+          "status": "PASS",
+          "method": "manual",
+          "command": "User selects backup ZIP through Restore and checks pre-restore confirmation for 0 current / 5 backup documents.",
+          "cwd": ".",
+          "at": "2026-09-13T11:47:56.193Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "account": "GlagolQA; installed version 0.4.0 confirmed in T23",
+            "source": "User reply: archive recognized correctly, in response to expected 0/5 dialog check"
+          },
+          "exit_code": null,
+          "output": "T25 PASS: archive recognized correctly according to user; expected pre-restore dialog confirmed. Actual restore not yet confirmed. T26 awaiting restore, automatic relaunch and five library entries.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t26",
+          "status": "PASS",
+          "method": "manual",
+          "command": "User confirms restore into empty GlagolQA library, waits for automatic relaunch, checks library and reports playback.",
+          "cwd": ".",
+          "at": "2026-09-13T11:53:45.541Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "account": "GlagolQA; installed 0.4.0",
+            "source": "User reports expected restore, automatic relaunch, 5 files and playback"
+          },
+          "exit_code": null,
+          "output": "T26 PASS: restore completed as expected, automatic relaunch, 5 library entries, playback reported working. Listening duration/full-content verification unspecified; export not checked. T27 awaiting automatic pre-restore archive and zero manifest counts.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t27",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Verify automatic glagol-pre-restore ZIP exists and manifest document_count/audio_file_count are both zero.",
+          "cwd": ".",
+          "at": "2026-09-13T11:57:55.786Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "account": "GlagolQA; installed 0.4.0",
+            "source": "User supplied manifest fields after confirming automatic ZIP presence"
+          },
+          "exit_code": null,
+          "output": "T27 PASS: automatic archive present; manifest backup_version=1, app_version=0.4.0, document_count=0, audio_file_count=0, total_size_bytes=45056, created_at=2026-09-13T11:49:22.052982100+00:00. Safety archive restore not tested. T28 awaiting export of one restored WAV and external playback.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t28",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Export one restored recording to a new WAV via Save to disk, then play it in an external Windows media player.",
+          "cwd": ".",
+          "at": "2026-09-13T12:03:56.558Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "account": "GlagolQA; installed 0.4.0",
+            "source": "User Go plus explicit confirmation of saving and correct media-player playback"
+          },
+          "exit_code": null,
+          "output": "T28 PASS: one restored recording exports and plays correctly externally. Byte equality/all-five export not checked. T29 awaiting unchanged Silero not-installed/unchecked-consent state after legacy backup restore.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t29",
+          "status": "PASS",
+          "method": "manual",
+          "command": "After restoring legacy backup, inspect Silero Settings without changes: Not installed, consent unchecked, download/import disabled.",
+          "cwd": ".",
+          "at": "2026-09-13T12:07:38.795Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "account": "GlagolQA; installed 0.4.0",
+            "source": "User Go confirms expected state under agreed protocol"
+          },
+          "exit_code": null,
+          "output": "T29 PASS: legacy backup restore leaves Silero not installed and consent unchecked with installation buttons disabled. Backup previously containing Silero consent not tested. T30 awaiting original-profile baseline before 0.2.1 installer update.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t30",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Switch back to original Windows account and open existing Glagol library; verify old icon and five records.",
+          "cwd": ".",
+          "at": "2026-09-13T12:10:07.769Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "account": "Original second-PC profile with existing 0.2.1",
+            "source": "User Go confirms expected original-profile baseline"
+          },
+          "exit_code": null,
+          "output": "T30 PASS: original profile, previous icon, five original records present. T31 awaiting STT provider/model/language/key-presence baseline before installer update.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t31",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Inspect original 0.2.1 STT settings before update without changes.",
+          "cwd": ".",
+          "at": "2026-09-13T12:15:44.360Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "account": "Original second-PC profile; existing 0.2.1",
+            "source": "User screenshot saved as docs/screenshots/windows10-0.4.0/t31-v0.2.1-settings-baseline.png"
+          },
+          "exit_code": null,
+          "output": "T31 PASS baseline: AITunnel, https://api.aitunnel.ru/v1, whisper-large-v3-turbo, Russian, proxy empty, STT key saved/unverified. Separate SaluteSpeech key status is not STT validation. T32 awaiting STT connection check before update.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t32",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Click Check in original 0.2.1 Dictation STT settings and inspect key validation result.",
+          "cwd": ".",
+          "at": "2026-09-13T12:17:51.424Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "account": "Original second-PC profile; existing 0.2.1",
+            "source": "User reports green toast: key valid, Go"
+          },
+          "exit_code": null,
+          "output": "T32 PASS: STT key validation succeeds before update, green success toast. Live dictation not tested in this step. T33 awaiting verified 0.4.0 installer copy on original-account desktop.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t33",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Copy same 0.4.0 installer to original second-PC account desktop without launching it.",
+          "cwd": ".",
+          "at": "2026-09-13T12:26:46.451Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "account": "Original second-PC profile; existing 0.2.1",
+            "source": "User Go confirms expected result under agreed protocol"
+          },
+          "exit_code": null,
+          "output": "T33 PASS: installer available on original-account desktop. New destination hash not yet checked. T34 awaiting SHA-256 equality True; update not launched.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t34",
+          "status": "PASS",
+          "method": "manual",
+          "command": "(Get-FileHash -LiteralPath (Join-Path ([Environment]::GetFolderPath('Desktop')) 'Glagol_0.4.0_x64-setup.exe') -Algorithm SHA256).Hash -eq '569D707FF2D3BDB0B5F83C6686C6D66889AA6D135ED2161F20BDAA9E2F62F7D3'",
+          "cwd": ".",
+          "at": "2026-09-13T12:29:37.608Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "account": "Original second-PC profile; existing 0.2.1",
+            "source": "User supplied True and Go for hash comparison"
+          },
+          "exit_code": null,
+          "output": "T34 PASS: original-profile installer SHA-256 matches verified source. T35 awaiting old app exit via tray in current account before update.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t35",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Quit original 0.2.1 from its tray menu in current original Windows account; verify window and tray icon disappear.",
+          "cwd": ".",
+          "at": "2026-09-13T12:31:15.241Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "account": "Original second-PC profile; existing 0.2.1",
+            "source": "User Go confirms expected exit behavior"
+          },
+          "exit_code": null,
+          "output": "T35 PASS: old app window closed and tray icon disappeared after Exit. T36 awaiting ordinary 0.4.0 installer launch in same account and information screen after Russian selection.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t36",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Launch verified 0.4.0 installer in original profile and inspect information screen; record any preceding Windows prompts.",
+          "cwd": ".",
+          "at": "2026-09-13T12:38:37.139Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "account": "Original second-PC profile; updating existing 0.2.1",
+            "source": "User reports SmartScreen prompt, self-approved continuation and expected Silero information screen"
+          },
+          "exit_code": null,
+          "output": "T36 PASS: information screen reached after SmartScreen warning and user-confirmed continuation. Warning occurred in this run; no screenshot supplied. Local identical installer is NotSigned, local guides describe SmartScreen. T37 awaiting next wizard page.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "installer-signature",
+          "status": "PASS",
+          "method": "command",
+          "command": "(Get-AuthenticodeSignature -LiteralPath '.scratch/qa-v2-kit/Glagol_0.4.0_x64-setup.exe').Status",
+          "cwd": ".",
+          "at": "2026-09-13T12:38:37.139Z",
+          "environment": {
+            "os": "Primary Windows host",
+            "artifact": "Verified 0.4.0 installer; SHA-256 matches second-PC copy in T34"
+          },
+          "exit_code": 0,
+          "output": "NotSigned. PASS records successful signature-status inspection, not a signed/trusted artifact.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t37",
+          "status": "PASS",
+          "method": "manual",
+          "command": "User proceeds through welcome/license and reports detected existing installation screen.",
+          "cwd": ".",
+          "at": "2026-09-13T12:44:36.171Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "account": "Original second-PC profile; updating existing 0.2.1",
+            "source": "User reports wizard → license → Already installed with uninstall/do-not-uninstall choices"
+          },
+          "exit_code": null,
+          "output": "T37 PASS: existing installation detected after welcome/license. User already advanced past initially requested welcome screen; no replay needed. T38 awaiting Do not uninstall and original-profile destination page.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t38",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Select Do not uninstall, proceed to directory page and verify unchanged original-profile install path rather than GlagolQA.",
+          "cwd": ".",
+          "at": "2026-09-13T12:47:04.365Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "account": "Original second-PC profile; existing 0.2.1",
+            "source": "User Go confirms expected choice and original-profile destination"
+          },
+          "exit_code": null,
+          "output": "T38 PASS: Do not uninstall selected, existing original-profile destination confirmed and unchanged. T39 awaiting file installation result for update over 0.2.1.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t39",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Proceed from unchanged original install directory and wait for in-place update installation result.",
+          "cwd": ".",
+          "at": "2026-09-13T12:49:40.346Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "account": "Original second-PC profile; update over existing 0.2.1 without uninstall",
+            "source": "User Go confirms Installation successfully completed without errors"
+          },
+          "exit_code": null,
+          "output": "T39 PASS: installer reports successful update without errors. Installed EXE version, first launch and data preservation not yet checked. T40 awaiting wizard finish and first app screen.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t40",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Finish update wizard with app launch and shortcut options enabled; inspect first app screen.",
+          "cwd": ".",
+          "at": "2026-09-13T12:51:10.198Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "account": "Original second-PC profile; just updated over 0.2.1",
+            "source": "User Go confirms expected first launch after update"
+          },
+          "exit_code": null,
+          "output": "T40 PASS: app opens without errors, new orange icon, Speak page offers separate Silero installation. T41 awaiting updated EXE versions; library/settings preservation not yet checked.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t41",
+          "status": "PASS",
+          "method": "manual",
+          "command": "(Get-Item -LiteralPath (Join-Path $env:LOCALAPPDATA 'Glagol\\glagol.exe')).VersionInfo | Select-Object FileVersion, ProductVersion",
+          "cwd": ".",
+          "at": "2026-09-13T12:55:57.210Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "account": "Original second-PC profile; updated over 0.2.1",
+            "source": "User Go confirms both expected version values 0.4.0; raw output not supplied"
+          },
+          "exit_code": null,
+          "output": "T41 PASS: updated original-profile EXE FileVersion and ProductVersion both 0.4.0. T42 awaiting preservation and brief playback of each of five original records.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t42",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Open original library after installer update and play each of five prior recordings for a few seconds.",
+          "cwd": ".",
+          "at": "2026-09-13T12:57:52.108Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "account": "Original second-PC profile; updated 0.4.0",
+            "source": "User Go confirms five preserved records and brief playback of each without errors"
+          },
+          "exit_code": null,
+          "output": "T42 PASS: all five original records preserved and each plays briefly after in-place update, without restore. Full-content/byte comparison not performed. T43 awaiting preserved STT settings/key presence comparison.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t43",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Compare post-update STT profile and stored-key indicator against pre-update T31 baseline without changes.",
+          "cwd": ".",
+          "at": "2026-09-13T13:03:28.638Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "account": "Original second-PC profile; updated 0.4.0",
+            "source": "User Go confirms all expected settings and stored-key indicator"
+          },
+          "exit_code": null,
+          "output": "T43 PASS: cloud AITunnel, https://api.aitunnel.ru/v1, whisper-large-v3-turbo, Russian, empty proxy, key stored for profile all preserved. T44 awaiting connection check using existing key, no re-entry.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t44",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Click Save and check in post-update STT settings without changing fields or re-entering API key.",
+          "cwd": ".",
+          "at": "2026-09-13T13:06:38.943Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "account": "Original second-PC profile; updated 0.4.0",
+            "source": "User Go confirms expected Connection works message with preserved key"
+          },
+          "exit_code": null,
+          "output": "T44 PASS: connection check succeeds after update using preserved key without re-entry. Before-update T32 also passed. Live dictation not tested here. T45 awaiting original-profile WAV export/external playback.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t45",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Export one original recording from updated original profile to a new WAV and play it externally.",
+          "cwd": ".",
+          "at": "2026-09-13T13:09:45.595Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "account": "Original second-PC profile; updated 0.4.0",
+            "source": "User Go confirms successful export and matching external playback"
+          },
+          "exit_code": null,
+          "output": "T45 PASS: one original recording exports without errors and plays correctly externally after in-place update. Byte comparison/all-five export not checked. T46 awaiting optional Silero/consent state after update.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t46",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Inspect Silero settings after updating original profile: Not installed, consent unchecked, download/import disabled.",
+          "cwd": ".",
+          "at": "2026-09-13T13:12:00.564Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "account": "Original second-PC profile; updated 0.4.0",
+            "source": "User Go confirms expected post-update Silero state"
+          },
+          "exit_code": null,
+          "output": "T46 PASS: Silero not installed, consent unchecked, installation buttons disabled. 0.2.1→0.4.0 scenario completed in documented scope. T47 awaiting separate GlagolQA03 profile for planned 0.3.0→0.4.0 scenario.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "upgrade-0-2-1",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Review T30–T46: in-place 0.2.1→0.4.0 installer update, EXE version, library/playback/export, STT settings/key/connectivity, optional Silero state.",
+          "cwd": ".",
+          "at": "2026-09-13T13:12:00.564Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "source": "User-confirmed manual results T30–T46",
+            "artifact": "0.4.0 installer SHA-256 verified in T34"
+          },
+          "exit_code": null,
+          "output": "Documented 0.2.1 upgrade scenario PASS. Five records preserved/playable, one export playable, STT settings and working key preserved. Live dictation, full-content/hash comparison not covered.",
+          "evidence": "docs/workstreams/verification-0.4.0/installation.md"
+        },
+        {
+          "id": "upgrade-0-3-0",
+          "status": "NOT_RUN",
+          "method": "manual",
+          "command": "Install 0.3.0 in separate profile, seed synthetic fixture, update to 0.4.0 and verify preservation.",
+          "cwd": ".",
+          "at": "2026-09-13T13:16:19.950Z",
+          "environment": {
+            "os": "Windows 10 second desktop",
+            "account": "GlagolQA03 planned, not yet created"
+          },
+          "exit_code": null,
+          "output": "NOT_RUN; explicitly excluded by user: 0.3.0 was unpublished and only used by them. T47 cancelled before execution, no GlagolQA03 needed. Do not reinstate without new user scope.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        }
+      ]
+    },
+    {
+      "id": "V3",
+      "title": "Проверить Silero UI, загрузку/импорт и прослушать голоса",
+      "status": "pending",
+      "depends_on": [
+        "V2"
+      ],
+      "required": [
+        "tts-manual"
+      ],
+      "checks": [
+        {
+          "id": "tts-manual",
+          "status": "NOT_RUN",
+          "method": "manual",
+          "command": "Run Silero manual QA in GlagolQA, beginning with T48 return to existing test profile and initial TTS state.",
+          "cwd": ".",
+          "at": "2026-09-13T14:16:51.300Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "account": "GlagolQA; installed 0.4.0; FX-8300, RAM 16 GB"
+          },
+          "exit_code": null,
+          "output": "T48–T59 consent, automatic installation/cancel/continuation, five voice previews, short document synthesis/library entry/full listening and new WAV export/external playback PASS. T60 awaits long TXT preparation. Long synthesis, cancellation, import and lifecycle checks remain untested.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t48",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Return to existing GlagolQA and inspect initial Silero state before V3.",
+          "cwd": ".",
+          "at": "2026-09-13T13:18:22.701Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "account": "GlagolQA; installed 0.4.0; FX-8300, RAM 16 GB",
+            "source": "User Go confirms Not installed and unchecked consent in test profile"
+          },
+          "exit_code": null,
+          "output": "T48 PASS: test profile active, Silero Not installed, consent unchecked. T49 awaits user review/acceptance of terms and enabled install/import controls without download.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t49",
+          "status": "PASS",
+          "method": "manual",
+          "command": "User reviews Silero terms, checks consent if agreed, and verifies download/import enable without initiating download.",
+          "cwd": ".",
+          "at": "2026-09-13T13:21:30.418Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "account": "GlagolQA; installed 0.4.0; FX-8300, RAM 16 GB",
+            "source": "User Go confirms expected consent-gate behavior"
+          },
+          "exit_code": null,
+          "output": "T49 PASS: user consent checked, install/import enabled, status remains Not installed. T50 awaiting automatic download start/nonzero progress and cancellation; no installation result yet.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t50",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Start automatic Silero component download, wait for nonzero progress, cancel, verify stopped download and responsive UI with continuation available.",
+          "cwd": ".",
+          "at": "2026-09-13T13:24:37.797Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "account": "GlagolQA; installed 0.4.0; FX-8300, RAM 16 GB",
+            "source": "User Go confirms expected download/cancellation result"
+          },
+          "exit_code": null,
+          "output": "T50 PASS: nonzero download progress seen, cancellation stopped download, UI responsive, continuation available. Full component installation not yet verified. T51 awaiting continuation through Ready state and voice controls.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t51",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Continue automatic Silero download after cancellation; wait for completed download, verification and installation, Ready state and voice controls.",
+          "cwd": ".",
+          "at": "2026-09-13T13:32:24.803Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "account": "GlagolQA; installed 0.4.0; FX-8300, RAM 16 GB",
+            "source": "User Go confirms expected installation readiness"
+          },
+          "exit_code": null,
+          "output": "T51 PASS: automatic installation completed without error after continuation, Ready state and voice controls available. T52 awaits first preview with Xenia; actual speech synthesis remains untested.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t52",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Select Xenia in Silero settings, play voice preview and listen to completion.",
+          "cwd": ".",
+          "at": "2026-09-13T13:38:05.252Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "account": "GlagolQA; installed 0.4.0; FX-8300, RAM 16 GB",
+            "source": "User Go confirms audible intelligible complete preview without errors or app closure"
+          },
+          "exit_code": null,
+          "output": "T52 PASS: Xenia preview heard to completion, intelligible speech without truncation/errors, app stayed open. First synthesis and playback confirmed on FX-8300; other voices and document synthesis untested. T53 awaits Aidar preview.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t53",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Select Aidar in Silero settings and listen to voice preview to completion; compare with previous Xenia voice.",
+          "cwd": ".",
+          "at": "2026-09-13T13:45:42.632Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "account": "GlagolQA; installed 0.4.0; FX-8300, RAM 16 GB",
+            "source": "User Go confirms expected Aidar preview"
+          },
+          "exit_code": null,
+          "output": "T53 PASS: distinct male voice, intelligible speech heard to completion without truncation or errors. Xenia and Aidar previews confirmed; T54 awaits Baya.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t54",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Select Baya in Silero settings and listen to voice preview to completion.",
+          "cwd": ".",
+          "at": "2026-09-13T13:51:31.620Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "account": "GlagolQA; installed 0.4.0; FX-8300, RAM 16 GB",
+            "source": "User Go confirms expected Baya preview"
+          },
+          "exit_code": null,
+          "output": "T54 PASS: female voice, intelligible speech heard to completion without truncation or errors. Xenia, Aidar and Baya previews confirmed; T55 awaits Kseniya (label without parentheses).",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t55",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Listen to Kseniya preview in Silero settings.",
+          "cwd": ".",
+          "at": "2026-09-13T13:54:22.190Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "account": "GlagolQA; installed 0.4.0; FX-8300, RAM 16 GB",
+            "source": "Current T55 plus user confirmation: listened to all voices, Go"
+          },
+          "exit_code": null,
+          "output": "Kseniya preview PASS based on user statement that all voices were listened to and Go confirmation. No deviations reported; detailed pronunciation observations not supplied. All five previews now confirmed.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t56",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Listen to Eugene preview in Silero settings.",
+          "cwd": ".",
+          "at": "2026-09-13T13:54:22.190Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "account": "GlagolQA; installed 0.4.0; FX-8300, RAM 16 GB",
+            "source": "User proactively listened to all voices and confirmed Go; no separate T56 instruction was issued"
+          },
+          "exit_code": null,
+          "output": "Eugene preview PASS based on user statement that all voices were listened to and Go confirmation. No deviations reported; detailed pronunciation observations not supplied. All five previews now confirmed.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t57",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Synthesize the short public test text with Xenia, wait for Saved to library and verify one new entry with five previous entries preserved.",
+          "cwd": ".",
+          "at": "2026-09-13T14:02:46.959Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "account": "GlagolQA; installed 0.4.0; FX-8300, RAM 16 GB",
+            "source": "User Go confirms current T57 expected result"
+          },
+          "exit_code": null,
+          "output": "T57 PASS: synthesis completed, Saved to library shown, one new entry and five prior entries preserved. Playback and pronunciation assessment of this document not yet performed; T58 awaits full listening.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t58",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Listen to the entire new test document in the library, checking completeness and pronunciation of date, time, number, stress, question and Latin words.",
+          "cwd": ".",
+          "at": "2026-09-13T14:11:03.229Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "account": "GlagolQA; installed 0.4.0; FX-8300, RAM 16 GB",
+            "source": "User go confirms current T58 expected result"
+          },
+          "exit_code": null,
+          "output": "T58 PASS: complete playback without omissions, truncation or errors; user satisfied with pronunciation, no remarks supplied. Subjective assessment of this sample only. T59 awaits Silero WAV export and external playback.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        },
+        {
+          "id": "win10-t59",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Export new Silero document as qa-silero-export.wav to desktop and listen to completion in Media Player.",
+          "cwd": ".",
+          "at": "2026-09-13T14:16:51.300Z",
+          "environment": {
+            "os": "Windows 10 Pro 22H2 build 19045.6456 x64",
+            "account": "GlagolQA; installed 0.4.0; FX-8300, RAM 16 GB",
+            "source": "User go confirms current T59 expected result"
+          },
+          "exit_code": null,
+          "output": "T59 PASS: WAV saved and same complete text played in Media Player without truncation or errors. No byte comparison performed. T60 awaits synthetic long TXT preparation.",
+          "evidence": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+        }
+      ]
+    },
+    {
+      "id": "V4",
+      "title": "Проверить живую диктовку и совместную работу с TTS",
+      "status": "pending",
+      "depends_on": [
+        "V3"
+      ],
+      "required": [
+        "dictation-manual"
+      ],
+      "checks": []
+    },
+    {
+      "id": "V5",
+      "title": "Свести результаты и подготовить решение о выпуске",
+      "status": "pending",
+      "depends_on": [
+        "V4"
+      ],
+      "required": [
+        "release-readiness"
+      ],
+      "checks": []
+    }
+  ]
+}

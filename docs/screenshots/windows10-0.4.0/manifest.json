@@ -1,0 +1,138 @@
+{
+  "source": "Original PNG attachments supplied by user in this QA conversation; no image edits",
+  "app_version": "0.4.0",
+  "os": "Windows 10 Pro 22H2 build 19045.6456",
+  "images": [
+    {
+      "file": "t01-windows-version.png",
+      "step": "T01",
+      "caption": "Windows 10 Pro 22H2, сборка 19045.6456",
+      "received_at": "2026-09-13T09:42:56.062Z",
+      "bytes": 21864,
+      "width": 444,
+      "height": 280,
+      "sha256": "728f602e46d6b6132cfe06acbe0617183b4c33bd2667b9712bfa94acea466b54"
+    },
+    {
+      "file": "t12-installer-language.png",
+      "step": "T12",
+      "caption": "Выбор языка установщика — Русский",
+      "received_at": "2026-09-13T10:49:17.422Z",
+      "bytes": 229455,
+      "width": 433,
+      "height": 337,
+      "sha256": "b498ae5d52627f71d462d95d00684e941eb505bb5234e691cfc0f55c484d47fe"
+    },
+    {
+      "file": "t13-installer-information.png",
+      "step": "T13",
+      "caption": "Информация о диктовке и дополнительной Silero",
+      "received_at": "2026-09-13T10:51:55.334Z",
+      "bytes": 26018,
+      "width": 484,
+      "height": 379,
+      "sha256": "816ea0bcd7bd544156c59b1407d66c35ffbcb52c6cc084efd59ce4d1137fc7de"
+    },
+    {
+      "file": "t14-installer-welcome.png",
+      "step": "T14",
+      "caption": "Приветствие мастера установки",
+      "received_at": "2026-09-13T10:59:51.887Z",
+      "bytes": 24285,
+      "width": 489,
+      "height": 385,
+      "sha256": "614c95f87203bb4424efe45528a2edb3ead05fffb097309f3d92c6ba6b50b275"
+    },
+    {
+      "file": "t15-installer-license.png",
+      "step": "T15",
+      "caption": "Лицензионное соглашение Glagol",
+      "received_at": "2026-09-13T11:02:27.825Z",
+      "bytes": 32609,
+      "width": 488,
+      "height": 385,
+      "sha256": "3c46a419f03be9f236973796c2facff312955419072a96f2c5e10ab1acb5286c"
+    },
+    {
+      "file": "t16-installer-directory.png",
+      "step": "T16",
+      "caption": "Папка установки в профиле GlagolQA",
+      "received_at": "2026-09-13T11:05:07.538Z",
+      "bytes": 24147,
+      "width": 492,
+      "height": 381,
+      "sha256": "3091b9e931368842752cca4fb879a0d34b38de6f5a07a31eb571d1804244a0dc"
+    },
+    {
+      "file": "t17-installer-installed.png",
+      "step": "T17",
+      "caption": "Успешное завершение установки и журнал",
+      "received_at": "2026-09-13T11:09:09.919Z",
+      "bytes": 28645,
+      "width": 503,
+      "height": 370,
+      "sha256": "5fac7732f7f3290caa5aca7cbfad9c08f97153976bb761823b879c0c226b62a2"
+    },
+    {
+      "file": "t18-installer-finish.png",
+      "step": "T18",
+      "caption": "Завершение мастера: запуск и ярлык включены",
+      "received_at": "2026-09-13T11:12:20.503Z",
+      "bytes": 21662,
+      "width": 487,
+      "height": 385,
+      "sha256": "6b6c5ace778b6850aa6b6eb65482d2ad41beba6893efc72513125e64b7beab0a"
+    },
+    {
+      "file": "t19-app-first-launch.png",
+      "step": "T19",
+      "caption": "Первый запуск: предложение установить локальную Silero",
+      "received_at": "2026-09-13T11:18:07.996Z",
+      "bytes": 48670,
+      "width": 794,
+      "height": 602,
+      "sha256": "59144e2928b71afb92a30875e4521ea43a9953a2c9c1a73e3a085f4d82d8614f"
+    },
+    {
+      "file": "t20-empty-library.png",
+      "step": "T20",
+      "caption": "Пустая библиотека нового профиля GlagolQA",
+      "received_at": "2026-09-13T11:24:50.570Z",
+      "bytes": 39900,
+      "width": 783,
+      "height": 623,
+      "sha256": "1088377b2de752cb4c9491490aec2176189666a612aa798d18c1fcea5bd624b7"
+    },
+    {
+      "file": "t21-settings-dictation.png",
+      "step": "T21",
+      "caption": "Настройки диктовки нового профиля: облачный сервис, ключ пуст",
+      "received_at": "2026-09-13T11:33:06.905Z",
+      "bytes": 114181,
+      "width": 797,
+      "height": 1032,
+      "sha256": "f32ae97a7ba38fc2b1000dab0205a3d62da05b494691abc4c51b2c58c435c765"
+    },
+    {
+      "file": "t21-settings-tts-backup.png",
+      "step": "T21",
+      "caption": "Настройки Silero и бэкапа: TTS не установлена, согласие не отмечено",
+      "received_at": "2026-09-13T11:33:06.905Z",
+      "bytes": 122669,
+      "width": 795,
+      "height": 1032,
+      "sha256": "9ba5f8b6fae67098f977aa26cca4ef9c4b5d4d88f1b977c790ec3c57568ebe8f"
+    },
+    {
+      "file": "t31-v0.2.1-settings-baseline.png",
+      "step": "T31",
+      "app_version": "0.2.1",
+      "caption": "Старая 0.2.1: настройки диктовки до обновления, ключ сохранён, не проверен",
+      "received_at": "2026-09-13T12:14:06.744Z",
+      "bytes": 102979,
+      "width": 641,
+      "height": 991,
+      "sha256": "49b25e4f8a0a8836ed3e5fc99b91bcdaf33c2fca81fd7529a0765acbaad27266"
+    }
+  ]
+}

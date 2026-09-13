@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "example",
+  "title": "Название конечной серии",
+  "status": "paused",
+  "next": "R1",
+  "reason": "Шаблон: заменить цель и выбрать серию перед работой",
+  "claim": null,
+  "links": ["docs/context/README.md"],
+  "steps": [
+    {
+      "id": "R1",
+      "title": "Конкретное изменение и критерий результата",
+      "status": "pending",
+      "depends_on": [],
+      "required": ["validation"],
+      "checks": []
+    }
+  ]
+}

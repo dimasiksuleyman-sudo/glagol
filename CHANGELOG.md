@@ -11,7 +11,10 @@ the per-session master logs under [`docs/day-logs/`](docs/day-logs/).
 
 ## [Unreleased]
 
-## [v0.4.0] — 2026-09-12
+## [v0.4.0] — 2026-09-13
+
+Следующий публичный выпуск после 0.2.1; включает изменения непубликовавшейся 0.3.0. / Next public release after 0.2.1, including the unpublished 0.3.0 changes.
+[Release notes, проверка и ограничения / validation and limits](docs/releases/v0.4.0.md).
 
 ### Added
 - **Локальная озвучка Silero v5.5 / Offline Silero v5.5 TTS.** Пять русских голосов, образец голоса, прогресс и отмена. Модель (145,4 МБ) и CPU-движок (249,3 МБ) скачиваются отдельно из настроек с проверкой целостности и продолжением загрузки; можно выбрать уже скачанный точный файл модели. / Five Russian voices, voice preview, progress and cancellation. Download the model (145.4 MB) and CPU runtime (249.3 MB) separately from Settings with integrity checks and resume, or import the exact previously downloaded model.
@@ -26,7 +29,7 @@ the per-session master logs under [`docs/day-logs/`](docs/day-logs/).
 ### Fixed
 - **Иконка при обновлении / Update icon.** Установщик обновляет ссылки на оригинальную иконку у существующих ярлыков. / The installer refreshes existing shortcuts to use Glagol's original icon.
 
-## [v0.3.0] — 2026-09-12
+## v0.3.0 — 2026-09-12 (локальная / unpublished)
 
 ### Changed
 - **Собственная иконка / Original app icon.** Белый микрофон на красно-оранжевом фоне заменяет стандартную иконку Tauri в приложении и установщике; обновлены значок трея в покое, favicon и заголовок окна. / A white microphone on a red-orange background replaces the default Tauri app and installer icon; the idle tray icon, favicon and window title now use Glagol branding.
@@ -229,7 +232,11 @@ the per-session master logs under [`docs/day-logs/`](docs/day-logs/).
   visible progress bar so the user can see «Озвучиваем фрагмент 5 из 12».
 - **System Save As dialog** for choosing where the resulting WAV goes.
 
-[Unreleased]: https://github.com/dimasiksuleyman-sudo/glagol/compare/v0.1.0-rc.6...HEAD
+[Unreleased]: https://github.com/dimasiksuleyman-sudo/glagol/compare/v0.4.0...HEAD
+[v0.4.0]: https://github.com/dimasiksuleyman-sudo/glagol/releases/tag/v0.4.0
+[v0.2.1]: https://github.com/dimasiksuleyman-sudo/glagol/releases/tag/v0.2.1
+[v0.2.0]: https://github.com/dimasiksuleyman-sudo/glagol/releases/tag/v0.2.0
+[v0.1.0-rc.7]: https://github.com/dimasiksuleyman-sudo/glagol/releases/tag/v0.1.0-rc.7
 [v0.1.0-rc.6]: https://github.com/dimasiksuleyman-sudo/glagol/compare/v0.1.0-rc.5...v0.1.0-rc.6
 [v0.1.0-rc.5]: https://github.com/dimasiksuleyman-sudo/glagol/compare/v0.1.0-rc.4...v0.1.0-rc.5
 [v0.1.0-rc.4]: https://github.com/dimasiksuleyman-sudo/glagol/compare/v0.1.0-rc.3...v0.1.0-rc.4

@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "id": "release-0.4.0",
+  "title": "Публикация Glagol 0.4.0",
+  "status": "active",
+  "next": "D2",
+  "reason": null,
+  "claim": {
+    "owner": "Codex",
+    "at": "2026-09-13T14:33:48.493Z",
+    "branch": "codex/silero-tts"
+  },
+  "links": [
+    "docs/runbooks/release.md",
+    "docs/workstreams/verification-0.4.0/windows10-manual.md"
+  ],
+  "steps": [
+    {
+      "id": "D1",
+      "title": "Подготовить документацию и проверить релизный комплект",
+      "status": "done",
+      "depends_on": [],
+      "required": [
+        "release-validation"
+      ],
+      "checks": [
+        {
+          "id": "release-validation",
+          "status": "PASS",
+          "method": "command",
+          "command": "node --test scripts/runbook-check.test.mjs; node scripts/runbook-check.mjs; node scripts/check-version.mjs; node node_modules/typescript/bin/tsc --noEmit; git diff --check; doc link/screenshot hash audit; installer SHA-256",
+          "cwd": ".",
+          "at": "2026-09-13T14:33:48.493Z",
+          "environment": {
+            "os": "Windows x64 primary host",
+            "node": "v24.19.0",
+            "artifact": "Existing manually tested 0.4.0 NSIS; no rebuild"
+          },
+          "exit_code": 0,
+          "output": "49/49 tests PASS; runbook-check OK (3 series); versions match 0.4.0; TypeScript and diff checks PASS; 47 local doc links/13 original screenshot hashes PASS; installer 9742481 bytes and expected SHA-256. Product files unchanged from e05c852. Native QA historical; CI will run on published source.",
+          "evidence": "docs/workstreams/release-0.4.0/log.md"
+        }
+      ]
+    },
+    {
+      "id": "D2",
+      "title": "Опубликовать main, тег, Release и About",
+      "status": "in_progress",
+      "depends_on": [
+        "D1"
+      ],
+      "required": [
+        "github-publish"
+      ],
+      "checks": []
+    },
+    {
+      "id": "D3",
+      "title": "Сверить публикацию и скачанный установщик",
+      "status": "pending",
+      "depends_on": [
+        "D2"
+      ],
+      "required": [
+        "published-verification"
+      ],
+      "checks": []
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+{
+  "description": "Диктовка для Windows: GigaAM, офисный сервер или облако. Локальная озвучка Silero (некоммерческая). Russian dictation and optional offline TTS.",
+  "homepage": "https://github.com/dimasiksuleyman-sudo/glagol/releases/latest",
+  "topics": ["windows", "tauri", "rust", "react", "typescript", "dictation", "speech-to-text", "text-to-speech", "russian", "silero", "gigaam", "offline"]
+}
