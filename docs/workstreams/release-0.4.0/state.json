@@ -2,14 +2,10 @@
   "schema_version": 1,
   "id": "release-0.4.0",
   "title": "Публикация Glagol 0.4.0",
-  "status": "active",
-  "next": "D2",
+  "status": "done",
+  "next": null,
   "reason": null,
-  "claim": {
-    "owner": "Codex",
-    "at": "2026-09-13T14:33:48.493Z",
-    "branch": "codex/silero-tts"
-  },
+  "claim": null,
   "links": [
     "docs/runbooks/release.md",
     "docs/workstreams/verification-0.4.0/windows10-manual.md"
@@ -45,26 +41,60 @@
     {
       "id": "D2",
       "title": "Опубликовать main, тег, Release и About",
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [
         "D1"
       ],
       "required": [
         "github-publish"
       ],
-      "checks": []
+      "checks": [
+        {
+          "id": "github-publish",
+          "status": "PASS",
+          "method": "command",
+          "command": "git push --atomic origin HEAD:refs/heads/main refs/tags/v0.4.0; node .scratch/github-release-api.mjs stage; node .scratch/github-release-api.mjs publish",
+          "cwd": ".",
+          "at": "2026-09-13T15:17:30.259Z",
+          "environment": {
+            "os": "Windows x64 primary host",
+            "node": "v24.19.0",
+            "remote": "GitHub REST API; authenticated Git credential helper; public release downloads"
+          },
+          "exit_code": 0,
+          "output": "Main and v0.4.0 point to 063ba935fd8dedd8badb76f800aec5dd2bae548a; CI successful before publication; release public, not prerelease, latest v0.4.0; installer/checksums uploaded; About description/homepage/topics updated.",
+          "evidence": "docs/workstreams/release-0.4.0/log.md"
+        }
+      ]
     },
     {
       "id": "D3",
       "title": "Сверить публикацию и скачанный установщик",
-      "status": "pending",
+      "status": "done",
       "depends_on": [
         "D2"
       ],
       "required": [
         "published-verification"
       ],
-      "checks": []
+      "checks": [
+        {
+          "id": "published-verification",
+          "status": "PASS",
+          "method": "command",
+          "command": "node .scratch/github-release-api.mjs verify",
+          "cwd": ".",
+          "at": "2026-09-13T15:17:00.972Z",
+          "environment": {
+            "os": "Windows x64 primary host",
+            "node": "v24.19.0",
+            "remote": "GitHub REST API; authenticated Git credential helper; public release downloads"
+          },
+          "exit_code": 0,
+          "output": "Public installer downloaded: 9742481 bytes, SHA-256 569d707ff2d3bdb0b5f83c6686c6d66889aa6d135ed2161f20bdaa9e2f62f7d3; checksums exact; latest/tag/notes/About match; six main text documents and 13 original screenshot hashes verified.",
+          "evidence": "docs/workstreams/release-0.4.0/log.md"
+        }
+      ]
     }
   ]
 }

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "observed_at": "2026-09-13T14:27:50.246Z",
-  "active_workstream": "release-0.4.0",
+  "observed_at": "2026-09-13T15:17:30.259Z",
+  "active_workstream": null,
   "links": [
     "AGENTS.md",
     "CLAUDE.md",
@@ -21,9 +21,9 @@
       "id": "build",
       "label": "Локальная сборка",
       "status": "observed",
-      "summary": "Установщик 0.4.0: 9 742 481 байт, SHA-256 совпадает с журналом сборки. Локальная 0.3.0 тоже сохранена; новых сборок в этом ходе нет.",
-      "observed_at": "2026-09-13T09:17:57.966Z",
-      "source": "docs/workstreams/verification-0.4.0/environment.md"
+      "summary": "Опубликован проверенный установщик 0.4.0: 9 742 481 байт, SHA-256 совпадает с Windows 10 QA. Отдельная CI-сборка NSIS успешна; релизный бинарник не заменялся.",
+      "observed_at": "2026-09-13T15:17:30.259Z",
+      "source": "docs/workstreams/release-0.4.0/log.md"
     },
     {
       "id": "installed",
@@ -37,8 +37,8 @@
       "id": "published",
       "label": "Публикация",
       "status": "observed",
-      "summary": "GitHub Releases API: последняя публикация v0.2.1; main 2fa523c, тег v0.4.0 отсутствует. Подготовка согласованного релиза 0.4.0.",
-      "observed_at": "2026-09-13T14:27:50.246Z",
+      "summary": "Опубликован GitHub Release v0.4.0 (latest), тег 063ba93. Публичный установщик и SHA256SUMS скачаны и сверены; README/руководства/CHANGELOG/About и 13 PNG проверены.",
+      "observed_at": "2026-09-13T15:17:00.972Z",
       "source": "docs/workstreams/release-0.4.0/log.md"
     },
     {
@@ -87,6 +87,12 @@
       "id": "silero-baseline",
       "sha": "e05c852a163d0ef3d8889926ba31812fcebacb43",
       "scope": "local"
+    },
+    {
+      "id": "release-0-4-0",
+      "sha": "063ba935fd8dedd8badb76f800aec5dd2bae548a",
+      "scope": "release",
+      "ref": "refs/tags/v0.4.0"
     }
   ]
 }

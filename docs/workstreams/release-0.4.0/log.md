@@ -34,3 +34,39 @@ GitHub API через настроенный credential helper подтверд�
 секреты не выводились и не записывались. Следующее: commit, fast-forward main
 и тег v0.4.0, draft Release с установщиком/checksums и About; перед публичным
 Release дождаться CI. Скрипт публикации проверяет hash и привязку тега.
+
+## GitHub staging — 2026-09-13T14:41:00.133Z
+
+Commit 063ba935fd8dedd8badb76f800aec5dd2bae548a отправлен fast-forward в main;
+легковесный тег v0.4.0 указывает на тот же commit. Draft Release 387928440
+содержит установщик (9742481 байт, GitHub digest совпал с ожидаемым SHA-256)
+и SHA256SUMS.txt. About: описание/homepage/topics обновлены по v0.4.0-about.json.
+CI: https://github.com/dimasiksuleyman-sudo/glagol/actions/runs/34763158935
+Перед публикацией ожидается его завершение. В staged diff обнаружена
+унаследованная строка с пробелами в историческом снимке CLAUDE, строка 276;
+снимок сохранён без редактирования. Это замечание форматирования, не ошибка
+тестов или продукта; ранний git diff --check относился к tracked-изменениям.
+
+## Публикация и проверка — 2026-09-13T15:17:30.259Z
+
+Release: https://github.com/dimasiksuleyman-sudo/glagol/releases/tag/v0.4.0
+Тег v0.4.0: 063ba935fd8dedd8badb76f800aec5dd2bae548a. CI этого commit успешно завершился до
+публикации: https://github.com/dimasiksuleyman-sudo/glagol/actions/runs/34763158935
+Включая контекст/49 тестов, TypeScript, fmt, Clippy, Rust tests, NSIS build.
+Публичный asset — проверенный локальный установщик; CI-сборка отдельный артефакт.
+
+node .scratch/github-release-api.mjs verify: exit 0. Через публичную ссылку
+заново скачаны установщик и SHA256SUMS; оба побайтово совпали с исходниками.
+Установщик 9742481 байт, SHA-256
+569d707ff2d3bdb0b5f83c6686c6d66889aa6d135ed2161f20bdaa9e2f62f7d3.
+Release не draft и не prerelease, отмечен latest; тег/описание выпуска совпали.
+About: описание, homepage и 12 тем совпали с подготовленным JSON.
+README, две USER_GUIDE, CHANGELOG, release notes и манифест скриншотов в main
+сверены с локальными текстами (с нормализацией CRLF/LF); SHA-256 всех 13 PNG
+на теге совпали с оригиналами.
+
+D1–D3 завершены. QA остаётся paused после T59, продолжение T60 NOT_RUN;
+публикация не закрывает V3/V4/V5. Финальный checkpoint меняет только контекст
+доставки, его отдельный docs commit использует [skip ci], чтобы не повторять
+полную сборку неизменного приложения. Перед коммитом context:refresh и
+runbook:check выполняются повторно.
