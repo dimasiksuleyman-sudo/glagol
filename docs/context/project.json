@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "observed_at": "2026-09-15T11:15:00.000Z",
-  "active_workstream": "release-0.4.1",
+  "observed_at": "2026-09-15T11:26:27.788Z",
+  "active_workstream": null,
   "links": [
     "AGENTS.md",
     "CLAUDE.md",
@@ -27,8 +27,8 @@
       "id": "build",
       "label": "Локальная сборка",
       "status": "observed",
-      "summary": "Собран NSIS 0.4.1: 9 777 903 байта, SHA-256 5e23d37d606b8fa529e96ab2dc139e4c195c9f6b81f74f0424ef5b174e45df21. Полные локальные проверки PASS; публикация ещё не выполнена.",
-      "observed_at": "2026-09-15T11:15:00.000Z",
+      "summary": "Опубликован проверенный NSIS 0.4.1: 9 777 903 байта, SHA-256 5e23d37d606b8fa529e96ab2dc139e4c195c9f6b81f74f0424ef5b174e45df21. Локальные проверки и CI PASS; публичный asset скачан и побайтово сверен.",
+      "observed_at": "2026-09-15T11:26:27.788Z",
       "source": "docs/workstreams/release-0.4.1/log.md"
     },
     {
@@ -43,9 +43,9 @@
       "id": "published",
       "label": "Публикация",
       "status": "observed",
-      "summary": "Опубликован GitHub Release v0.4.0 (latest), тег 063ba93. Публичный установщик и SHA256SUMS скачаны и сверены; README/руководства/CHANGELOG/About и 13 PNG проверены.",
-      "observed_at": "2026-09-13T15:17:00.972Z",
-      "source": "docs/workstreams/release-0.4.0/log.md"
+      "summary": "Опубликован GitHub Release v0.4.1 (latest), тег 6bcb186. Публичные installer и SHA256SUMS скачаны и побайтово сверены; release notes, README, обе USER_GUIDE и CHANGELOG совпали с тегом.",
+      "observed_at": "2026-09-15T11:26:27.788Z",
+      "source": "docs/workstreams/release-0.4.1/log.md"
     },
     {
       "id": "qa-environment",
@@ -107,6 +107,12 @@
       "sha": "063ba935fd8dedd8badb76f800aec5dd2bae548a",
       "scope": "release",
       "ref": "refs/tags/v0.4.0"
+    },
+    {
+      "id": "release-0-4-1",
+      "sha": "6bcb18691ad3aa9980722b697b0986f04ea27763",
+      "scope": "release",
+      "ref": "refs/tags/v0.4.1"
     }
   ]
 }

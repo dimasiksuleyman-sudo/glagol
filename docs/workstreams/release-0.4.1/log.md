@@ -55,3 +55,41 @@ Silero runtime после обновления присутствуют; сод�
 context:refresh, runbook:check, version check, TypeScript `--noEmit`,
 `git diff --check` и Get-FileHash. Новая clean install и свежая live-microphone
 диктовка остаются NOT_RUN. P2 завершён; P3 занят codex для commit/tag/push и CI.
+
+## P3, Git и CI — 2026-09-15T11:23:00.000Z
+
+Проверенные изменения закоммичены как
+`6bcb18691ad3aa9980722b697b0986f04ea27763`
+(`feat: speed up Silero warm start`). Lightweight tag v0.4.1 создан на том же
+commit. `git push --atomic origin main refs/tags/v0.4.1` — exit 0: удалённый
+main обновлён dbb56d5→6bcb186, новый тег отправлен вместе с ним.
+
+GitHub Actions run 34962399690 для этого SHA завершён `success`:
+https://github.com/dimasiksuleyman-sudo/glagol/actions/runs/34962399690
+Quality gates (Windows) прошли, включая контекст/ранбуки, TypeScript,
+fmt, clippy, Rust tests, Tauri/NSIS build и CI artifact. Публичный Release на
+этом checkpoint ещё не создавался. P3 завершён; P4 занят codex для draft,
+assets, публикации и повторной публичной сверки.
+
+## P4, GitHub Release и публичная сверка — 2026-09-15T11:26:27.788Z
+
+После успешного CI создан draft GitHub Release 389086058. Загружены:
+
+- `Glagol_0.4.1_x64-setup.exe` — 9 777 903 байта, GitHub digest и локальный
+  SHA-256 совпадают:
+  5e23d37d606b8fa529e96ab2dc139e4c195c9f6b81f74f0424ef5b174e45df21;
+- `SHA256SUMS.txt` — 93 байта, SHA-256
+  1659ec3eccfa157ce100bcf7ebc383d23f9392ce881b03820c104f7c6451b655.
+
+Draft опубликован 2026-09-15T11:26:09Z как public/latest, не prerelease:
+https://github.com/dimasiksuleyman-sudo/glagol/releases/tag/v0.4.1
+
+`node .scratch/github-release-v041.mjs verify` — exit 0. Оба asset заново
+скачаны по публичным ссылкам и побайтово совпали с локальными данными; installer
+повторно дал ожидаемый SHA-256. Latest = v0.4.1, тег указывает на 6bcb186.
+README, обе USER_GUIDE, CHANGELOG и release notes на теге совпадают с локальными
+текстами после нормализации CRLF/LF.
+
+P1–P4 завершены. Серия закрыта. Финальный docs-only checkpoint обновляет только
+состояние доставки и отправляется отдельным Conventional Commit с `[skip ci]`;
+код/версия/релизный артефакт после успешного CI не изменялись.

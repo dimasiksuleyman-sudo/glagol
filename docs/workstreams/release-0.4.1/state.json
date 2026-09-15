@@ -2,14 +2,10 @@
   "schema_version": 1,
   "id": "release-0.4.1",
   "title": "Публикация Glagol 0.4.1",
-  "status": "active",
-  "next": "P3",
+  "status": "done",
+  "next": null,
   "reason": null,
-  "claim": {
-    "owner": "codex",
-    "at": "2026-09-15T11:15:00.000Z",
-    "branch": "main"
-  },
+  "claim": null,
   "links": [
     "docs/runbooks/release.md",
     "docs/runbooks/windows-build.md",
@@ -77,26 +73,60 @@
     {
       "id": "P3",
       "title": "Опубликовать main и тег после успешного CI",
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [
         "P2"
       ],
       "required": [
         "git-and-ci"
       ],
-      "checks": []
+      "checks": [
+        {
+          "id": "git-and-ci",
+          "status": "PASS",
+          "method": "command",
+          "command": "git commit; git tag v0.4.1; git push --atomic origin main refs/tags/v0.4.1; poll GitHub Actions API for the release commit",
+          "cwd": ".",
+          "at": "2026-09-15T11:23:00.000Z",
+          "environment": {
+            "remote": "GitHub origin",
+            "branch": "main",
+            "ci": "GitHub Actions Windows quality gates"
+          },
+          "exit_code": 0,
+          "output": "Commit 6bcb18691ad3aa9980722b697b0986f04ea27763 created; main and lightweight tag v0.4.1 were pushed atomically. GitHub Actions run 34962399690 completed successfully for the same SHA. No public GitHub Release existed at this checkpoint.",
+          "evidence": "docs/workstreams/release-0.4.1/log.md"
+        }
+      ]
     },
     {
       "id": "P4",
       "title": "Опубликовать и независимо сверить GitHub Release",
-      "status": "pending",
+      "status": "done",
       "depends_on": [
         "P3"
       ],
       "required": [
         "published-verification"
       ],
-      "checks": []
+      "checks": [
+        {
+          "id": "published-verification",
+          "status": "PASS",
+          "method": "command",
+          "command": "node .scratch/github-release-v041.mjs stage; node .scratch/github-release-v041.mjs publish; node .scratch/github-release-v041.mjs verify",
+          "cwd": ".",
+          "at": "2026-09-15T11:26:27.788Z",
+          "environment": {
+            "remote": "GitHub REST API and public release downloads",
+            "release": "v0.4.1 latest",
+            "ci": "GitHub Actions run 34962399690 success"
+          },
+          "exit_code": 0,
+          "output": "GitHub Release v0.4.1 is public, not draft/prerelease, and latest; tag resolves to 6bcb18691ad3aa9980722b697b0986f04ea27763. Public installer downloaded at 9777903 bytes with SHA-256 5e23d37d606b8fa529e96ab2dc139e4c195c9f6b81f74f0424ef5b174e45df21; SHA256SUMS.txt downloaded at 93 bytes and both files matched local bytes. README, both guides, changelog and release notes match the v0.4.1 tag.",
+          "evidence": "docs/workstreams/release-0.4.1/log.md"
+        }
+      ]
     }
   ]
 }
