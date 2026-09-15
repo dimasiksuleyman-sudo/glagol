@@ -5,7 +5,7 @@ Russian dictation and local text-to-speech for Windows 10/11 x64.
 
 [MIT — приложение / application](LICENSE) · [Руководство / Guide](USER_GUIDE.md) · [Релизы / Releases](https://github.com/dimasiksuleyman-sudo/glagol/releases) · [Безопасность / Security](SECURITY.md)
 
-**[Скачать / Download Glagol 0.4.0 — Windows x64](https://github.com/dimasiksuleyman-sudo/glagol/releases/download/v0.4.0/Glagol_0.4.0_x64-setup.exe)** · [Что нового / Release notes](docs/releases/v0.4.0.md)
+**[Скачать / Download Glagol 0.4.1 — Windows x64](https://github.com/dimasiksuleyman-sudo/glagol/releases/download/v0.4.1/Glagol_0.4.1_x64-setup.exe)** · [Что нового / Release notes](docs/releases/v0.4.1.md)
 
 ![Глагол 0.4.0: первый запуск / first launch](docs/screenshots/windows10-0.4.0/t19-app-first-launch.png)
 
@@ -47,7 +47,7 @@ Russian dictation and local text-to-speech for Windows 10/11 x64.
 
 ### Установка и первый запуск
 
-Текущий выпуск — **0.4.0**: [установщик Windows x64](https://github.com/dimasiksuleyman-sudo/glagol/releases/download/v0.4.0/Glagol_0.4.0_x64-setup.exe), **9,29 МиБ**. [SHA-256 и подробности выпуска](docs/releases/v0.4.0.md). Установщик не подписан; SmartScreen может показать предупреждение — см. [руководство](USER_GUIDE.ru.md#установка).
+Текущий выпуск — **0.4.1**: [установщик Windows x64](https://github.com/dimasiksuleyman-sudo/glagol/releases/download/v0.4.1/Glagol_0.4.1_x64-setup.exe), **9,32 МиБ**. [SHA-256 и подробности выпуска](docs/releases/v0.4.1.md). Установщик не подписан; SmartScreen может показать предупреждение — см. [руководство](USER_GUIDE.ru.md#установка).
 
 1. Запустите `Glagol_<версия>_x64-setup.exe` и прочитайте пояснение о компонентах.
 2. Для диктовки выберите локальную модель, офисный сервер или облако в настройках.
@@ -62,6 +62,15 @@ Silero: модель **145,4 МБ** + runtime **249,3 МБ**, суммарно *
 работает без сети. На Ryzen 7 7730U / 16 ГБ проверен CPU-режим с двумя потоками;
 на других машинах скорость зависит от CPU и доступной памяти.
 
+После полной проверки Глагол сохраняет техническую отметку на 30 дней и при
+следующих запусках быстро сверяет ключевые файлы. Полный контроль повторяется
+раз в месяц, при изменении файлов или после ошибки worker. Первый запуск после
+обновления выполнит контроль один раз в фоне. При открытии экрана «Озвучить»
+модель заранее загружается в память; во время подготовки экран показывает статус,
+индикатор и причину недоступности кнопки. Скачивание и распаковка не повторяются.
+Worker использует до примерно 752 МБ памяти и выгружается после 15 минут без
+озвучки или при выходе из приложения.
+
 Числа преобразуются в слова; даты и дроби могут читаться по компонентам,
 неизвестные латинские слова — по буквам. Проверяйте важные тексты на слух.
 Нет обещания грамматически идеального чтения произвольных обозначений.
@@ -74,14 +83,15 @@ Silero. На другом ПК компонент включается отде�
 ### Обновление с 0.2.1 и проверка
 
 Создайте бэкап библиотеки, завершите приложение через трей и запустите установщик
-0.4.0. На экране существующей установки выберите «Не удалять» и прежнюю папку.
+0.4.1. На экране существующей установки выберите «Не удалять» и прежнюю папку.
 0.3.0 отдельно не публиковалась; её изменения включены в этот выпуск.
 
-На Windows 10 / AMD FX-8300 / 16 ГБ проверены чистая установка, обновление
-с сохранением пяти записей и STT-настроек, бэкап/восстановление, скачивание Silero,
-пять голосов, короткий синтез и экспорт WAV. Ручной прогон приостановлен:
-длинный синтез, оставшиеся проверки компонентов и живая диктовка после обновления
-ещё не завершены. [Покрытие и ограничения](docs/releases/v0.4.0.md#проверено-и-что-осталось) ·
+Для 0.4.0 на Windows 10 проверены чистая установка, обновление с сохранением
+библиотеки и STT-настроек, бэкап/восстановление, Silero, пять голосов и экспорт.
+Для 0.4.1 на Windows 11 отдельно измерены быстрый повторный запуск, две озвучки,
+индикация подготовки и выгрузка worker после простоя. Новая чистая установка
+0.4.1 и свежая живая диктовка вручную не выполнялись.
+[Покрытие и ограничения](docs/releases/v0.4.1.md#проверка-и-ограничения) ·
 [Скриншоты установки](docs/screenshots/windows10-0.4.0/README.md).
 
 ### Разработка
@@ -126,7 +136,7 @@ been removed. Glagol is independent of its model/service providers.
 
 ### Installation
 
-Current release: **0.4.0**, [Windows x64 installer](https://github.com/dimasiksuleyman-sudo/glagol/releases/download/v0.4.0/Glagol_0.4.0_x64-setup.exe), **9.29 MiB**. [SHA-256 and release notes](docs/releases/v0.4.0.md). The installer is unsigned; SmartScreen may warn — see the [guide](USER_GUIDE.en.md#installation).
+Current release: **0.4.1**, [Windows x64 installer](https://github.com/dimasiksuleyman-sudo/glagol/releases/download/v0.4.1/Glagol_0.4.1_x64-setup.exe), **9.32 MiB**. [SHA-256 and release notes](docs/releases/v0.4.1.md). The installer is unsigned; SmartScreen may warn — see the [guide](USER_GUIDE.en.md#installation).
 Run `Glagol_<version>_x64-setup.exe`, read the component information, then
 choose local, office-server or cloud dictation in Settings. For noncommercial
 TTS, read Silero's terms and choose its separate download. If its server is
@@ -136,6 +146,14 @@ Silero downloads: **145.4 MB model + 249.3 MB runtime = 394.8 MB**.
 Allow at least **1.9 GB** for installation/staging. No system Python, pip,
 CUDA or SAPI registration. Synthesis is offline after installation. CPU mode
 with two threads was tested on Ryzen 7 7730U / 16 GB; performance varies.
+
+After a full check, Glagol keeps a technical verification receipt for 30 days
+and quickly compares key files on subsequent launches. A full check runs monthly,
+when those files change, or after a worker failure. The first launch after this
+update performs one background check. Opening Synthesize preloads the model; the
+page shows preparation status and progress while its action is unavailable.
+Nothing is downloaded or extracted again. The worker uses up to roughly 752 MB
+and unloads after 15 idle minutes or when the application exits.
 
 Numbers become words; dates/fractions may be read component by component and
 unknown Latin words are spelled out. Listen to important text; arbitrary
@@ -148,15 +166,16 @@ on another computer.
 
 ### Upgrade from 0.2.1 and verification
 
-Back up the library, exit through the tray menu and run the 0.4.0 installer.
+Back up the library, exit through the tray menu and run the 0.4.1 installer.
 Choose “Do not uninstall” on the existing-installation page and retain the original
 directory. Version 0.3.0 was unpublished; its changes are included in this release.
 
-Windows 10 / AMD FX-8300 / 16 GB testing confirmed clean installation, upgrade
-preserving five recordings and STT settings, backup/restore, Silero download,
-five voices, short synthesis and WAV export. Manual testing is paused: long
-synthesis, remaining component checks and live dictation after updating are
-not yet complete. [Coverage and limits](docs/releases/v0.4.0.md#verification-and-remaining-coverage) ·
+For 0.4.0, Windows 10 testing confirmed clean installation, upgrade preserving
+the library and STT settings, backup/restore, Silero, five voices and export.
+For 0.4.1, Windows 11 testing separately measured the fast repeat launch, two
+syntheses, preparation UI and idle worker unload. A new clean 0.4.1 installation
+and fresh live dictation were not manually exercised.
+[Coverage and limits](docs/releases/v0.4.1.md#verification-and-limitations) ·
 [Installation screenshots](docs/screenshots/windows10-0.4.0/README.md).
 
 ### Development

@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "id": "release-0.4.1",
+  "title": "Публикация Glagol 0.4.1",
+  "status": "active",
+  "next": "P3",
+  "reason": null,
+  "claim": {
+    "owner": "codex",
+    "at": "2026-09-15T11:15:00.000Z",
+    "branch": "main"
+  },
+  "links": [
+    "docs/runbooks/release.md",
+    "docs/runbooks/windows-build.md",
+    "docs/workstreams/verification-tts-warm-start/log.md"
+  ],
+  "steps": [
+    {
+      "id": "P1",
+      "title": "Синхронизировать версию и документацию выпуска",
+      "status": "done",
+      "depends_on": [],
+      "required": [
+        "release-docs"
+      ],
+      "checks": [
+        {
+          "id": "release-docs",
+          "status": "PASS",
+          "method": "command",
+          "command": "node scripts/check-version.mjs; node --test scripts/runbook-check.test.mjs; pnpm context:refresh; node scripts/runbook-check.mjs; git diff --check; audit current-release links and historical 0.4.0 references",
+          "cwd": ".",
+          "at": "2026-09-15T11:07:00.000Z",
+          "environment": {
+            "node": "v24.19.0",
+            "release": "v0.4.1",
+            "languages": "Russian and English"
+          },
+          "exit_code": 0,
+          "output": "Version sources match 0.4.1; 49 runbook-checker tests passed; context and runbook integrity passed for 6 series; diff whitespace check passed. README, both user guides, both runtime documents, changelog and bilingual v0.4.1 release notes describe the measured behavior and limitations. Historical 0.4.0 screenshots and release evidence remain labelled 0.4.0.",
+          "evidence": "docs/workstreams/release-0.4.1/log.md"
+        }
+      ]
+    },
+    {
+      "id": "P2",
+      "title": "Проверить код, собрать NSIS и проверить обновление",
+      "status": "done",
+      "depends_on": [
+        "P1"
+      ],
+      "required": [
+        "release-validation"
+      ],
+      "checks": [
+        {
+          "id": "release-validation",
+          "status": "PASS",
+          "method": "command",
+          "command": "context/runbook/version checks; TypeScript noEmit and Vite production build; cargo fmt, clippy -D warnings and cargo test with local PDFium override; Tauri NSIS build; artifact identity/hash; silent installer update; installed EXE identity and timed launch; final context/version/TypeScript/diff/hash checks",
+          "cwd": ".",
+          "at": "2026-09-15T11:15:00.000Z",
+          "environment": {
+            "os": "Windows Core 25H2 build 26200.9457 x64",
+            "rustc": "1.98.1",
+            "cargo": "1.98.1",
+            "node": "v24.19.0",
+            "pdfium": "Existing src-tauri/resources/pdfium.dll via documented local override"
+          },
+          "exit_code": 0,
+          "output": "Context/runbook/version checks passed; TypeScript/Vite passed with 1914 modules; fmt/clippy passed; Rust 330 passed, 0 failed, 3 hardware/native ignored; NSIS build passed. Installer Glagol_0.4.1_x64-setup.exe is 9777903 bytes, FileVersion/ProductVersion 0.4.1, SHA-256 5e23d37d606b8fa529e96ab2dc139e4c195c9f6b81f74f0424ef5b174e45df21. Silent 0.4.0-to-0.4.1 update exited 0; installed EXE reports 0.4.1 and launched with receipt 2 ms, UI 699 ms, warmup 3873 ms. Database and Silero receipt/runtime remained present. New clean installation and live-microphone dictation remain NOT_RUN.",
+          "evidence": "docs/workstreams/release-0.4.1/log.md"
+        }
+      ]
+    },
+    {
+      "id": "P3",
+      "title": "Опубликовать main и тег после успешного CI",
+      "status": "in_progress",
+      "depends_on": [
+        "P2"
+      ],
+      "required": [
+        "git-and-ci"
+      ],
+      "checks": []
+    },
+    {
+      "id": "P4",
+      "title": "Опубликовать и независимо сверить GitHub Release",
+      "status": "pending",
+      "depends_on": [
+        "P3"
+      ],
+      "required": [
+        "published-verification"
+      ],
+      "checks": []
+    }
+  ]
+}

@@ -128,3 +128,22 @@
     @apply font-sans;
     }
 }
+
+@keyframes glagol-progress-indeterminate {
+  0% {
+    transform: translateX(-120%);
+  }
+  50% {
+    transform: translateX(200%);
+  }
+  100% {
+    transform: translateX(-120%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-slot="progress-indicator"][data-indeterminate="true"] {
+    animation: none !important;
+    transform: translateX(100%);
+  }
+}

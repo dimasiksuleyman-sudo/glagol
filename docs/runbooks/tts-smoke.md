@@ -32,6 +32,34 @@ cargo test --release --manifest-path src-tauri/Cargo.toml native_silero_pipeline
 отдельно сверять текущую реализацию теста в worker.rs при её изменении.
 Отсутствующие входы → NOT_RUN/BLOCKED, не PASS обычного cargo test.
 
+## Автоматические замеры release-сборки
+
+Release-логи находятся в `%LOCALAPPDATA%\app.glagol.desktop\logs` и хранятся
+семь дней. Для замера не нужен секундомер: после каждого сценария выбрать
+строки текущего запуска по следующим событиям.
+
+| Событие | Что измерено |
+|---|---|
+| `application UI ready` | от старта процесса до первого отображённого кадра главного окна |
+| `local TTS integrity verification completed` | фактически выполненная полная проверка модели и runtime |
+| `local TTS recent verification accepted` | быстрая сверка 30-дневной отметки и метаданных ключевых файлов |
+| `local TTS background verification available` | когда результат фоновой проверки стал доступен; `verification_performed=false` означает повторное использование результата |
+| `local TTS worker ready` | загрузка Python worker и модели |
+| `local TTS preparation completed` | вся подготовка; поля `worker_reused` и `verification_reused` показывают, какая работа была пропущена |
+| `local TTS warmup request completed` | полный вызов фонового прогрева со страницы озвучки |
+| `local TTS preview completed` | preview: подготовка, синтез и итог отдельно |
+| `local TTS document synthesis completed` | документ: подготовка, синтез/сохранение и итог отдельно |
+| `local TTS worker unloaded after idle` | фактическая выгрузка worker и длительность простоя |
+
+События содержат только технические длительности, булевы признаки и число
+символов. Текст, аудио, пути документов и ключи не логируются. Ошибочные исходы
+имеют одноимённое событие `failed` без текста ошибки. Для выборки:
+
+```powershell
+Select-String -Path "$env:LOCALAPPDATA\app.glagol.desktop\logs\glagol.*.log" `
+  -Pattern 'application UI ready|local TTS'
+```
+
 ## Ручной сценарий
 
 1. Запустить согласованную тестовую установку. До включения Silero проверить,
@@ -50,6 +78,11 @@ cargo test --release --manifest-path src-tauri/Cargo.toml native_silero_pipeline
    и отсутствие runtime/consent/previews в бэкапе.
 8. Проверить выгрузку worker после простоя и выход вместе с приложением.
    Crash/timeout/parent-death fault injection — отдельные результаты, если выполнялись.
+9. Перезапустить приложение с установленным Silero: при свежей отметке проверить
+   быструю сверку без полного хеширования/загрузки/распаковки, прогрев worker при
+   входе на «Озвучить», отсутствие проверки перед первым синтезом и выгрузку
+   после 15 минут. Отдельно проверить полный контроль для отсутствующей/старой
+   отметки и после ошибки worker.
 
 Валидный WAV и распознавание ASR не заменяют прослушивание. Лицензия Silero
 не распространяется автоматически на независимый STT. Записать результаты

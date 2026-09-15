@@ -83,6 +83,7 @@ impl dictation::pipeline::DictationEmitter for tauri::AppHandle {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let startup_metrics = commands::metrics::StartupMetrics::new();
     tauri::Builder::default()
         // Single-instance lock (v0.2.1). MUST be registered FIRST so it runs
         // before `global-shortcut` (and every other plugin) can act: a second
@@ -113,6 +114,7 @@ pub fn run() {
             // returned WorkerGuard must outlive the process or the rolling-file
             // writer stops flushing (D-L4) — it is parked in AppState below.
             let log_guard = crate::logging::init_tracing(app.handle());
+            app.manage(startup_metrics);
 
             // Resolve the database path and eagerly initialise the connection.
             // Failure here is fatal: silently continuing with a broken DB would
@@ -145,6 +147,7 @@ pub fn run() {
             app.manage(std::sync::Arc::new(tts::silero::Silero::new(
                 paths::tts_models_root(app.handle())?,
             )));
+            tts::silero::Silero::verification_task(app.handle().clone());
             tts::silero::Silero::idle_task(app.handle().clone());
             let cleanup_marker = db_path.with_file_name("legacy-tts-key-cleaned");
             tauri::async_runtime::spawn_blocking(move || {
@@ -225,8 +228,10 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            commands::metrics::report_ui_ready,
             commands::synthesize::synthesize_document,
             commands::tts::tts_status,
+            commands::tts::prepare_tts,
             commands::tts::install_tts,
             commands::tts::cancel_tts,
             commands::tts::remove_tts,

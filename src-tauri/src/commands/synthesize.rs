@@ -11,6 +11,7 @@ use std::{
     fs,
     path::Path,
     sync::{atomic::Ordering, Arc, Mutex},
+    time::Instant,
 };
 use tauri::{ipc::Channel, Emitter};
 
@@ -44,24 +45,55 @@ pub async fn synthesize_document(
         .operation
         .try_lock()
         .map_err(|_| "Другая операция озвучки ещё выполняется.".to_string())?;
+    let started = Instant::now();
+    let chars = text.chars().count();
+    let mut preparation_ms = 0;
+    let mut synthesis_ms = 0;
     tts.require_consent()?;
     tts.cancel.store(false, Ordering::Relaxed);
     let _ = on_progress.send(ProgressEvent::Preparing);
     let audio_root = paths::audio_cache_root(&app)?;
     let result = async {
-        tts.inner().prepare(&app).await?;
-        let mut slot = tts.worker.lock().await;
-        let backend = slot.as_mut().ok_or("Движок не готов")?;
-        synthesize_impl(&state.db, &audio_root, &text, &voice, backend, |e| {
-            let _ = on_progress.send(e);
-        })
-        .await
+        let preparation_started = Instant::now();
+        let preparation_result = tts.inner().prepare(&app).await;
+        preparation_ms = preparation_started.elapsed().as_millis();
+        preparation_result?;
+
+        let synthesis_started = Instant::now();
+        let synthesis_result = async {
+            let mut slot = tts.worker.lock().await;
+            let backend = slot.as_mut().ok_or("Движок не готов")?;
+            synthesize_impl(&state.db, &audio_root, &text, &voice, backend, |e| {
+                let _ = on_progress.send(e);
+            })
+            .await
+        }
+        .await;
+        synthesis_ms = synthesis_started.elapsed().as_millis();
+        synthesis_result
     }
     .await;
     if result.is_err() {
         tts.close_worker().await;
+        tts.invalidate_verification().await;
     }
     tts.finish(&app, &result.as_ref().map(|_| ()).map_err(Clone::clone));
+    match &result {
+        Ok(_) => tracing::info!(
+            chars,
+            preparation_ms,
+            synthesis_ms,
+            elapsed_ms = started.elapsed().as_millis(),
+            "local TTS document synthesis completed"
+        ),
+        Err(_) => tracing::warn!(
+            chars,
+            preparation_ms,
+            synthesis_ms,
+            elapsed_ms = started.elapsed().as_millis(),
+            "local TTS document synthesis failed"
+        ),
+    }
     if let Ok(id) = &result {
         let _ = app.emit(
             "synthesis-completed",

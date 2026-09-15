@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { toast } from "sonner";
-import { FileUp } from "lucide-react";
+import { FileUp, Loader2Icon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -25,7 +25,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 import { ScannedPdfDialog } from "@/components/ScannedPdfDialog";
 import { useTts } from "@/contexts/TtsContext";
-import { cancelTts } from "@/lib/tts";
+import { cancelTts, prepareTts } from "@/lib/tts";
 import {
   exportAudio,
   readAndParseFile,
@@ -63,6 +63,18 @@ export function Synthesize() {
   // modal when the PDF parser returns is_scanned_pdf = true.
   const [isLoadingFile, setIsLoadingFile] = useState<boolean>(false);
   const [scannedPdfOpen, setScannedPdfOpen] = useState<boolean>(false);
+  const [isWarmingUp, setIsWarmingUp] = useState<boolean>(true);
+  const warmupStarted = useRef(false);
+
+  useEffect(() => {
+    if (!status?.installed || !status.accepted || warmupStarted.current) return;
+    warmupStarted.current = true;
+    // The backend reports preparation failures through TTS status; the warm-up
+    // must not produce a duplicate toast before the user starts an operation.
+    void prepareTts()
+      .catch(() => undefined)
+      .finally(() => setIsWarmingUp(false));
+  }, [status?.accepted, status?.installed]);
 
   async function handleSynthesize() {
     setIsLoading(true);
@@ -177,7 +189,8 @@ export function Synthesize() {
   }
 
   const trimmedTextLength = text.trim().length;
-  const canSynthesize = !isLoading && !status?.progress && trimmedTextLength > 0;
+  const preparationActive = isWarmingUp || status?.progress?.stage === "preparing";
+  const canSynthesize = !isLoading && !preparationActive && !status?.progress && trimmedTextLength > 0;
   const canExport = !isLoading && !isExporting && lastDocumentId !== null;
 
   return (
@@ -186,6 +199,20 @@ export function Synthesize() {
 
       <Card>
         <CardContent className="space-y-4 pt-6">
+          {preparationActive && (
+            <div className="space-y-2 rounded-lg border bg-muted/30 p-3" role="status" aria-live="polite">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <Loader2Icon className="h-4 w-4 animate-spin" aria-hidden="true" />
+                Подготавливаем локальную озвучку…
+              </div>
+              <Progress aria-label="Подготовка локальной озвучки" />
+              <p className="text-muted-foreground text-xs">
+                Проверяем готовность файлов и загружаем модель. Обычно это занимает около 4 секунд;
+                раз в 30 дней полная проверка может занять до минуты.
+              </p>
+            </div>
+          )}
+          {status?.error && <p role="alert" className="text-destructive text-sm">{status.error}</p>}
           <div className="space-y-2">
             <div className="flex items-center justify-between gap-2">
               <Label htmlFor="text">Текст</Label>
@@ -230,7 +257,11 @@ export function Synthesize() {
           </div>
 
           <Button onClick={handleSynthesize} disabled={!canSynthesize} className="w-full">
-            {isLoading ? "Озвучиваем…" : "Озвучить и сохранить в библиотеку"}
+            {isLoading
+              ? "Озвучиваем…"
+              : preparationActive
+                ? "Подготовка озвучки…"
+                : "Озвучить и сохранить в библиотеку"}
           </Button>
 
           {lastDocumentId !== null && (
@@ -294,7 +325,7 @@ function ProgressIndicator({ event }: ProgressIndicatorProps) {
   }
   return (
     <div className="space-y-2">
-      <Progress value={percent} />
+      <Progress value={event.kind === "preparing" ? undefined : percent} />
       <p className="text-muted-foreground text-xs">{label}</p>
     </div>
   );

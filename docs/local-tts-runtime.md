@@ -1,8 +1,8 @@
-# Silero local TTS in Glagol 0.4.0
+# Silero local TTS in Glagol 0.4.1
 
 [Русский](local-tts-runtime.ru.md)
 
-Implemented in 0.4.0 source; a Windows NSIS installer is built locally.
+Implemented in 0.4.1 source; a Windows NSIS installer is built locally.
 See the [migration plan](plans/silero-tts-migration.md).
 Yandex SpeechKit v3 for commercial TTS is a separate future stage. Dictation,
 including GigaAM and the office server, is independent of this work.
@@ -110,8 +110,15 @@ Safe staging extraction is activated only after every expected file matches the
 compiled inventory. The app launches an isolated portable interpreter with no
 pip, hub, SAPI registration or inference network calls. It exchanges bounded
 JSON metadata and private WAV files, not audio over IPC. This is process ownership
-and Python path isolation, not an OS security sandbox. The worker exits with its
-parent, on cancellation/error, or after three minutes idle.
+and Python path isolation, not an OS security sandbox. A full verification writes
+`tts_models/verification.json` with its time, compiled-inventory identity and
+metadata for the model, `python.exe` and `python311.dll`. The receipt remains valid
+for 30 days; startup checks it without hashing the entire runtime. A missing,
+stale or mismatched receipt triggers a background full check, as does a worker
+failure. The first upgraded launch creates the receipt after one full check. It
+contains no user data and is excluded from backups. Opening Synthesize preloads
+the worker without another download or extraction. The worker exits with its
+parent, on cancellation/error, or after 15 minutes idle.
 
 Text is chunked sequentially and WAV is written incrementally. A cancelled or
 failed job does not create a successful library row. Old WAV/voice metadata stays

@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "id": "tts-warm-start",
+  "title": "Быстрый запуск локальной озвучки",
+  "status": "done",
+  "next": null,
+  "reason": null,
+  "claim": null,
+  "links": [
+    "docs/local-tts-runtime.ru.md",
+    "docs/runbooks/tts-smoke.md",
+    "SECURITY.md"
+  ],
+  "steps": [
+    {
+      "id": "R1",
+      "title": "Фоновая проверка и управляемый жизненный цикл Silero worker",
+      "status": "done",
+      "depends_on": [],
+      "required": [
+        "rust-validation"
+      ],
+      "checks": [
+        {
+          "id": "rust-validation",
+          "status": "PASS",
+          "method": "command",
+          "command": "$env:PDFIUM_LIBRARY_PATH=(Resolve-Path 'src-tauri/resources/pdfium.dll').Path; cargo test --manifest-path src-tauri/Cargo.toml tts::silero::tests --no-fail-fast; cargo fmt --manifest-path src-tauri/Cargo.toml --check",
+          "cwd": ".",
+          "at": "2026-09-15T06:17:32.279Z",
+          "environment": {
+            "os": "Windows x64",
+            "rustc": "1.98.1",
+            "cargo": "1.98.1",
+            "pdfium": "Existing src-tauri/resources/pdfium.dll via documented local override"
+          },
+          "exit_code": 0,
+          "output": "3 Silero tests passed, including concurrent verification reuse and retry after failure/invalidation; 0 failed, 0 ignored; Rust formatting check passed.",
+          "evidence": "docs/workstreams/tts-warm-start/log.md"
+        }
+      ]
+    },
+    {
+      "id": "R2",
+      "title": "Прогрев на экране озвучки и описание нового поведения",
+      "status": "done",
+      "depends_on": [
+        "R1"
+      ],
+      "required": [
+        "frontend-validation"
+      ],
+      "checks": [
+        {
+          "id": "frontend-validation",
+          "status": "PASS",
+          "method": "command",
+          "command": "pnpm.cmd build; node scripts/check-version.mjs; git diff --check",
+          "cwd": ".",
+          "at": "2026-09-15T06:20:43.786Z",
+          "environment": {
+            "os": "Windows x64",
+            "node": "v24.19.0",
+            "pnpm": "12.4.1",
+            "vite": "7.3.3"
+          },
+          "exit_code": 0,
+          "output": "TypeScript and production Vite build passed; 1914 modules transformed; versions match 0.4.0; diff whitespace check passed with informational LF-to-CRLF warnings.",
+          "evidence": "docs/workstreams/tts-warm-start/log.md"
+        }
+      ]
+    },
+    {
+      "id": "R3",
+      "title": "Полная локальная проверка и передача результата",
+      "status": "done",
+      "depends_on": [
+        "R2"
+      ],
+      "required": [
+        "release-validation"
+      ],
+      "checks": [
+        {
+          "id": "release-validation",
+          "status": "PASS",
+          "method": "command",
+          "command": "cargo fmt --manifest-path src-tauri/Cargo.toml --check; cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings; cargo test --manifest-path src-tauri/Cargo.toml; pnpm.cmd runbook:test; pnpm.cmd build; pnpm.cmd tauri build; git diff --check; Get-FileHash NSIS",
+          "cwd": ".",
+          "at": "2026-09-15T06:26:36.969Z",
+          "environment": {
+            "os": "Windows x64",
+            "rustc": "1.98.1",
+            "cargo": "1.98.1",
+            "node": "v24.19.0",
+            "pnpm": "12.4.1",
+            "pdfium": "Existing src-tauri/resources/pdfium.dll via documented local override"
+          },
+          "exit_code": 0,
+          "output": "fmt/clippy PASS; 327 Rust tests passed, 0 failed, 3 hardware/native tests ignored; 49 runbook tests passed; TypeScript/Vite build passed; NSIS built at 9754593 bytes with SHA-256 3798649e722789a32cf7a42cca39fc6b88018be34b0cb208ba0cbdd6d7275ee8; diff whitespace check passed. Native Silero smoke, GUI timing, installation and publication NOT_RUN.",
+          "evidence": "docs/workstreams/tts-warm-start/log.md"
+        }
+      ]
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 [package]
 name = "glagol"
-version = "0.4.0"
+version = "0.4.1"
 description = "Dictation and optional local speech synthesis for Russian documents"
 authors = ["Glagol Contributors"]
 edition = "2021"

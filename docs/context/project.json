@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "observed_at": "2026-09-13T15:17:30.259Z",
-  "active_workstream": null,
+  "observed_at": "2026-09-15T11:15:00.000Z",
+  "active_workstream": "release-0.4.1",
   "links": [
     "AGENTS.md",
     "CLAUDE.md",
@@ -14,24 +14,30 @@
     "docs/workstreams/verification-0.4.0/README.md",
     "docs/day-logs/day-2026-09-12-silero-integration-master-log.md",
     "docs/workstreams/release-0.4.0/README.md",
-    "docs/workstreams/release-0.4.0/log.md"
+    "docs/workstreams/release-0.4.0/log.md",
+    "docs/workstreams/tts-warm-start/README.md",
+    "docs/workstreams/tts-warm-start/log.md",
+    "docs/workstreams/verification-tts-warm-start/README.md",
+    "docs/workstreams/verification-tts-warm-start/log.md",
+    "docs/workstreams/release-0.4.1/README.md",
+    "docs/workstreams/release-0.4.1/log.md"
   ],
   "observations": [
     {
       "id": "build",
       "label": "Локальная сборка",
       "status": "observed",
-      "summary": "Опубликован проверенный установщик 0.4.0: 9 742 481 байт, SHA-256 совпадает с Windows 10 QA. Отдельная CI-сборка NSIS успешна; релизный бинарник не заменялся.",
-      "observed_at": "2026-09-13T15:17:30.259Z",
-      "source": "docs/workstreams/release-0.4.0/log.md"
+      "summary": "Собран NSIS 0.4.1: 9 777 903 байта, SHA-256 5e23d37d606b8fa529e96ab2dc139e4c195c9f6b81f74f0424ef5b174e45df21. Полные локальные проверки PASS; публикация ещё не выполнена.",
+      "observed_at": "2026-09-15T11:15:00.000Z",
+      "source": "docs/workstreams/release-0.4.1/log.md"
     },
     {
       "id": "installed",
       "label": "Установленная версия",
       "status": "observed",
-      "summary": "Установлена и запущена 0.4.0. EXE, Uninstall-реестр и путь процесса согласованы; отличия от локального EXE — только метка NSIS. UI QA ещё не выполнена.",
-      "observed_at": "2026-09-13T09:17:57.966Z",
-      "source": "docs/workstreams/verification-0.4.0/environment.md"
+      "summary": "Установленная 0.4.0 тихо обновлена до 0.4.1: NSIS exit 0, EXE сообщает 0.4.1, запуск подтвердил отметку 2 мс, UI 699 мс и warmup 3873 мс. Новая clean install NOT_RUN.",
+      "observed_at": "2026-09-15T11:15:00.000Z",
+      "source": "docs/workstreams/release-0.4.1/log.md"
     },
     {
       "id": "published",
@@ -80,6 +86,14 @@
       "summary": "Проверен сценарий 0.2.1→0.4.0: запуск/версия, пять записей/краткое воспроизведение, экспорт одной, сохранность настроек и работа прежнего ключа STT; Silero не установлена и согласие не отмечено. Результаты manual от пользователя; живая диктовка ещё впереди.",
       "observed_at": "2026-09-13T13:12:00.564Z",
       "source": "docs/workstreams/verification-0.4.0/windows10-manual.md"
+    },
+    {
+      "id": "tts-warm-start-build",
+      "label": "Локальная сборка ускорения Silero",
+      "status": "observed",
+      "summary": "Candidate ускорения Silero прошёл direct-run QA: отметка 2–3 мс, UI 637–805 мс, worker/прогрев около 3,5 с, повторная подготовка 0 мс, idle unload через 901 926 мс; пользователь подтвердил UI. Live-microphone regression NOT_RUN. Решение — выпуск v0.4.1.",
+      "observed_at": "2026-09-15T11:02:00.000Z",
+      "source": "docs/workstreams/verification-tts-warm-start/log.md"
     }
   ],
   "git_refs": [

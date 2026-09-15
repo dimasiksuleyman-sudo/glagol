@@ -6,6 +6,7 @@ export interface TtsStatus {
   progress: { stage: string; downloaded: number; total: number } | null;
 }
 export const getTtsStatus = () => invoke<TtsStatus>("tts_status");
+export const prepareTts = () => invoke<void>("prepare_tts");
 export const installTts = (accepted: boolean, licenseHash: string, modelPath: string | null = null) => invoke<void>("install_tts", { accepted, licenseHash, modelPath });
 export const cancelTts = () => invoke<void>("cancel_tts");
 export const removeTts = () => invoke<void>("remove_tts");

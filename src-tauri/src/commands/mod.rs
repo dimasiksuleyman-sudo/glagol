@@ -8,6 +8,7 @@
 pub mod backup;
 pub mod dictation;
 pub mod file;
+pub mod metrics;
 pub mod speech;
 pub mod storage;
 pub mod synthesize;

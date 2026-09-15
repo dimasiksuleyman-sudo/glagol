@@ -1,5 +1,10 @@
 import { invoke, Channel } from "@tauri-apps/api/core";
 
+/** Record the first painted main-window frame in the privacy-safe release log. */
+export async function reportUiReady(): Promise<void> {
+  await invoke("report_ui_ready");
+}
+
 /**
  * Progress events emitted by the Rust `synthesize_document` command
  * over a [`tauri::ipc::Channel`].

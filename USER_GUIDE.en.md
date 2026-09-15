@@ -10,7 +10,7 @@ Built for people who'd rather listen than read off a screen. If you love audiobo
 
 ## Installation
 
-1. Download the `Glagol_0.4.0_x64-setup.exe` installer from the [Releases page](https://github.com/dimasiksuleyman-sudo/glagol/releases/tag/v0.4.0).
+1. Download the `Glagol_0.4.1_x64-setup.exe` installer from the [Releases page](https://github.com/dimasiksuleyman-sudo/glagol/releases/tag/v0.4.1).
 2. Run the installer.
 3. Windows may show a SmartScreen warning ("Windows protected your PC"). This is normal for new apps without a commercial signing certificate. Click **"More info"** → **"Run anyway"**.
 4. Done — Glagol launches automatically.
@@ -26,15 +26,15 @@ switches to a circular red microphone indicator.
 
 ---
 
-## Upgrade from 0.2.1
+## Upgrade from 0.2.1 or 0.4.0
 
 Create a backup in Settings and exit Glagol through its tray menu. Run the
-0.4.0 installer, choose “Do not uninstall” and retain the original application
+0.4.1 installer, choose “Do not uninstall” and retain the original application
 directory. Existing WAV recordings play without Silero. Enable Silero separately
 for new synthesis; the old SaluteSpeech key is no longer needed. Dictation
 settings and its key are preserved. Version 0.3.0 was not published separately.
 
-[Release coverage and limitations](docs/releases/v0.4.0.md) ·
+[Release coverage and limitations](docs/releases/v0.4.1.md) ·
 [Installation screenshots](docs/screenshots/windows10-0.4.0/README.md).
 
 ![First launch of 0.4.0: Silero installs separately](docs/screenshots/windows10-0.4.0/t19-app-first-launch.png)
@@ -56,7 +56,16 @@ previously downloaded `v5_5_ru.pt`. Resume preserves downloaded parts; repair
 reinstalls verified components; removal frees space and resets acknowledgement
 without removing the library or dictation.
 
-Yandex SpeechKit v3 for commercial TTS is planned later, not included in 0.4.0.
+After a full check, Glagol remembers its result for 30 days. Later launches
+quickly compare key files; a full check repeats monthly, when files change, or
+after an engine failure. The first launch after this update performs one full
+background check. Opening Synthesize preloads the model; files are not downloaded
+or extracted again. While the action is unavailable, the page shows preparation
+status, a moving progress indicator and timing guidance. The worker used up to
+roughly 752 MB on the tested computer and unloads after 15 idle minutes or when
+the application exits.
+
+Yandex SpeechKit v3 for commercial TTS is planned later, not included in 0.4.1.
 SaluteSpeech and its key are no longer used.
 
 ## Your first synthesis
@@ -66,7 +75,7 @@ SaluteSpeech and its key are no longer used.
 3. Pick a voice.
 4. Click **"Synthesize and save to library."**
 
-The finished audio appears in your Library. Processing time depends on text length and CPU.
+The finished audio appears in your Library. Processing time depends on text length and CPU. The first synthesis waits for a full integrity result only while a monthly or failure-triggered check is still running.
 
 Synthesis supports cancellation. Numbers become words; unknown Latin words are spelled out and dates may be read component by component.
 

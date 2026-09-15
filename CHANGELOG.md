@@ -11,6 +11,14 @@ the per-session master logs under [`docs/day-logs/`](docs/day-logs/).
 
 ## [Unreleased]
 
+## [v0.4.1] — 2026-09-15
+
+[Release notes, проверка и ограничения / validation and limits](docs/releases/v0.4.1.md).
+
+### Changed
+- **Быстрый первый запуск Silero / Faster first Silero synthesis.** После полной проверки Глагол сохраняет техническую отметку на 30 дней; повторный полный контроль выполняется раз в месяц, при изменении ключевых файлов или после ошибки worker. Экран озвучки заранее загружает модель, а worker остаётся в памяти до 15 минут простоя. / A full verification now leaves a 30-day technical receipt; Glagol checks again monthly, when key files change, or after a worker failure. The synthesis screen preloads the model and keeps the worker available for up to 15 idle minutes.
+- **Понятная подготовка озвучки / Visible TTS preparation.** Пока Silero проверяет файлы или загружает модель, раздел «Озвучить» показывает статус, движущийся индикатор и ожидаемое время; недоступная кнопка подписана «Подготовка озвучки…». / While Silero verifies files or loads the model, Synthesize shows a status, moving indicator and timing guidance; the disabled action says “Preparing TTS…”.
+
 ## [v0.4.0] — 2026-09-13
 
 Следующий публичный выпуск после 0.2.1; включает изменения непубликовавшейся 0.3.0. / Next public release after 0.2.1, including the unpublished 0.3.0 changes.
@@ -232,7 +240,8 @@ the per-session master logs under [`docs/day-logs/`](docs/day-logs/).
   visible progress bar so the user can see «Озвучиваем фрагмент 5 из 12».
 - **System Save As dialog** for choosing where the resulting WAV goes.
 
-[Unreleased]: https://github.com/dimasiksuleyman-sudo/glagol/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/dimasiksuleyman-sudo/glagol/compare/v0.4.1...HEAD
+[v0.4.1]: https://github.com/dimasiksuleyman-sudo/glagol/releases/tag/v0.4.1
 [v0.4.0]: https://github.com/dimasiksuleyman-sudo/glagol/releases/tag/v0.4.0
 [v0.2.1]: https://github.com/dimasiksuleyman-sudo/glagol/releases/tag/v0.2.1
 [v0.2.0]: https://github.com/dimasiksuleyman-sudo/glagol/releases/tag/v0.2.0

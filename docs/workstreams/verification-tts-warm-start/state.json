@@ -1,0 +1,270 @@
+{
+  "schema_version": 1,
+  "id": "verification-tts-warm-start",
+  "title": "Проверка быстрого запуска Silero",
+  "status": "done",
+  "next": null,
+  "reason": null,
+  "claim": null,
+  "links": [
+    "docs/workstreams/tts-warm-start/README.md",
+    "docs/workstreams/tts-warm-start/log.md",
+    "docs/runbooks/tts-smoke.md"
+  ],
+  "steps": [
+    {
+      "id": "Q1",
+      "title": "Зафиксировать среду, артефакты, логирование и резервную копию",
+      "status": "done",
+      "depends_on": [],
+      "required": [
+        "environment",
+        "logging",
+        "backup"
+      ],
+      "checks": [
+        {
+          "id": "environment",
+          "status": "PASS",
+          "method": "command",
+          "command": "Read Windows/CPU registry, installed EXE identity, TTS component metadata and technical TTS timing log lines; Get-FileHash installed/candidate artifacts",
+          "cwd": ".",
+          "at": "2026-09-15T09:36:23.031Z",
+          "environment": {
+            "os": "Windows Core 25H2 build 26200.9457 x64",
+            "cpu": "AMD Ryzen 7 7730U with Radeon Graphics",
+            "installed": "Glagol 0.4.0"
+          },
+          "exit_code": 0,
+          "output": "Installed EXE 26520576 bytes, SHA-256 5b93bb8c0df8b027de2ec88f5aae428d7c57bec1fcb95b724b9ca958b3061cea; process not running; model, runtime/python.exe and acknowledgement present. Candidate EXE/NSIS identities match the tts-warm-start build. Prior worker-load-only log values: 4156, 4192 and 3943 ms.",
+          "evidence": "docs/workstreams/verification-tts-warm-start/log.md"
+        },
+        {
+          "id": "logging",
+          "status": "PASS",
+          "method": "command",
+          "command": "Inspect release tracing filter/appender and select only local TTS lifecycle events from existing daily logs.",
+          "cwd": ".",
+          "at": "2026-09-15T09:41:39.318Z",
+          "environment": {
+            "os": "Windows Core 25H2 build 26200.9457 x64",
+            "logs": "%LOCALAPPDATA%/app.glagol.desktop/logs"
+          },
+          "exit_code": 0,
+          "output": "Release filter includes glagol_lib=info; daily rolling appender keeps seven files; existing local TTS worker-ready events are present. Candidate background-verification and worker-ready events are info-level and contain timing/model metadata only. Idle unload has no dedicated event and remains a Task Manager manual check.",
+          "evidence": "docs/workstreams/verification-tts-warm-start/log.md"
+        },
+        {
+          "id": "backup",
+          "status": "PASS",
+          "method": "command",
+          "command": "User creates backup in Glagol; Get-Item/Get-FileHash exact ZIP; open every ZipArchive entry and check required root names.",
+          "cwd": ".",
+          "at": "2026-09-15T09:41:39.318Z",
+          "environment": {
+            "os": "Windows Core 25H2 build 26200.9457 x64",
+            "app": "Installed Glagol 0.4.0"
+          },
+          "exit_code": 0,
+          "output": "User reported successful backup glagol-backup-2026-09-15-023832.zip. Observed file: 3680 bytes, SHA-256 90eca776525801fce20b81b14e8a6487b3bf852ffff28c9e17dd6858f7850552; 2 entries, manifest/database present, every entry readable. Payload contents were not recorded.",
+          "evidence": "docs/workstreams/verification-tts-warm-start/log.md"
+        }
+      ]
+    },
+    {
+      "id": "Q2",
+      "title": "Добавить автоматические timing-логи и измерить холодный baseline 0.4.0",
+      "status": "done",
+      "depends_on": [
+        "Q1"
+      ],
+      "required": [
+        "instrumentation",
+        "baseline"
+      ],
+      "checks": [
+        {
+          "id": "instrumentation",
+          "status": "PASS",
+          "method": "command",
+          "command": "$env:PDFIUM_LIBRARY_PATH=(Resolve-Path 'src-tauri/resources/pdfium.dll').Path; cargo fmt --manifest-path src-tauri/Cargo.toml --check; cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings; cargo test --manifest-path src-tauri/Cargo.toml; node --test scripts/runbook-check.test.mjs; node scripts/check-version.mjs; node node_modules/typescript/bin/tsc --noEmit; node node_modules/typescript/bin/tsc; node node_modules/vite/bin/vite.js build; node node_modules/@tauri-apps/cli/tauri.js build --config .scratch/build-context.json; Get-FileHash candidate artifacts",
+          "cwd": ".",
+          "at": "2026-09-15T09:59:48.439Z",
+          "environment": {
+            "os": "Windows Core 25H2 build 26200.9457 x64",
+            "rustc": "1.98.1",
+            "cargo": "1.98.1",
+            "node": "v24.19.0",
+            "pdfium": "Existing src-tauri/resources/pdfium.dll via documented local override"
+          },
+          "exit_code": 0,
+          "output": "Privacy-safe structured timing events added for UI-ready, integrity verification, worker preparation/reuse/load/unload, preview and document synthesis. fmt/clippy PASS; 328 Rust tests passed, 0 failed, 3 hardware/native ignored; secret-log scanner PASS; 49 runbook tests PASS; TypeScript/Vite PASS; NSIS build PASS. Candidate EXE 26727424 bytes SHA-256 fa0ffb4404e77af36e444ace1d2fe25a9b0acbb70012c209df8363c4f8ba2717; NSIS 9786816 bytes SHA-256 0179b919e74509d96aca99047b7d993a14661d635751e7b221393850e327c027. Runtime log observation remains NOT_RUN until Q3.",
+          "evidence": "docs/workstreams/verification-tts-warm-start/log.md"
+        },
+        {
+          "id": "baseline",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Launch the installed published Glagol 0.4.0 and perform the first local synthesis; inspect privacy-safe TTS log events and executable identity.",
+          "cwd": ".",
+          "at": "2026-09-15T10:20:03.490Z",
+          "environment": {
+            "os": "Windows Core 25H2 build 26200.9457 x64",
+            "app": "Installed published Glagol 0.4.0"
+          },
+          "exit_code": null,
+          "output": "User reported the first synthesis as unacceptably long. The log contains the old-release worker-ready event at 3341 ms and none of the candidate-only UI/verification/preparation/synthesis markers. Installed EXE SHA-256 remains 5b93bb8c0df8b027de2ec88f5aae428d7c57bec1fcb95b724b9ca958b3061cea. Exact end-to-end time is unavailable because the published build predates timing instrumentation; this limitation is part of the baseline.",
+          "evidence": "docs/workstreams/verification-tts-warm-start/log.md"
+        }
+      ]
+    },
+    {
+      "id": "Q3",
+      "title": "Запустить candidate EXE и измерить подготовку и синтез",
+      "status": "done",
+      "depends_on": [
+        "Q2"
+      ],
+      "required": [
+        "candidate"
+      ],
+      "checks": [
+        {
+          "id": "startup",
+          "status": "PASS",
+          "method": "command",
+          "command": "Launch the rebuilt release candidate once to create the migration verification receipt, restart it with RUST_LOG unset, and inspect process identity, receipt timestamp and structured release-log events.",
+          "cwd": ".",
+          "at": "2026-09-15T10:34:43.410Z",
+          "environment": {
+            "os": "Windows Core 25H2 build 26200.9457 x64",
+            "cpu": "AMD Ryzen 7 7730U with Radeon Graphics",
+            "candidate": "EXE SHA-256 e31d90c934789cc25438a05af4dac0e862e71caf089f484d78ab5a0a5385c96d"
+          },
+          "exit_code": 0,
+          "output": "Initial migration full verification created verification.json about 50 seconds after process start. On immediate restart the receipt check took 2 ms, UI ready took 805 ms, worker load 3539 ms and total warmup 3540 ms; verification_performed=false. Candidate and embedded Python worker paths match the intended local build/runtime. Actual synthesis timing is still pending user action.",
+          "evidence": "docs/workstreams/verification-tts-warm-start/log.md"
+        },
+        {
+          "id": "ui-build",
+          "status": "PASS",
+          "method": "command",
+          "command": "node node_modules/typescript/bin/tsc --noEmit; node scripts/check-version.mjs; node node_modules/typescript/bin/tsc; node node_modules/vite/bin/vite.js build; Tauri NSIS build; Get-FileHash candidate artifacts; git diff --check",
+          "cwd": ".",
+          "at": "2026-09-15T10:41:35.840Z",
+          "environment": {
+            "os": "Windows Core 25H2 build 26200.9457 x64",
+            "node": "v24.19.0",
+            "vite": "7.3.3"
+          },
+          "exit_code": 0,
+          "output": "Synthesize now shows an indeterminate progress bar, explicit preparation copy and a disabled-button label while warmup is active; synthesis preparation also uses the indeterminate state. TypeScript and production Vite build PASS (1914 modules); NSIS build PASS. EXE 26693632 bytes SHA-256 b10060f90be6cf090aa770df0a0ec9f7936c4b18e9dca8363e5341b2f1bfe562; NSIS 9779374 bytes SHA-256 04aa4de7a829376c1292f53e0f6235a30f8be0a56ce01b19a1873d6a59a34fdd; diff check PASS.",
+          "evidence": "docs/workstreams/verification-tts-warm-start/log.md"
+        },
+        {
+          "id": "visual-ui",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Open the rebuilt candidate on Synthesize and confirm the preparation callout, moving progress bar and disabled-button label before readiness.",
+          "cwd": ".",
+          "at": "2026-09-15T10:49:14.472Z",
+          "environment": {
+            "os": "Windows Core 25H2 build 26200.9457 x64",
+            "app": "Rebuilt Glagol release candidate"
+          },
+          "exit_code": null,
+          "output": "The user visually inspected the rebuilt candidate and confirmed the new Synthesize preparation state as satisfactory. This manual confirmation supersedes the earlier NOT_RUN caused by the unavailable capture helper.",
+          "evidence": "docs/workstreams/verification-tts-warm-start/log.md"
+        },
+        {
+          "id": "candidate",
+          "status": "PASS",
+          "method": "command",
+          "command": "Select candidate-only structured timing events from the release log without reading document text or audio.",
+          "cwd": ".",
+          "at": "2026-09-15T10:42:31.964Z",
+          "environment": {
+            "os": "Windows Core 25H2 build 26200.9457 x64",
+            "cpu": "AMD Ryzen 7 7730U with Radeon Graphics",
+            "logs": "%LOCALAPPDATA%/app.glagol.desktop/logs"
+          },
+          "exit_code": 0,
+          "output": "Candidate document synthesis observed: 806 characters, preparation 0 ms, synthesis 5232 ms, total 5233 ms. Latest UI candidate launch: receipt check 3 ms, UI ready 637 ms, worker load 3585 ms, warmup 3586 ms, verification_performed=false. Text and audio were not read or recorded.",
+          "evidence": "docs/workstreams/verification-tts-warm-start/log.md"
+        }
+      ]
+    },
+    {
+      "id": "Q4",
+      "title": "Проверить повторный запуск, idle timeout и диктовку",
+      "status": "done",
+      "depends_on": [
+        "Q3"
+      ],
+      "required": [
+        "lifecycle"
+      ],
+      "checks": [
+        {
+          "id": "lifecycle",
+          "status": "PASS",
+          "method": "command",
+          "command": "Select candidate-only TTS timing events; wait for the 15-minute idle event; confirm the embedded Python PID disappears while Glagol remains running; stop only the test candidate; cargo test --manifest-path src-tauri/Cargo.toml dictation -- --nocapture",
+          "cwd": ".",
+          "at": "2026-09-15T11:00:40.000Z",
+          "environment": {
+            "os": "Windows Core 25H2 build 26200.9457 x64",
+            "candidate": "Direct-run release candidate",
+            "pdfium": "Existing src-tauri/resources/pdfium.dll via documented local override"
+          },
+          "exit_code": 0,
+          "output": "Two repeat preparations reused the worker in 0 ms; a second 384-character synthesis completed in 2574 ms. Idle unload was logged at 901926 ms; the embedded Python process was absent while Glagol remained alive. The test candidate was then stopped. Dictation regression suite: 146 passed, 0 failed, 1 live-microphone test ignored, 186 filtered out.",
+          "evidence": "docs/workstreams/verification-tts-warm-start/log.md"
+        },
+        {
+          "id": "dictation-live",
+          "status": "NOT_RUN",
+          "method": "manual",
+          "command": "Perform a fresh live microphone dictation in the rebuilt candidate while local TTS is available.",
+          "cwd": ".",
+          "at": "2026-09-15T11:00:40.000Z",
+          "environment": {
+            "os": "Windows Core 25H2 build 26200.9457 x64",
+            "scope": "Optional manual regression outside the changed TTS path"
+          },
+          "exit_code": null,
+          "output": "No fresh live-microphone run was performed for this candidate. The ignored hardware test is not counted as PASS; this remaining limitation will be disclosed in release notes.",
+          "evidence": "docs/workstreams/verification-tts-warm-start/log.md"
+        }
+      ]
+    },
+    {
+      "id": "Q5",
+      "title": "Свести сравнение и принять решение о commit",
+      "status": "done",
+      "depends_on": [
+        "Q4"
+      ],
+      "required": [
+        "decision"
+      ],
+      "checks": [
+        {
+          "id": "decision",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Review measured baseline/candidate results, the user's visual confirmation and the explicit request to publish a GitHub release.",
+          "cwd": ".",
+          "at": "2026-09-15T11:02:00.000Z",
+          "environment": {
+            "decision": "Prepare Glagol v0.4.1 patch release",
+            "branch": "main"
+          },
+          "exit_code": null,
+          "output": "Release decision accepted. The old 0.4.0 first synthesis was reported unacceptably slow; the candidate replaces per-launch full hashing with a 2-3 ms receipt check, prewarms in about 3.5 s, reuses the worker in 0 ms, exposes preparation progress, and unloads it after about 15 minutes. Fresh live-microphone dictation remains disclosed as NOT_RUN.",
+          "evidence": "docs/workstreams/verification-tts-warm-start/log.md"
+        }
+      ]
+    }
+  ]
+}

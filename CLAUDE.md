@@ -77,7 +77,7 @@ These constraints apply to changes. Resolve required architectural changes befor
 1. **Tauri commands return `Result<T, String>`.** Errors become strings on the frontend boundary. Use `thiserror` for internal Rust error types, convert to `String` at the boundary.
 2. **Long-running operations (>100ms) must report progress** via `tauri::ipc::Channel<T>` (high-frequency) or `app.emit()` (broadcast).
 3. **One local TTS operation at a time.** A separate mutex protects installation, inference and removal without blocking dictation.
-4. **TTS worker unloads after idle and exits with its parent.** No TTS worker or downloads at application startup.
+4. **TTS reuses a full verification for at most 30 days when key-file metadata is unchanged; stale/missing receipts and worker errors force a full check.** The Synthesize screen preloads the worker. No TTS worker or downloads start before the component is installed and acknowledged. The worker unloads after 15 idle minutes and exits with its parent.
 5. **Readiness is not an OAuth probe.** TTS checks local installation/consent; STT retains its own validation cache.
 6. **TTS limits belong to the backend.** Silero uses 280 input characters per request and segments normalized text below 480.
 7. **Audio bytes never leave Rust over IPC.** `synthesize_document` returns `document_id` (UUID string). Frontend uses `get_audio_path` + asset protocol for playback, `export_audio` (server-side `fs::copy`) for disk export. Established Sprint 2 PR #16.
