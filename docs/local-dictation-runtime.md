@@ -2,11 +2,19 @@
 
 Glagol downloads the runtime and weights only after a user action. Neither is
 part of the NSIS installer. The source of truth is
-`src-tauri/src/stt/local/catalog.rs`: URLs pin immutable releases/revisions,
+`src-tauri/src/stt/local/catalog.rs` (RU) and `src-tauri/src/stt/moonshine/catalog.rs` (EN): URLs pin immutable releases/revisions,
 byte counts and SHA-256 hashes. Increasing the catalog requires a reviewed
 code change and a native smoke test on Windows x64.
 
 ## Components
+
+- English: Moonshine Small Streaming, runtime v0.1.5 / ABI 30000; eight model files
+  at revision `0bf2f2e5aff22e6fbba4300b00a4e00bbc4f8aae`, 142,300,974 bytes. Native
+  Windows wheel archive: 16,542,073 bytes; only two pinned DLLs are extracted.
+  ONNX Runtime reports 1.23.2. No Python execution is involved in this STT path.
+  Total first download: 158,843,047 bytes. English streaming models/runtime are
+  MIT; [Moonshine](third-party/Moonshine-LICENSE.txt), [ORT license](third-party/ONNX-Runtime-LICENSE.txt)
+  and [third-party notices](third-party/ONNX-Runtime-ThirdPartyNotices.txt) are retained.
 
 - [transcribe.cpp 0.2.3](https://github.com/handy-computer/transcribe.cpp/releases/tag/v0.2.3),
   Windows x64 CPU/Vulkan archive, 20,077,848 bytes. Glagol explicitly selects CPU.
@@ -19,6 +27,18 @@ code change and a native smoke test on Windows x64.
   MIT licensed. Keep the upstream model license with redistributed weights.
 
 ## Lifetime and storage
+
+English uses `speech_models/moonshine-0.1.5` and a hidden child mode of the same EXE,
+before Tauri/SQLite/hotkeys initialize. Every model/DLL hash is verified before
+loading; the pinned ORT is explicitly loaded by absolute path before Moonshine.
+The recorder sends bounded blocks through a 32-packet queue, resamples outside
+the audio callback to mono 16 kHz and flushes the tail once on release. Only final
+text is inserted. Queue overflow/worker failure aborts the attempt. JSON is bounded
+to 512,000 bytes, a transaction times out at 90 seconds, and a Windows parent handle
+terminates the child on exit/crash. Warm models unload after 15 idle minutes.
+English STT is independent of Silero's Python processes and operation lock.
+
+The following in-process lifetime applies only to the existing Russian path.
 
 `paths::local_models_root` resolves the app-local `speech_models` directory.
 `.part` files remain after cancellation/disconnection and use HTTP Range to resume.

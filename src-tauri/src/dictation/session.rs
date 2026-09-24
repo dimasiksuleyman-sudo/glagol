@@ -96,6 +96,15 @@ pub fn handle_shortcut(app: &AppHandle, event_state: ShortcutState) {
 /// phase and is dropped at `trace` — no toast, no spam (D4).
 fn on_pressed(app: &AppHandle) {
     let state = app.state::<AppState>();
+    if state
+        .db
+        .lock()
+        .ok()
+        .and_then(|conn| crate::preferences::get(&conn).ok())
+        .is_none_or(|prefs| prefs.onboarding_stage != "complete")
+    {
+        return;
+    }
 
     // Claim the session, or bail if one is already active (D4).
     {
@@ -180,9 +189,13 @@ async fn run_session(app: AppHandle, release_rx: oneshot::Receiver<()>, token: u
     // Pass the pinned device (D6); the recorder falls back to the system default
     // and reports it if the device is gone.
     let opts = DictationOpts::new(device, language, mode);
+    let recorder = SessionRecorder {
+        recorder: &state.recorder,
+        provider: &provider,
+    };
     let outcome = run_dictation(
         DictationDeps {
-            recorder: &state.recorder,
+            recorder: &recorder,
             provider: &provider,
             inserter: &inserter,
             clipboard: &clipboard,
@@ -216,7 +229,13 @@ async fn run_session(app: AppHandle, release_rx: oneshot::Receiver<()>, token: u
         DictationOutcome::Failed { message } => {
             // An error still earns a history row so the user can see the failed
             // attempt (D2). No recognition seconds — nothing was recognised.
-            record_dictation_history(&state, "", "error", 0, Some(message.clone()));
+            record_dictation_history(
+                &state,
+                "",
+                "error",
+                0,
+                Some(crate::i18n::error(message.clone())),
+            );
         }
         // D2: a discarded clip (silence / accidental tap / empty transcript) has
         // nothing to record and is never written.
@@ -271,6 +290,27 @@ fn finish_session(app: &AppHandle, state: &AppState, token: u64) {
 /// configuration is unusable — most importantly when a remote endpoint has no
 /// API key (D13).
 type SessionSetup = (SttBackend, Option<String>, Option<String>, InsertionMode);
+
+struct SessionRecorder<'a> {
+    recorder: &'a super::RecorderHandle,
+    provider: &'a SttBackend,
+}
+impl super::pipeline::RecorderControl for SessionRecorder<'_> {
+    async fn start(
+        &self,
+        device: Option<String>,
+    ) -> Result<super::StartedInfo, super::RecorderError> {
+        let stream = self
+            .provider
+            .begin_stream()
+            .await
+            .map_err(super::RecorderError::Streaming)?;
+        self.recorder.start_streaming(device, stream).await
+    }
+    async fn stop(&self) -> Result<super::PcmAudio, super::RecorderError> {
+        self.recorder.stop().await
+    }
+}
 
 fn build_provider(app: &AppHandle, state: &AppState) -> Result<SessionSetup, String> {
     let (provider, settings, mode, device) = {
@@ -403,13 +443,14 @@ fn show_overlay(app: &AppHandle) {
 /// Build the system tray (D11): idle icon, a «Показать / Выход» menu, and the
 /// tooltip. Called once from the setup hook.
 pub fn build_tray(app: &AppHandle) -> tauri::Result<()> {
-    let show = MenuItem::with_id(app, "show", "Показать", true, None::<&str>)?;
-    let quit = MenuItem::with_id(app, "quit", "Выход", true, None::<&str>)?;
-    let menu = Menu::with_items(app, &[&show, &quit])?;
+    let menu = tray_menu(app)?;
 
     TrayIconBuilder::with_id(TRAY_ID)
         .icon(tauri::image::Image::from_bytes(TRAY_IDLE_PNG)?)
-        .tooltip("Glagol — диктовка (Ctrl+Shift+Space)")
+        .tooltip(crate::preferences::message(
+            "Glagol — dictation",
+            "Glagol — диктовка",
+        ))
         .menu(&menu)
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id().as_ref() {
@@ -418,6 +459,35 @@ pub fn build_tray(app: &AppHandle) -> tauri::Result<()> {
             _ => {}
         })
         .build(app)?;
+    Ok(())
+}
+
+fn tray_menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
+    let show = MenuItem::with_id(
+        app,
+        "show",
+        crate::preferences::message("Show Glagol", "Показать Glagol"),
+        true,
+        None::<&str>,
+    )?;
+    let quit = MenuItem::with_id(
+        app,
+        "quit",
+        crate::preferences::message("Quit", "Выход"),
+        true,
+        None::<&str>,
+    )?;
+    Menu::with_items(app, &[&show, &quit])
+}
+
+pub fn refresh_tray_language(app: &AppHandle) -> tauri::Result<()> {
+    if let Some(tray) = app.tray_by_id(TRAY_ID) {
+        tray.set_menu(Some(tray_menu(app)?))?;
+        tray.set_tooltip(Some(crate::preferences::message(
+            "Glagol — dictation",
+            "Glagol — диктовка",
+        )))?;
+    }
     Ok(())
 }
 
@@ -483,8 +553,8 @@ fn maybe_show_tray_notice(app: &AppHandle) {
     }
 
     app.dialog()
-        .message("Глагол продолжит работать в трее. Иконка — в области уведомлений. Диктовка по Ctrl+Shift+Space остаётся доступной.")
-        .title("Глагол свернулся в трей")
+        .message(crate::preferences::message("Glagol will keep running in the notification area. Your dictation shortcut remains available.", "Glagol продолжит работать в области уведомлений. Горячая клавиша диктовки остаётся доступной."))
+        .title(crate::preferences::message("Glagol is running in the tray", "Glagol свернулся в трей"))
         .kind(MessageDialogKind::Info)
         .show(|_| {});
 

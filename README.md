@@ -1,189 +1,158 @@
-# Глагол / Glagol
+# Glagol
 
-Диктовка и локальная озвучка русских текстов для Windows 10/11 x64.
-Russian dictation and local text-to-speech for Windows 10/11 x64.
+Offline English and Russian dictation and text-to-speech for Windows 10/11 x64.
+Диктовка и озвучка на английском и русском для Windows 10/11 x64.
 
-[MIT — приложение / application](LICENSE) · [Руководство / Guide](USER_GUIDE.md) · [Релизы / Releases](https://github.com/dimasiksuleyman-sudo/glagol/releases) · [Безопасность / Security](SECURITY.md)
+[English guide](USER_GUIDE.en.md) · [Руководство](USER_GUIDE.ru.md) · [MIT application](LICENSE) · [Security](SECURITY.md)
 
-**[Скачать / Download Glagol 0.4.1 — Windows x64](https://github.com/dimasiksuleyman-sudo/glagol/releases/download/v0.4.1/Glagol_0.4.1_x64-setup.exe)** · [Что нового / Release notes](docs/releases/v0.4.1.md)
-
-![Глагол 0.4.0: первый запуск / first launch](docs/screenshots/windows10-0.4.0/t19-app-first-launch.png)
-
-## Русский
-
-### Использование в организациях и лицензии
-
-**Глагол можно использовать для диктовки, в том числе в организации.**
-Локальная GigaAM, свой офисный сервер и облачный STT настраиваются независимо
-от озвучки. Условия выбранного провайдера/модели действуют отдельно.
-
-**Озвучка Silero TTS v5.5 — необязательный компонент для некоммерческого
-использования**, CC BY-NC-SA 4.0, Silero Team. Модель и движок скачиваются
-только по выбору пользователя после ознакомления с условиями. Они не входят
-в установщик, не загружаются при обновлении и не нужны для диктовки.
-Отдельное скачивание не отменяет ограничений лицензии.
-[Полная лицензия](docs/third-party/Silero-LICENSE.txt) · [Silero](https://github.com/snakers4/silero-models).
-
-Сам Глагол остаётся MIT-проектом. Для коммерческой озвучки позже планируется
-**Yandex SpeechKit v3**; в 0.4.0 его интеграции ещё нет. Интеграция SaluteSpeech
-удалена. Глагол — независимый проект, не аффилированный с поставщиками моделей.
-
-### Возможности
-
-- Диктовка по хоткею `Ctrl+Shift+Space`: дождитесь сигнала записи после подготовки
-  микрофона, говорите, отпустите. Автовставка в активное окно или буфер обмена.
-- Локальная GigaAM v3 CTC/RNNT с загрузкой по выбору: 272–274 МБ и движок около
-  20 МБ. Модели MIT, авторство [Sber GigaAM](https://github.com/salute-developers/GigaAM)
-  и лицензия сохраняются; удаление SaluteSpeech их не затрагивает.
-- Офисный OpenAI-совместимый сервер для нескольких компьютеров; отдельный ключ
-  и настройки. Облачный STT имеет собственный профиль, модель и прокси.
-- Необязательная локальная история диктовок; по умолчанию выключена.
-- Пять голосов Silero: Айдар, Бая, Ксения, Xenia, Евгений. Предпрослушивание,
-  ударения, вопросительные фразы, преобразование чисел и латинских сокращений.
-- Вставка текста или TXT/MD/DOCX/PDF; длинные документы озвучиваются по частям
-  с прогрессом и отменой, без накопления всей аудиокниги в памяти.
-- Локальная библиотека, переименование, плеер, скорость 0.5–2×, экспорт WAV,
-  резервные копии. Старые озвучки продолжают воспроизводиться.
-
-### Установка и первый запуск
-
-Текущий выпуск — **0.4.1**: [установщик Windows x64](https://github.com/dimasiksuleyman-sudo/glagol/releases/download/v0.4.1/Glagol_0.4.1_x64-setup.exe), **9,32 МиБ**. [SHA-256 и подробности выпуска](docs/releases/v0.4.1.md). Установщик не подписан; SmartScreen может показать предупреждение — см. [руководство](USER_GUIDE.ru.md#установка).
-
-1. Запустите `Glagol_<версия>_x64-setup.exe` и прочитайте пояснение о компонентах.
-2. Для диктовки выберите локальную модель, офисный сервер или облако в настройках.
-3. Для некоммерческой озвучки откройте «Локальная озвучка — Silero v5.5»,
-   ознакомьтесь с лицензией и нажмите «Скачать и включить».
-4. Если сервер модели недоступен, можно выбрать заранее скачанный
-   `v5_5_ru.pt`; приложение проверит его размер и SHA-256.
-
-Silero: модель **145,4 МБ** + runtime **249,3 МБ**, суммарно **394,8 МБ**
-загрузки. Освободите не менее **1,9 ГБ** для установки и временных файлов.
-Системные Python/pip/CUDA и регистрация SAPI не нужны. После загрузки синтез
-работает без сети. На Ryzen 7 7730U / 16 ГБ проверен CPU-режим с двумя потоками;
-на других машинах скорость зависит от CPU и доступной памяти.
-
-После полной проверки Глагол сохраняет техническую отметку на 30 дней и при
-следующих запусках быстро сверяет ключевые файлы. Полный контроль повторяется
-раз в месяц, при изменении файлов или после ошибки worker. Первый запуск после
-обновления выполнит контроль один раз в фоне. При открытии экрана «Озвучить»
-модель заранее загружается в память; во время подготовки экран показывает статус,
-индикатор и причину недоступности кнопки. Скачивание и распаковка не повторяются.
-Worker использует до примерно 752 МБ памяти и выгружается после 15 минут без
-озвучки или при выходе из приложения.
-
-Числа преобразуются в слова; даты и дроби могут читаться по компонентам,
-неизвестные латинские слова — по буквам. Проверяйте важные тексты на слух.
-Нет обещания грамматически идеального чтения произвольных обозначений.
-
-Данные: `%LOCALAPPDATA%\app.glagol.desktop\`. Библиотека — `audio_cache` и
-`glagol.db`, STT-модели — `speech_models`, Silero — `tts_models`.
-Бэкап библиотеки не переносит модели, runtime, OS-ключи и подтверждение условий
-Silero. На другом ПК компонент включается отдельно.
-
-### Обновление с 0.2.1 и проверка
-
-Создайте бэкап библиотеки, завершите приложение через трей и запустите установщик
-0.4.1. На экране существующей установки выберите «Не удалять» и прежнюю папку.
-0.3.0 отдельно не публиковалась; её изменения включены в этот выпуск.
-
-Для 0.4.0 на Windows 10 проверены чистая установка, обновление с сохранением
-библиотеки и STT-настроек, бэкап/восстановление, Silero, пять голосов и экспорт.
-Для 0.4.1 на Windows 11 отдельно измерены быстрый повторный запуск, две озвучки,
-индикация подготовки и выгрузка worker после простоя. Новая чистая установка
-0.4.1 и свежая живая диктовка вручную не выполнялись.
-[Покрытие и ограничения](docs/releases/v0.4.1.md#проверка-и-ограничения) ·
-[Скриншоты установки](docs/screenshots/windows10-0.4.0/README.md).
-
-### Разработка
-
-Tauri 2, Rust, React 19, TypeScript, SQLite. [Структура](PROJECT_STRUCTURE.md),
-[вклад в проект](CONTRIBUTING.md), [TTS runtime](docs/local-tts-runtime.ru.md),
-[STT runtime](docs/local-dictation-runtime.md), [изменения](CHANGELOG.md).
-Сборка: `pnpm install`, `pnpm tauri build`. Проверка версий:
-`node scripts/check-version.mjs`.
+**Download Glagol 0.5.0 / Скачать Глагол 0.5.0:**
+[Windows x64 installer](https://github.com/dimasiksuleyman-sudo/glagol/releases/download/v0.5.0/Glagol_0.5.0_x64-setup.exe)
+([release notes and SHA-256](docs/releases/v0.5.0.md), 9,947,426 bytes).
 
 ## English
 
-### Organization use and licenses
+### Languages and speech
 
-**Glagol can be used for dictation in organizations.** Local GigaAM, your office
-server and cloud STT are independent of TTS. Each provider/model's own terms apply.
+Choose **English / Русский** on first launch, including the first upgrade to 0.5.0.
+Interface, dictation and synthesis languages are independent. Change the interface
+in the app shell or Settings without restarting; change speech languages on their
+own pages. Each language remembers its model and voice. New installs start with
+local dictation. Upgrades retain modes, server addresses, credentials and voices.
 
-**Silero TTS v5.5 is optional and for noncommercial use**, CC BY-NC-SA 4.0,
-Silero Team. Model/runtime download only after the user chooses the component
-and acknowledges its terms. They are excluded from the installer and updates;
-dictation does not require them. Separate downloads do not waive license terms.
-[Full license](docs/third-party/Silero-LICENSE.txt) · [Silero](https://github.com/snakers4/silero-models).
+- Hold `Ctrl+Shift+Space`, wait for the recording signal, speak, release, then receive
+  the final text once. Auto-paste or clipboard only; optional history is off by default.
+- English local dictation: Moonshine Small Streaming, native CPU runtime. Russian:
+  GigaAM v3 CTC/RNNT. Independent office-server and cloud profiles remain available.
+- Optional offline Silero synthesis: v3_en with EN 0–3 (default EN 0), and v5.5 RU
+  with Aidar, Baya, Kseniya, Xenia and Eugene. Voice preview, progress and cancellation.
+- Paste text or import TXT/MD/DOCX/PDF. Long documents use a sequential WAV pipeline.
+  Library, rename, localized player, 0.5–2× playback, WAV export and backups.
+  Existing recordings and their metadata remain usable.
 
-Glagol itself remains MIT licensed. **Yandex SpeechKit v3** for commercial TTS
-is planned for a later stage and is not integrated in 0.4.0. SaluteSpeech has
-been removed. Glagol is independent of its model/service providers.
+### Install only the components you need
 
-### Features
+One compact installer, with English/Russian installation and removal. The language
+selector starts from Windows' language, with English fallback. No speech weights,
+speech ONNX runtime, Python/PyTorch or pronunciation dictionaries are bundled.
+First-run speech setup can be skipped. Choosing a language never downloads files
+or accepts a model license.
 
-- Push-to-talk with `Ctrl+Shift+Space`; wait for the recording signal after
-  microphone preparation. Auto-paste into the active window or copy to clipboard.
-- Optional local GigaAM v3 CTC/RNNT: 272–274 MB plus a roughly 20 MB runtime.
-  [Sber GigaAM](https://github.com/salute-developers/GigaAM) attribution and MIT
-  license remain; removing SaluteSpeech does not remove local dictation.
-- Shared OpenAI-compatible office server and a separate cloud STT profile,
-  model, credentials and proxy. Dictation history is optional and off by default.
-- Five Silero voices, preview, stress/question support, number/Latin conversion.
-- Paste text or import TXT/MD/DOCX/PDF; long documents process sequentially with
-  progress and cancellation, without buffering an entire audiobook in memory.
-- Local library, rename, player, 0.5–2× speed, WAV export and backups. Existing
-  audio remains playable after the update.
+| Optional component | First download | With its shared runtime already installed |
+|---|---:|---:|
+| English dictation | 158.8 MB | 142.3 MB model |
+| Russian dictation | 292.2–293.8 MB | 272.2–273.7 MB model |
+| English Silero TTS | 306.5 MB | **57.2 MB model** |
+| Russian Silero TTS | 394.8 MB | 145.4 MB model |
 
-### Installation
+Sizes use decimal MB; the app accounts for installed files. Both Silero languages
+share one 249.3 MB Python/PyTorch download. Allow 1.9 GB for initial Silero installation
+and staging. No system Python, pip, CUDA or SAPI setup. Downloads support cancellation,
+resume and integrity checks. Importing the exact model file is available when the
+Silero server cannot be reached. Removing one model retains the shared runtime.
 
-Current release: **0.4.1**, [Windows x64 installer](https://github.com/dimasiksuleyman-sudo/glagol/releases/download/v0.4.1/Glagol_0.4.1_x64-setup.exe), **9.32 MiB**. [SHA-256 and release notes](docs/releases/v0.4.1.md). The installer is unsigned; SmartScreen may warn — see the [guide](USER_GUIDE.en.md#installation).
-Run `Glagol_<version>_x64-setup.exe`, read the component information, then
-choose local, office-server or cloud dictation in Settings. For noncommercial
-TTS, read Silero's terms and choose its separate download. If its server is
-unreachable, select a previously downloaded `v5_5_ru.pt`; size/SHA-256 are checked.
+Silero retains a full-verification receipt for 30 days; changed key files, an expired
+receipt or worker failure trigger a full check. Workers stay warm and unload after
+15 idle minutes. Installed local speech works offline. Speech languages are selected
+explicitly: mixed-language detection and translation are not provided locally.
 
-Silero downloads: **145.4 MB model + 249.3 MB runtime = 394.8 MB**.
-Allow at least **1.9 GB** for installation/staging. No system Python, pip,
-CUDA or SAPI registration. Synthesis is offline after installation. CPU mode
-with two threads was tested on Ryzen 7 7730U / 16 GB; performance varies.
+### Licenses and data
 
-After a full check, Glagol keeps a technical verification receipt for 30 days
-and quickly compares key files on subsequent launches. A full check runs monthly,
-when those files change, or after a worker failure. The first launch after this
-update performs one background check. Opening Synthesize preloads the model; the
-page shows preparation status and progress while its action is unavailable.
-Nothing is downloaded or extracted again. The worker uses up to roughly 752 MB
-and unloads after 15 idle minutes or when the application exits.
+Glagol is free and MIT licensed. Dictation can be used in organizations, subject to
+each model/service's terms. Moonshine English streaming and GigaAM models are MIT.
+**Both Russian and English Silero models are optional, noncommercial CC BY-NC-SA 4.0
+components**, by Silero Team. Separate downloads do not waive those terms.
+[Silero license](docs/third-party/Silero-LICENSE.txt) · [Moonshine notices](docs/third-party/Moonshine-LICENSE.txt).
+Glagol is independent of its model and service providers. Cloud services have their
+own terms and charges; no commercial TTS provider is integrated in this version.
 
-Numbers become words; dates/fractions may be read component by component and
-unknown Latin words are spelled out. Listen to important text; arbitrary
-notation is not guaranteed to be read with perfect grammar.
+Data stays in `%LOCALAPPDATA%\app.glagol.desktop\`: `glagol.db`, `audio_cache`,
+`speech_models`, `tts_models`. Library backups exclude models, runtime, OS credentials
+and Silero consent. User text, document names and old history are never translated
+when changing the interface language.
 
-Data: `%LOCALAPPDATA%\app.glagol.desktop\`; `audio_cache`/`glagol.db` for the
-library, `speech_models` for STT, `tts_models` for Silero. Library backups exclude
-models/runtime, OS credentials and Silero acknowledgement. Enable TTS separately
-on another computer.
+### Development and validation
 
-### Upgrade from 0.2.1 and verification
+Tauri 2, Rust, React 19, TypeScript, SQLite. `pnpm install --frozen-lockfile`,
+`pnpm tauri build`. [Architecture](PROJECT_STRUCTURE.md), [contributing](CONTRIBUTING.md),
+[Windows checks](docs/runbooks/windows-build.md), [TTS runtime](docs/local-tts-runtime.md),
+[STT runtime](docs/local-dictation-runtime.md), [changelog](CHANGELOG.md).
+Current implementation evidence and unperformed manual checks are recorded in the
+[0.5.0 workstream](docs/workstreams/english-first/log.md). Synthetic audio tests are
+not a listening-quality result. Direct Silero-origin delivery was unavailable from
+the development machine; importing pinned files was exercised separately.
 
-Back up the library, exit through the tray menu and run the 0.4.1 installer.
-Choose “Do not uninstall” on the existing-installation page and retain the original
-directory. Version 0.3.0 was unpublished; its changes are included in this release.
+## Русский
 
-For 0.4.0, Windows 10 testing confirmed clean installation, upgrade preserving
-the library and STT settings, backup/restore, Silero, five voices and export.
-For 0.4.1, Windows 11 testing separately measured the fast repeat launch, two
-syntheses, preparation UI and idle worker unload. A new clean 0.4.1 installation
-and fresh live dictation were not manually exercised.
-[Coverage and limits](docs/releases/v0.4.1.md#verification-and-limitations) ·
-[Installation screenshots](docs/screenshots/windows10-0.4.0/README.md).
+### Языки и речь
 
-### Development
+При первом запуске, включая первое обновление до 0.5.0, выберите **English / Русский**.
+Языки интерфейса, диктовки и озвучки независимы. Интерфейс переключается в оболочке
+или настройках без перезапуска; речь — на своей странице. Для каждого языка
+сохраняются модель и голос. Новая установка начинает с локальной диктовки;
+обновление сохраняет режимы, адреса серверов, ключи и голоса.
 
-Tauri 2, Rust, React 19, TypeScript, SQLite. [Contributing](CONTRIBUTING.md),
-[TTS runtime](docs/local-tts-runtime.md), [STT runtime](docs/local-dictation-runtime.md),
-[changelog](CHANGELOG.md). Build with `pnpm install` and `pnpm tauri build`;
-check version consistency with `node scripts/check-version.mjs`.
+- Удерживайте `Ctrl+Shift+Space`, дождитесь сигнала записи, говорите и отпустите:
+  готовый текст вставится один раз. Доступен режим буфера; история изначально выключена.
+- Английская локальная диктовка: Moonshine Small Streaming, нативный CPU-runtime.
+  Русская: GigaAM v3 CTC/RNNT. Сохраняются отдельные офисный и облачный профили.
+- Необязательная офлайн-озвучка Silero: v3_en с EN 0–3 (по умолчанию EN 0) и
+  v5.5 RU с Айдаром, Баей, Ксенией, Xenia и Евгением. Есть образец голоса, прогресс и отмена.
+- Текст или TXT/MD/DOCX/PDF; последовательная озвучка длинных документов в WAV.
+  Библиотека, переименование, локализованный плеер, скорость 0.5–2×, экспорт и бэкапы.
+  Старые записи и метаданные остаются доступны.
 
-Доступен для контрактной работы / Available for contract work — Rust/Tauri,
+### Только нужные компоненты
+
+Один компактный установщик, установка и удаление на EN/RU. Начальный язык — по
+Windows, резервный — английский. В установщике нет речевых весов, речевого ONNX-runtime,
+Python/PyTorch и словарей произношения. Начальную настройку речи можно пропустить.
+Выбор языка сам ничего не скачивает и не принимает лицензию.
+
+| Необязательный компонент | Первая загрузка | Общий runtime уже установлен |
+|---|---:|---:|
+| Английская диктовка | 158,8 МБ | 142,3 МБ модель |
+| Русская диктовка | 292,2–293,8 МБ | 272,2–273,7 МБ модель |
+| Английская Silero | 306,5 МБ | **57,2 МБ модель** |
+| Русская Silero | 394,8 МБ | 145,4 МБ модель |
+
+МБ — десятичные; приложение учитывает установленные файлы. У обоих языков Silero
+один runtime Python/PyTorch, 249,3 МБ загрузки. Для первой установки и временных
+файлов освободите 1,9 ГБ. Системные Python, pip, CUDA и SAPI не нужны.
+Есть отмена, продолжение и проверка загрузки, импорт точного файла модели при
+недоступности сервера Silero. Удаление одной модели сохраняет общий runtime.
+
+Отметка полной проверки Silero действует 30 дней; истечение срока, изменение
+ключевых файлов или ошибка worker вызывают полный контроль. Прогретый worker
+выгружается через 15 минут простоя. Установленная локальная речь работает без сети.
+Язык выбирается явно; локального автоопределения смешанной речи и перевода нет.
+
+### Лицензии и данные
+
+Глагол бесплатен, код — MIT. Диктовка доступна организациям с учётом условий
+выбранной модели/сервиса. Moonshine English streaming и GigaAM — MIT.
+**Обе модели Silero, русская и английская, — необязательные компоненты для
+некоммерческого использования под CC BY-NC-SA 4.0**, Silero Team. Раздельная
+загрузка не отменяет условий. [Лицензия](docs/third-party/Silero-LICENSE.txt),
+[уведомления Moonshine](docs/third-party/Moonshine-LICENSE.txt). Глагол независим
+от поставщиков. У облачных сервисов свои условия и тарифы; коммерческого TTS
+в этой версии нет.
+
+Данные: `%LOCALAPPDATA%\app.glagol.desktop\`: `glagol.db`, `audio_cache`,
+`speech_models`, `tts_models`. Бэкап библиотеки не переносит модели, runtime,
+OS-ключи и согласие Silero. При смене интерфейса тексты пользователя, названия
+документов и прежняя история не переводятся.
+
+### Разработка и проверка
+
+Текущая версия — **0.5.0**. Установщик по ссылке сверху — 9 947 426 байт.
+Стек: Tauri 2, Rust,
+React 19, TypeScript, SQLite. `pnpm install --frozen-lockfile`, `pnpm tauri build`.
+[Архитектура](PROJECT_STRUCTURE.md), [вклад](CONTRIBUTING.md),
+[проверки Windows](docs/runbooks/windows-build.md), [TTS runtime](docs/local-tts-runtime.ru.md),
+[STT runtime](docs/local-dictation-runtime.md), [изменения](CHANGELOG.md).
+Результаты 0.5.0 и недоступные ручные проверки — в [журнале](docs/workstreams/english-first/log.md).
+Синтетические WAV не подтверждают качество на слух. Прямой сервер Silero с
+машины разработки был недоступен; импорт закреплённых файлов проверен отдельно.
+
+Available for contract work / Доступен для контрактной работы — Rust/Tauri,
 voice/TTS/LLM applications: `kiss2tri@hotmail.com`.

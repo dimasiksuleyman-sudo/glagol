@@ -1,3 +1,4 @@
+import { currentLocale } from "@/i18n";
 /**
  * Russian three-form plural selection.
  *
@@ -28,20 +29,24 @@ export function pluralRu(n: number, one: string, few: string, many: string): str
 
 /** «1 документ» / «2 документа» / «5 документов». */
 export function pluralizeDocuments(n: number): string {
+  if (currentLocale() === "en-US") return new Intl.PluralRules("en").select(n) === "one" ? "document" : "documents";
   return pluralRu(n, "документ", "документа", "документов");
 }
 
 /** «1 файл» / «2 файла» / «5 файлов» — used by progress modals. */
 export function pluralizeFiles(n: number): string {
+  if (currentLocale() === "en-US") return new Intl.PluralRules("en").select(n) === "one" ? "file" : "files";
   return pluralRu(n, "файл", "файла", "файлов");
 }
 
 /** «1 минута» / «2 минуты» / «5 минут» — the «Надиктовано всего» counter. */
 export function pluralizeMinutes(n: number): string {
+  if (currentLocale() === "en-US") return new Intl.PluralRules("en").select(n) === "one" ? "minute" : "minutes";
   return pluralRu(n, "минута", "минуты", "минут");
 }
 
 /** «1 запись» / «2 записи» / «5 записей» — the dictation history counter. */
 export function pluralizeEntries(n: number): string {
+  if (currentLocale() === "en-US") return new Intl.PluralRules("en").select(n) === "one" ? "entry" : "entries";
   return pluralRu(n, "запись", "записи", "записей");
 }

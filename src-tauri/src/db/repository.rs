@@ -12,13 +12,13 @@ use serde::{Deserialize, Serialize};
 const INSERT_SQL: &str = "
     INSERT INTO documents (
         id, title, source_type, char_count, voice, status,
-        error_message, created_at, audio_path, audio_duration_ms, provider
-    ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
+        error_message, created_at, audio_path, audio_duration_ms, provider, speech_language
+    ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
 ";
 
 const SELECT_COLUMNS: &str = "
     id, title, source_type, char_count, voice, status,
-    error_message, created_at, audio_path, audio_duration_ms, provider
+    error_message, created_at, audio_path, audio_duration_ms, provider, speech_language
 ";
 
 /// Persisted document record. Matches the `documents` table schema 1:1.
@@ -37,6 +37,8 @@ pub struct DocumentRecord {
     pub voice: String,
     #[serde(default = "legacy_provider")]
     pub provider: String,
+    #[serde(default)]
+    pub speech_language: Option<String>,
     pub status: String,
     pub error_message: Option<String>,
     pub created_at: i64,
@@ -57,6 +59,7 @@ impl DocumentRecord {
             char_count: row.get("char_count")?,
             voice: row.get("voice")?,
             provider: row.get("provider")?,
+            speech_language: row.get("speech_language")?,
             status: row.get("status")?,
             error_message: row.get("error_message")?,
             created_at: row.get("created_at")?,
@@ -83,6 +86,7 @@ pub fn insert(conn: &Connection, doc: &DocumentRecord) -> Result<()> {
             doc.audio_path,
             doc.audio_duration_ms,
             doc.provider,
+            doc.speech_language,
         ],
     )?;
     Ok(())
@@ -387,6 +391,7 @@ mod tests {
             char_count: 1234,
             voice: "Nec_24000".to_string(),
             provider: "salutespeech-legacy".into(),
+            speech_language: None,
             status: "ready".to_string(),
             error_message: None,
             created_at,
@@ -475,6 +480,7 @@ mod tests {
             char_count: 0,
             voice: "Nec_24000".to_string(),
             provider: "salutespeech-legacy".into(),
+            speech_language: None,
             status: "error".to_string(),
             error_message: Some("HTTP 500 from Sberbank".to_string()),
             created_at: 1_700_000_000_000,

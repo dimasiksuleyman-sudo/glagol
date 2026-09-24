@@ -28,11 +28,42 @@ pub(crate) const MAX_FILE_SIZE: u64 = 10 * 1024 * 1024;
 pub(crate) const MAX_CONTENT_CHARS: usize = 500_000;
 
 #[tauri::command]
-pub async fn read_and_parse_file(path: String) -> Result<ParsedDocument, String> {
-    read_and_parse_file_impl(Path::new(&path)).map_err(|e| e.to_string())
+pub async fn read_and_parse_file(
+    state: tauri::State<'_, crate::state::AppState>,
+    path: String,
+) -> Result<ParsedDocument, String> {
+    let language = {
+        let db = state.db.lock().map_err(|e| e.to_string())?;
+        crate::preferences::get(&db)
+            .map_err(|e| e.to_string())?
+            .tts_language
+    };
+    tokio::task::spawn_blocking(move || read_with_language(Path::new(&path), language))
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|error| {
+            let text = match error {
+                ParseError::Format(message) => {
+                    format!("не удалось разобрать файл: {}", crate::i18n::error(message))
+                }
+                ParseError::Encoding(message) => format!(
+                    "не удалось определить кодировку: {}",
+                    crate::i18n::error(message)
+                ),
+                other => other.to_string(),
+            };
+            crate::i18n::error(text)
+        })
 }
 
+#[cfg(test)]
 pub(crate) fn read_and_parse_file_impl(path: &Path) -> Result<ParsedDocument, ParseError> {
+    read_with_language(path, crate::preferences::Language::Ru)
+}
+fn read_with_language(
+    path: &Path,
+    language: crate::preferences::Language,
+) -> Result<ParsedDocument, ParseError> {
     let metadata = fs::metadata(path)?;
     if metadata.len() > MAX_FILE_SIZE {
         let mb = metadata.len() as f64 / (1024.0 * 1024.0);
@@ -41,7 +72,7 @@ pub(crate) fn read_and_parse_file_impl(path: &Path) -> Result<ParsedDocument, Pa
         )));
     }
 
-    let doc = dispatch_by_extension(path)?;
+    let doc = dispatch_by_extension(path, language)?;
 
     let char_count = doc.text.chars().count();
     if char_count > MAX_CONTENT_CHARS {
@@ -54,14 +85,17 @@ pub(crate) fn read_and_parse_file_impl(path: &Path) -> Result<ParsedDocument, Pa
     Ok(doc)
 }
 
-fn dispatch_by_extension(path: &Path) -> Result<ParsedDocument, ParseError> {
+fn dispatch_by_extension(
+    path: &Path,
+    language: crate::preferences::Language,
+) -> Result<ParsedDocument, ParseError> {
     let extension = path
         .extension()
         .and_then(|e| e.to_str())
         .map(|e| e.to_lowercase());
     match extension.as_deref() {
         Some("txt") => parser::txt::parse(path),
-        Some("md") | Some("markdown") => parser::md::parse(path),
+        Some("md") | Some("markdown") => parser::md::parse_with_language(path, language),
         Some("docx") => parser::docx::parse(path),
         Some("pdf") => parser::pdf::parse(path),
         // Unknown / missing extension → "Все файлы" escape hatch.

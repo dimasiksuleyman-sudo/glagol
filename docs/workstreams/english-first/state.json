@@ -1,0 +1,193 @@
+{
+  "schema_version": 1,
+  "id": "english-first",
+  "title": "Glagol 0.5.0 — English first",
+  "status": "done",
+  "next": null,
+  "reason": null,
+  "claim": null,
+  "links": [
+    "docs/workstreams/english-first/README.md",
+    "docs/workstreams/english-first/log.md",
+    "docs/runbooks/windows-build.md",
+    "docs/runbooks/english-runtime.md",
+    "docs/workstreams/english-first/qa.md",
+    "docs/workstreams/english-first/live-qa.md"
+  ],
+  "steps": [
+    {
+      "id": "E1",
+      "title": "Проверить и закрепить английский runtime и модели",
+      "status": "done",
+      "depends_on": [],
+      "required": [
+        "validation"
+      ],
+      "checks": [
+        {
+          "id": "validation",
+          "status": "PASS",
+          "method": "command",
+          "command": "node scripts/english-runtime/selected-check.mjs .scratch/english-first",
+          "cwd": ".",
+          "at": "2026-09-24T21:41:22.113Z",
+          "environment": {
+            "os": "Windows 11 Home 26200 x64",
+            "cpu": "Ryzen 7 7730U",
+            "runtime": "Python 3.11.9 / torch 2.7.1+cpu"
+          },
+          "exit_code": 0,
+          "output": "SELECTED EN ARTIFACTS PASS: Moonshine STT + Silero EN",
+          "evidence": "docs/workstreams/english-first/log.md"
+        },
+        {
+          "id": "silero-smoke",
+          "status": "PASS",
+          "method": "command",
+          "command": "& .scratch/silero/runtime-271/python.exe -I -B scripts/silero/probe-english.py --model .scratch/english-first/v3_en.pt --output .scratch/english-first/silero-en-smoke",
+          "cwd": ".",
+          "at": "2026-09-24T21:41:22.113Z",
+          "environment": {
+            "os": "Windows 11 Home 26200 x64",
+            "cpu": "Ryzen 7 7730U",
+            "runtime": "Python 3.11.9 / torch 2.7.1+cpu"
+          },
+          "exit_code": 0,
+          "output": "SILERO EN SHARED RUNTIME PASS; 12 WAVs, 5 deterministic voices, no added dependencies",
+          "evidence": "docs/workstreams/english-first/log.md"
+        }
+      ]
+    },
+    {
+      "id": "E2",
+      "title": "Локализация, настройки и первый запуск",
+      "status": "done",
+      "depends_on": [
+        "E1"
+      ],
+      "required": [
+        "validation"
+      ],
+      "checks": [
+        {
+          "id": "validation",
+          "status": "PASS",
+          "method": "command",
+          "command": "pnpm build; cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings; cargo test --manifest-path src-tauri/Cargo.toml",
+          "cwd": ".",
+          "at": "2026-09-24T22:26:45.964Z",
+          "environment": {
+            "os": "Windows 11 Home 26200 x64",
+            "runtime": "Node 24.19.0, Rust 1.98.0; verified local Pdfium override"
+          },
+          "exit_code": 0,
+          "output": "i18n check and Vite production build PASS; clippy PASS; 340 passed, 5 ignored; native English/Russian Intl and all 8 saved language combinations covered",
+          "evidence": "docs/workstreams/english-first/log.md"
+        }
+      ]
+    },
+    {
+      "id": "E3",
+      "title": "Английские STT/TTS и общие загрузки",
+      "status": "done",
+      "depends_on": [
+        "E2"
+      ],
+      "required": [
+        "validation"
+      ],
+      "checks": [
+        {
+          "id": "validation",
+          "status": "PASS",
+          "method": "command",
+          "command": "cargo fmt --manifest-path src-tauri/Cargo.toml --check; cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings; cargo test --manifest-path src-tauri/Cargo.toml; native_moonshine_*; native_silero_*; selected-check.mjs; process-test.mjs",
+          "cwd": ".",
+          "at": "2026-09-24T22:33:37.739Z",
+          "environment": {
+            "os": "Windows 11 Home 26200 x64",
+            "cpu": "Ryzen 7 7730U / 16 GB",
+            "runtime": "Rust 1.98.0; verified local Pdfium override; Python 3.11.9 / torch 2.7.1+cpu"
+          },
+          "exit_code": 0,
+          "output": "fmt/clippy PASS; 343 unit tests passed, 5 ignored at that run; native Moonshine streaming + runtime reuse PASS; native Silero RU/EN PASS; selected artifact and owned-process protocol/parent tests PASS. Manual matrix remains E5.",
+          "evidence": "docs/workstreams/english-first/log.md"
+        }
+      ]
+    },
+    {
+      "id": "E4",
+      "title": "Установщик и документация EN-first",
+      "status": "done",
+      "depends_on": [
+        "E3"
+      ],
+      "required": [
+        "validation"
+      ],
+      "checks": [
+        {
+          "id": "validation",
+          "status": "PASS",
+          "method": "command",
+          "command": "node scripts/check-version.mjs; node scripts/runbook-check.mjs; node --test scripts/runbook-check.test.mjs scripts/i18n-check.test.mjs scripts/english-runtime/verify.test.mjs; node node_modules/typescript/bin/tsc --noEmit; node node_modules/vite/bin/vite.js build",
+          "cwd": ".",
+          "at": "2026-09-24T22:36:00.673Z",
+          "environment": {
+            "os": "Windows 11 Home 26200 x64",
+            "runtime": "Node 24.19.0; direct Node entrypoints per Windows runbook"
+          },
+          "exit_code": 0,
+          "output": "Glagol 0.5.0 versions match; context OK; 58/58 Node tests; TypeScript and production build PASS. NSIS compilation/manual language selection belong to E5.",
+          "evidence": "docs/workstreams/english-first/log.md"
+        }
+      ]
+    },
+    {
+      "id": "E5",
+      "title": "Регрессии и локальный NSIS 0.5.0",
+      "status": "done",
+      "depends_on": [
+        "E4"
+      ],
+      "required": [
+        "validation",
+        "manual-qa"
+      ],
+      "checks": [
+        {
+          "id": "validation",
+          "status": "PASS",
+          "method": "command",
+          "command": "cargo fmt --manifest-path src-tauri/Cargo.toml --check; cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings; cargo test --manifest-path src-tauri/Cargo.toml; node node_modules/@tauri-apps/cli/tauri.js build --config .scratch/english-first/build-context.json",
+          "cwd": ".",
+          "at": "2026-09-24T22:41:57.739Z",
+          "environment": {
+            "os": "Windows 11 Home 26200 x64",
+            "cpu": "Ryzen 7 7730U / 16 GB RAM",
+            "runtime": "Node 24.19.0, Rust 1.98.0; process-only verified Pdfium override"
+          },
+          "exit_code": 0,
+          "output": "343 unit tests PASS, 6 ignored; NSIS exit 0, 0.5.0, 9947426 bytes, SHA-256 6d9d567975779eb9e157063ac34c7a132a5f88deb3c5107cbd22164eecdda762; release-worker and separate native/process tests recorded in evidence",
+          "evidence": "docs/workstreams/english-first/qa.md"
+        },
+        {
+          "id": "manual-qa",
+          "status": "PASS",
+          "method": "manual",
+          "command": "User-authorized primary-machine UI, live microphone and listening checks",
+          "cwd": ".",
+          "at": "2026-09-24T23:17:37.835Z",
+          "environment": {
+            "os": "Windows 11 Home 26200 x64",
+            "cpu": "Ryzen 7 7730U / 16 GB RAM",
+            "runtime": "Node 24.19.0, Rust 1.98.0; process-only verified Pdfium override"
+          },
+          "exit_code": null,
+          "output": "Manual user reports: RU/EN live dictation and listening PASS; EN/RU interface switching preserves text and English speech selections. First-launch screenshots preserve RU settings. Scope limited by user to primary-machine checks; isolated matrix remains deferred/NOT_RUN.",
+          "evidence": "docs/workstreams/english-first/live-qa.md"
+        }
+      ]
+    }
+  ]
+}

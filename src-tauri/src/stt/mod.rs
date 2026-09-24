@@ -27,6 +27,7 @@
 //! [`validation::validate_base_url`].
 
 pub mod local;
+pub mod moonshine;
 pub mod openai_compat;
 pub mod validation;
 pub mod wav;
@@ -136,6 +137,16 @@ pub enum SttBackend {
     OpenAiCompat(openai_compat::OpenAiCompatStt),
     /// Downloaded model, executed entirely on this computer.
     Local(local::LocalProvider),
+    Moonshine(moonshine::Provider),
+}
+
+impl SttBackend {
+    pub async fn begin_stream(&self) -> Result<Option<moonshine::worker::Input>, String> {
+        match self {
+            Self::Moonshine(provider) => provider.begin().await.map(Some),
+            _ => Ok(None),
+        }
+    }
 }
 
 impl SttProvider for SttBackend {
@@ -147,6 +158,7 @@ impl SttProvider for SttBackend {
         match self {
             SttBackend::OpenAiCompat(inner) => inner.transcribe(wav_bytes, lang).await,
             SttBackend::Local(inner) => inner.transcribe(wav_bytes, lang).await,
+            SttBackend::Moonshine(inner) => inner.transcribe(wav_bytes, lang).await,
         }
     }
 
@@ -154,6 +166,7 @@ impl SttProvider for SttBackend {
         match self {
             SttBackend::OpenAiCompat(inner) => inner.list_models().await,
             SttBackend::Local(inner) => inner.list_models().await,
+            SttBackend::Moonshine(inner) => inner.list_models().await,
         }
     }
 }

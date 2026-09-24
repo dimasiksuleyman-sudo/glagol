@@ -33,9 +33,13 @@ pub async fn get_audio_path(
     app: AppHandle,
     document_id: String,
 ) -> Result<String, String> {
-    let audio_root = paths::audio_cache_root(&app)?;
-    let conn = state.db.lock().expect("db mutex poisoned");
-    get_audio_path_impl(&conn, &audio_root, &document_id)
+    (async {
+        let audio_root = paths::audio_cache_root(&app)?;
+        let conn = state.db.lock().expect("db mutex poisoned");
+        get_audio_path_impl(&conn, &audio_root, &document_id)
+    })
+    .await
+    .map_err(crate::i18n::error)
 }
 
 /// Copy a document's cached audio to `dest_path` (typically chosen by
@@ -48,9 +52,13 @@ pub async fn export_audio(
     document_id: String,
     dest_path: String,
 ) -> Result<(), String> {
-    let audio_root = paths::audio_cache_root(&app)?;
-    let conn = state.db.lock().expect("db mutex poisoned");
-    export_audio_impl(&conn, &audio_root, &document_id, Path::new(&dest_path))
+    (async {
+        let audio_root = paths::audio_cache_root(&app)?;
+        let conn = state.db.lock().expect("db mutex poisoned");
+        export_audio_impl(&conn, &audio_root, &document_id, Path::new(&dest_path))
+    })
+    .await
+    .map_err(crate::i18n::error)
 }
 
 pub(crate) fn get_audio_path_impl(
@@ -94,8 +102,12 @@ fn resolve_audio_absolute(
 /// `Vec<DocumentRecord>` into JSON automatically at the IPC boundary.
 #[tauri::command]
 pub async fn list_documents(state: State<'_, AppState>) -> Result<Vec<DocumentRecord>, String> {
-    let conn = state.db.lock().expect("db mutex poisoned");
-    list_documents_impl(&conn)
+    (async {
+        let conn = state.db.lock().expect("db mutex poisoned");
+        list_documents_impl(&conn)
+    })
+    .await
+    .map_err(crate::i18n::error)
 }
 
 pub(crate) fn list_documents_impl(conn: &Connection) -> Result<Vec<DocumentRecord>, String> {
@@ -118,8 +130,12 @@ pub async fn delete_document(
     app: AppHandle,
     document_id: String,
 ) -> Result<(), String> {
-    let audio_root = paths::audio_cache_root(&app)?;
-    delete_document_impl(&state.db, &audio_root, &document_id)
+    (async {
+        let audio_root = paths::audio_cache_root(&app)?;
+        delete_document_impl(&state.db, &audio_root, &document_id)
+    })
+    .await
+    .map_err(crate::i18n::error)
 }
 
 pub(crate) fn delete_document_impl(
@@ -155,7 +171,9 @@ pub async fn update_document_title(
     document_id: String,
     title: String,
 ) -> Result<(), String> {
-    update_document_title_impl(&state.db, &document_id, &title)
+    (async { update_document_title_impl(&state.db, &document_id, &title) })
+        .await
+        .map_err(crate::i18n::error)
 }
 
 pub(crate) fn update_document_title_impl(
@@ -190,6 +208,7 @@ mod tests {
             char_count: 5,
             voice: "Nec_24000".to_string(),
             provider: "salutespeech-legacy".into(),
+            speech_language: None,
             status: "ready".to_string(),
             error_message: None,
             created_at: 1_700_000_000_000,
@@ -299,6 +318,7 @@ mod tests {
             char_count: 42,
             voice: "Nec_24000".to_string(),
             provider: "salutespeech-legacy".into(),
+            speech_language: None,
             status: "ready".to_string(),
             error_message: None,
             created_at,

@@ -5,6 +5,8 @@ import { Dictation } from "@/pages/Dictation";
 import { Library } from "@/pages/Library";
 import { Settings } from "@/pages/Settings";
 import { Synthesize } from "@/pages/Synthesize";
+import { usePreferences } from "@/contexts/PreferencesContext";
+import { Onboarding } from "@/components/Onboarding";
 
 /**
  * Top-level route table. Every page sits beneath the {@link AppShell}
@@ -15,6 +17,8 @@ import { Synthesize } from "@/pages/Synthesize";
  * context provider can sit outside (and survive route changes).
  */
 function App() {
+  const { preferences } = usePreferences();
+  if (!preferences || preferences.onboarding_stage !== "complete") return <Onboarding />;
   return (
     <Routes>
       <Route element={<AppShell />}>

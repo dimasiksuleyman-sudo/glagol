@@ -6,6 +6,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import App from "./App";
 import { OverlayPill } from "@/components/dictation/OverlayPill";
 import { TtsProvider } from "@/contexts/TtsContext";
+import { PreferencesProvider } from "@/contexts/PreferencesContext";
 import { reportUiReady } from "@/lib/tauri";
 import "./index.css";
 
@@ -23,17 +24,17 @@ if (isOverlay) {
   document.body.style.background = "transparent";
   root.render(
     <React.StrictMode>
-      <OverlayPill />
+      <PreferencesProvider overlay><OverlayPill /></PreferencesProvider>
     </React.StrictMode>,
   );
 } else {
   root.render(
     <React.StrictMode>
-      <TtsProvider>
+      <PreferencesProvider><TtsProvider>
         <BrowserRouter>
           <App />
         </BrowserRouter>
-      </TtsProvider>
+      </TtsProvider></PreferencesProvider>
     </React.StrictMode>,
   );
 

@@ -1,0 +1,706 @@
+[
+  {
+    "en": "Too many audio files for one backup.",
+    "ru": "Слишком много аудиофайлов для одной резервной копии."
+  },
+  {
+    "en": "The backup folder does not exist: {}",
+    "ru": "Папка для резервной копии не существует: {}"
+  },
+  {
+    "en": "The specified path is not a folder: {}",
+    "ru": "Указанный путь не является папкой: {}"
+  },
+  {
+    "en": "The folder is not writable: {e}",
+    "ru": "Папка недоступна для записи: {e}"
+  },
+  {
+    "en": "Could not open the database: {e}",
+    "ru": "Не удалось открыть базу данных: {e}"
+  },
+  {
+    "en": "Could not read the document list: {e}",
+    "ru": "Не удалось прочитать список документов: {e}"
+  },
+  {
+    "en": "Too many documents in the database.",
+    "ru": "Слишком много документов в базе данных."
+  },
+  {
+    "en": "An audio file has no name.",
+    "ru": "Аудиофайл без имени."
+  },
+  {
+    "en": "manifest.json is missing",
+    "ru": "отсутствует manifest.json"
+  },
+  {
+    "en": "I/O error: {0}",
+    "ru": "Ошибка ввода-вывода: {0}"
+  },
+  {
+    "en": "Archive error: {0}",
+    "ru": "Ошибка при работе с архивом: {0}"
+  },
+  {
+    "en": "Could not read manifest.json: {0}",
+    "ru": "Не удалось прочитать manifest.json: {0}"
+  },
+  {
+    "en": "This backup was created by a newer Glagol version (format {found}, supported: {supported}). Update the app and try again.",
+    "ru": "Эта резервная копия создана более новой версией Glagol (формат {found}, поддерживается {supported}). Обновите приложение и попробуйте снова."
+  },
+  {
+    "en": "Could not back up the current state before restoring: {reason}",
+    "ru": "Не удалось создать резервную копию текущего состояния перед восстановлением: {reason}"
+  },
+  {
+    "en": "Counts in manifest.json do not match: {} documents, {} audio files.",
+    "ru": "Несоответствие счётчиков в manifest.json: {} документов, {} аудиофайлов."
+  },
+  {
+    "en": "The archive contains an unsafe entry: {name}",
+    "ru": "Архив содержит небезопасную запись: {name}"
+  },
+  {
+    "en": "glagol.db is missing from the archive.",
+    "ru": "В архиве отсутствует glagol.db."
+  },
+  {
+    "en": "The manifest lists {} audio files, but the archive contains {}.",
+    "ru": "Manifest заявляет {} аудиофайлов, в архиве найдено {}."
+  },
+  {
+    "en": "Could not determine a folder for the safety backup.",
+    "ru": "Не удалось определить папку для резервной копии текущего состояния."
+  },
+  {
+    "en": "Invalid entry name: {name}",
+    "ru": "Некорректное имя записи: {name}"
+  },
+  {
+    "en": "Could not locate the app data folder: {e}",
+    "ru": "Не удалось определить папку данных приложения: {e}"
+  },
+  {
+    "en": "The backup task was interrupted: {e}",
+    "ru": "Задача создания резервной копии прервалась: {e}"
+  },
+  {
+    "en": "Backup verification was interrupted: {e}",
+    "ru": "Проверка резервной копии прервалась: {e}"
+  },
+  {
+    "en": "Could not prepare a temporary database connection: {e}",
+    "ru": "Не удалось подготовить временное соединение с базой данных: {e}"
+  },
+  {
+    "en": "Could not lock the database: {e}",
+    "ru": "Не удалось получить блокировку базы данных: {e}"
+  },
+  {
+    "en": "The restore task was interrupted: {e}",
+    "ru": "Задача восстановления прервалась: {e}"
+  },
+  {
+    "en": "Could not read dictation settings: {e}",
+    "ru": "Не удалось прочитать настройки диктовки: {e}"
+  },
+  {
+    "en": "Invalid history setting (expected true or false).",
+    "ru": "Недопустимое значение переключателя истории (ожидается true или false)."
+  },
+  {
+    "en": "Invalid insertion mode (expected paste or clipboard_only).",
+    "ru": "Недопустимый режим вставки (ожидается paste или clipboard_only)."
+  },
+  {
+    "en": "Specify a recognition model (for example, whisper-large-v3-turbo).",
+    "ru": "Укажите модель распознавания (например whisper-large-v3-turbo)."
+  },
+  {
+    "en": "Specify a recognition provider.",
+    "ru": "Укажите провайдера распознавания."
+  },
+  {
+    "en": "Use the shortcut editor to change the shortcut and check for conflicts.",
+    "ru": "Хоткей меняется отдельной командой (set_dictation_hotkey) с проверкой конфликта."
+  },
+  {
+    "en": "Unknown dictation setting: {other}",
+    "ru": "Неизвестная настройка диктовки: {other}"
+  },
+  {
+    "en": "Could not save the dictation setting: {e}",
+    "ru": "Не удалось сохранить настройку диктовки: {e}"
+  },
+  {
+    "en": "Invalid recognition language (expected ru, en or auto).",
+    "ru": "Недопустимый язык распознавания (ожидается ru, en или auto)."
+  },
+  {
+    "en": "Could not start a transaction: {e}",
+    "ru": "Не удалось открыть транзакцию: {e}"
+  },
+  {
+    "en": "Could not save dictation settings: {e}",
+    "ru": "Не удалось сохранить настройки диктовки: {e}"
+  },
+  {
+    "en": "Could not apply the proxy: {e}",
+    "ru": "Не удалось применить прокси: {e}"
+  },
+  {
+    "en": "Could not create the HTTP client: {e}",
+    "ru": "Не удалось создать HTTP-клиент: {e}"
+  },
+  {
+    "en": "Invalid key: the provider rejected authorization (401). Check your API key.",
+    "ru": "Ключ недействителен: провайдер отклонил авторизацию (401). Проверьте ключ."
+  },
+  {
+    "en": "The audio file exceeds the provider's size limit (413).",
+    "ru": "Аудиофайл слишком большой для провайдера (413)."
+  },
+  {
+    "en": "Insufficient provider balance (402). Top up your account.",
+    "ru": "Недостаточно средств на балансе у провайдера (402). Пополните счёт."
+  },
+  {
+    "en": "The provider has temporarily limited requests (429). Try again later.",
+    "ru": "Провайдер временно ограничил частоту запросов (429). Попробуйте позже."
+  },
+  {
+    "en": "Could not reach the provider: {e}. Check the endpoint and proxy settings.",
+    "ru": "Не удалось связаться с провайдером: {e}. Проверьте адрес эндпоинта и прокси."
+  },
+  {
+    "en": "The provider returned an error: {msg}",
+    "ru": "Провайдер вернул ошибку: {msg}"
+  },
+  {
+    "en": "Unexpected provider response: {msg}",
+    "ru": "Неожиданный ответ провайдера: {msg}"
+  },
+  {
+    "en": "The microphone did not start sending audio. Check the device and try again.",
+    "ru": "Микрофон не начал передавать звук. Проверьте устройство и попробуйте ещё раз."
+  },
+  {
+    "en": "No microphone found. Connect an audio input device.",
+    "ru": "Микрофон не найден. Подключите устройство ввода звука."
+  },
+  {
+    "en": "Microphone access denied. Check Windows Settings → Privacy → Microphone.",
+    "ru": "Нет доступа к микрофону. Проверьте Параметры → Конфиденциальность → Микрофон."
+  },
+  {
+    "en": "The microphone does not support the required recording format: {details}.",
+    "ru": "Микрофон не поддерживает нужный формат записи: {details}."
+  },
+  {
+    "en": "Could not start microphone recording: {details}.",
+    "ru": "Не удалось запустить запись с микрофона: {details}."
+  },
+  {
+    "en": "Microphone connection lost: {details}.",
+    "ru": "Связь с микрофоном потеряна: {details}."
+  },
+  {
+    "en": "Recording is already in progress.",
+    "ru": "Запись уже идёт."
+  },
+  {
+    "en": "Could not read dictation history: {e}",
+    "ru": "Не удалось прочитать историю диктовки: {e}"
+  },
+  {
+    "en": "Could not clear dictation history: {e}",
+    "ru": "Не удалось очистить историю диктовки: {e}"
+  },
+  {
+    "en": "Could not read dictation usage: {e}",
+    "ru": "Не удалось прочитать счётчик диктовки: {e}"
+  },
+  {
+    "en": "Could not read the current shortcut: {e}",
+    "ru": "Не удалось прочитать текущий хоткей: {e}"
+  },
+  {
+    "en": "Invalid shortcut. Example: Ctrl+Shift+Space (modifier + key).",
+    "ru": "Некорректный хоткей. Пример: Ctrl+Shift+Space (модификатор + клавиша)."
+  },
+  {
+    "en": "Could not assign the shortcut; another app may be using it ({e}). The previous shortcut was kept.",
+    "ru": "Не удалось назначить хоткей — возможно, он занят другим приложением ({e}). Оставлен прежний хоткей."
+  },
+  {
+    "en": "Could not save the shortcut: {e}",
+    "ru": "Не удалось сохранить хоткей: {e}"
+  },
+  {
+    "en": "File too large ({mb:.1} MB; limit: 10 MB)",
+    "ru": "Файл слишком большой ({mb:.1} MB из 10 MB лимита)"
+  },
+  {
+    "en": "Document too long ({k:.0}K characters; limit: 500K)",
+    "ru": "Документ слишком длинный ({k:.0}K символов из 500K лимита)"
+  },
+  {
+    "en": "Specify a recognition model.",
+    "ru": "Укажите модель распознавания."
+  },
+  {
+    "en": "Invalid recognition language.",
+    "ru": "Недопустимый язык распознавания."
+  },
+  {
+    "en": "The server address must not contain a username, password, query or fragment.",
+    "ru": "Адрес сервера должен быть без логина, пароля, параметров и фрагмента."
+  },
+  {
+    "en": "Invalid server address.",
+    "ru": "Некорректный адрес сервера."
+  },
+  {
+    "en": "Use HTTPS. HTTP is allowed for localhost and a private office server IP address.",
+    "ru": "Используйте HTTPS. HTTP разрешён для localhost и частного IP-адреса офисного сервера."
+  },
+  {
+    "en": "Add your cloud service key in Dictation settings.",
+    "ru": "Добавьте ключ облачного сервиса в настройках диктовки."
+  },
+  {
+    "en": "On this computer",
+    "ru": "На этом компьютере"
+  },
+  {
+    "en": "Organization server",
+    "ru": "Сервер организации"
+  },
+  {
+    "en": "Cloud service",
+    "ru": "Облачный сервис"
+  },
+  {
+    "en": "Wait for the local model operation to finish.",
+    "ru": "Дождитесь операции с локальной моделью."
+  },
+  {
+    "en": "The title cannot be empty",
+    "ru": "Заголовок не может быть пустым"
+  },
+  {
+    "en": "Document not found",
+    "ru": "Документ не найден"
+  },
+  {
+    "en": "Enter text to synthesize.",
+    "ru": "Введите текст для озвучивания."
+  },
+  {
+    "en": "Text too long: maximum 500,000 characters.",
+    "ru": "Текст слишком большой: максимум 500 000 символов."
+  },
+  {
+    "en": "Unknown voice.",
+    "ru": "Неизвестный голос."
+  },
+  {
+    "en": "Another speech operation is still running.",
+    "ru": "Другая операция озвучки ещё выполняется."
+  },
+  {
+    "en": "The engine is not ready",
+    "ru": "Движок не готов"
+  },
+  {
+    "en": "Audio formats do not match.",
+    "ru": "Формат аудио не совпадает."
+  },
+  {
+    "en": "The text contains no speakable words.",
+    "ru": "В тексте нет произносимых слов."
+  },
+  {
+    "en": "Speech synthesis cancelled.",
+    "ru": "Озвучка отменена."
+  },
+  {
+    "en": "Cancel the current speech operation first.",
+    "ru": "Сначала отмените текущую операцию озвучки."
+  },
+  {
+    "en": "Empty audio",
+    "ru": "Пустое аудио"
+  },
+  {
+    "en": "The clipboard is busy in another app. Try again.",
+    "ru": "Буфер обмена занят другим приложением. Попробуйте ещё раз."
+  },
+  {
+    "en": "Could not paste the text: {e}.",
+    "ru": "Не удалось выполнить вставку: {e}."
+  },
+  {
+    "en": "Could not read the insertion mode: {e}",
+    "ru": "Не удалось прочитать режим вставки: {e}"
+  },
+  {
+    "en": "Could not read the input device: {e}",
+    "ru": "Не удалось прочитать устройство ввода: {e}"
+  },
+  {
+    "en": "opening .docx: {e:?}",
+    "ru": "открытие .docx: {e:?}"
+  },
+  {
+    "en": "parsing .docx: {e:?}",
+    "ru": "разбор .docx: {e:?}"
+  },
+  {
+    "en": "could not read the file: {e}",
+    "ru": "не удалось прочитать файл: {e}"
+  },
+  {
+    "en": "could not parse the file: {msg}",
+    "ru": "не удалось разобрать файл: {msg}"
+  },
+  {
+    "en": "could not determine the encoding: {msg}",
+    "ru": "не удалось определить кодировку: {msg}"
+  },
+  {
+    "en": "unrecognized file format (try saving as TXT/MD/DOCX/PDF)",
+    "ru": "формат файла не распознан (попробуйте сохранить в TXT/MD/DOCX/PDF)"
+  },
+  {
+    "en": "could not load Pdfium: {e}",
+    "ru": "не удалось загрузить Pdfium: {e}"
+  },
+  {
+    "en": "opening PDF: {e}",
+    "ru": "открытие PDF: {e}"
+  },
+  {
+    "en": "extracting page text: {e}",
+    "ru": "извлечение текста страницы: {e}"
+  },
+  {
+    "en": "BOM specifies {} but the contents cannot be decoded",
+    "ru": "BOM указал {} но содержимое не декодируется"
+  },
+  {
+    "en": "neither UTF-8 nor Windows-1251 could decode the file",
+    "ru": "ни UTF-8, ни Windows-1251 не подошли"
+  },
+  {
+    "en": "The downloaded file size does not match. Download it again.",
+    "ru": "Размер загруженного файла не совпадает. Повторите загрузку."
+  },
+  {
+    "en": "Integrity verification failed. Download the file again.",
+    "ru": "Проверка целостности не пройдена. Повторите загрузку."
+  },
+  {
+    "en": "Download cancelled. You can resume it later.",
+    "ru": "Загрузка отменена. Её можно продолжить."
+  },
+  {
+    "en": "Could not download the file. Check your connection and try again.",
+    "ru": "Не удалось скачать файл. Проверьте интернет и повторите загрузку."
+  },
+  {
+    "en": "The download server returned HTTP {}. Try again later.",
+    "ru": "Сервер загрузки вернул HTTP {}. Повторите позже."
+  },
+  {
+    "en": "The server returned an invalid file range.",
+    "ru": "Сервер вернул неверный диапазон файла."
+  },
+  {
+    "en": "Could not write the model file: {e}",
+    "ru": "Не удалось записать модель: {e}"
+  },
+  {
+    "en": "Download interrupted. Click Resume.",
+    "ru": "Загрузка прервана. Нажмите «Продолжить»."
+  },
+  {
+    "en": "The server sent a file with an incorrect size.",
+    "ru": "Сервер прислал файл неверного размера."
+  },
+  {
+    "en": "Could not load the dictation engine: {e}",
+    "ru": "Не удалось загрузить движок диктовки: {e}"
+  },
+  {
+    "en": "Incompatible dictation engine version.",
+    "ru": "Несовместимая версия движка диктовки."
+  },
+  {
+    "en": "Could not start the CPU dictation engine.",
+    "ru": "Не удалось запустить CPU-движок диктовки."
+  },
+  {
+    "en": "The model path is not UTF-8.",
+    "ru": "Путь модели не является UTF-8."
+  },
+  {
+    "en": "Could not open the model (code {status}). Try downloading it again.",
+    "ru": "Не удалось открыть модель (код {status}). Попробуйте скачать её заново."
+  },
+  {
+    "en": "Local recognition error (code {status}).",
+    "ru": "Ошибка локального распознавания (код {status})."
+  },
+  {
+    "en": "The engine returned no text.",
+    "ru": "Движок не вернул текст."
+  },
+  {
+    "en": "The model is missing or damaged. Download it in Dictation settings.",
+    "ru": "Модель отсутствует или повреждена. Скачайте её в настройках диктовки."
+  },
+  {
+    "en": "Download the local dictation engine in Settings.",
+    "ru": "Скачайте движок локальной диктовки в настройках."
+  },
+  {
+    "en": "Invalid file in the engine archive.",
+    "ru": "Недопустимый файл в архиве движка."
+  },
+  {
+    "en": "Engine files are damaged. Download them again.",
+    "ru": "Файлы движка повреждены. Повторите загрузку."
+  },
+  {
+    "en": "Invalid path in the engine archive.",
+    "ru": "Недопустимый путь в архиве движка."
+  },
+  {
+    "en": "Invalid file type in the archive.",
+    "ru": "Недопустимый тип файла в архиве."
+  },
+  {
+    "en": "Invalid path in the archive.",
+    "ru": "Недопустимый путь в архиве."
+  },
+  {
+    "en": "Restart Glagol to repair the engine: {e}",
+    "ru": "Перезапустите Глагол для восстановления движка: {e}"
+  },
+  {
+    "en": "Local models currently support Windows x64.",
+    "ru": "Локальные модели пока поддерживаются на Windows x64."
+  },
+  {
+    "en": "Wait for the current model operation to finish.",
+    "ru": "Дождитесь текущей операции с моделью."
+  },
+  {
+    "en": "Not enough disk space. Free at least 500 MB and retry the download.",
+    "ru": "Недостаточно места: освободите не менее 500 МБ и повторите загрузку."
+  },
+  {
+    "en": "Download cancelled.",
+    "ru": "Загрузка отменена."
+  },
+  {
+    "en": "Select another model or dictation mode first.",
+    "ru": "Сначала выберите другую модель или режим диктовки."
+  },
+  {
+    "en": "Unsupported recording format.",
+    "ru": "Неподдерживаемый формат записи."
+  },
+  {
+    "en": "The recording is too long for local dictation.",
+    "ru": "Запись слишком длинная для локальной диктовки."
+  },
+  {
+    "en": "The model was changed. Repeat your dictation.",
+    "ru": "Модель переключена. Повторите диктовку."
+  },
+  {
+    "en": "The address cannot be empty.",
+    "ru": "Адрес не может быть пустым."
+  },
+  {
+    "en": "Invalid address. Example: https://api.aitunnel.ru/v1",
+    "ru": "Некорректный адрес. Пример: https://api.aitunnel.ru/v1"
+  },
+  {
+    "en": "The {scheme} scheme is not supported. Use https:// (or http:// for localhost).",
+    "ru": "Схема «{scheme}» не поддерживается — используйте https:// (или http:// для localhost)."
+  },
+  {
+    "en": "The address has no host.",
+    "ru": "В адресе не указан хост."
+  },
+  {
+    "en": "External addresses require https:// to protect your API key. http:// is only allowed for a local server (localhost).",
+    "ru": "Для внешнего адреса разрешён только https:// — иначе ключ уйдёт открытым текстом. http:// допустим только для локального сервера (localhost)."
+  },
+  {
+    "en": "The proxy cannot be empty.",
+    "ru": "Прокси не может быть пустым."
+  },
+  {
+    "en": "Invalid proxy. Examples: host:port, login:pass@host:port, socks5://host:port",
+    "ru": "Некорректный прокси. Примеры: host:port, login:pass@host:port, socks5://host:port"
+  },
+  {
+    "en": "The {other} proxy scheme is not supported (http, https and socks5 only).",
+    "ru": "Схема прокси «{other}» не поддерживается (только http, https, socks5)."
+  },
+  {
+    "en": "The proxy address has no host.",
+    "ru": "В адресе прокси не указан хост."
+  },
+  {
+    "en": "The proxy address has no port (for example, host:8080).",
+    "ru": "В адресе прокси не указан порт (например host:8080)."
+  },
+  {
+    "en": "Open Text to speech settings and accept Silero's noncommercial terms.",
+    "ru": "Откройте настройки озвучки и подтвердите условия некоммерческого использования Silero."
+  },
+  {
+    "en": "Accept the current Silero terms before downloading.",
+    "ru": "Подтвердите актуальные условия Silero перед загрузкой."
+  },
+  {
+    "en": "Local text to speech currently supports Windows x64.",
+    "ru": "Локальная озвучка пока поддерживает Windows x64."
+  },
+  {
+    "en": "Operation cancelled.",
+    "ru": "Операция отменена."
+  },
+  {
+    "en": "Invalid path in the TTS archive.",
+    "ru": "Недопустимый путь в архиве TTS."
+  },
+  {
+    "en": "The engine is missing or damaged. Click Repair in Text to speech settings.",
+    "ru": "Движок отсутствует или повреждён. Нажмите «Восстановить» в настройках озвучки."
+  },
+  {
+    "en": "Engine files are damaged. Repair Text to speech in Settings.",
+    "ru": "Файлы движка повреждены. Восстановите озвучку в настройках."
+  },
+  {
+    "en": "Invalid TTS file type.",
+    "ru": "Недопустимый тип файла TTS."
+  },
+  {
+    "en": "Links are not allowed in the TTS archive.",
+    "ru": "Ссылка в архиве TTS недопустима."
+  },
+  {
+    "en": "Could not start the speech engine. Repair it in Settings.",
+    "ru": "Не удалось запустить движок озвучки. Восстановите его в настройках."
+  },
+  {
+    "en": "The Silero engine could not load the model.",
+    "ru": "Движок Silero не смог загрузить модель."
+  },
+  {
+    "en": "The speech engine exited.",
+    "ru": "Движок озвучки завершился."
+  },
+  {
+    "en": "Invalid speech engine response.",
+    "ru": "Некорректный ответ движка озвучки."
+  },
+  {
+    "en": "The speech engine did not respond within 90 seconds.",
+    "ru": "Движок озвучки не ответил за 90 секунд."
+  },
+  {
+    "en": "Could not synthesize a text fragment.",
+    "ru": "Не удалось озвучить фрагмент текста."
+  },
+  {
+    "en": "The audio fragment is too large.",
+    "ru": "Слишком большой фрагмент аудио."
+  },
+  {
+    "en": "Wait for the current dictation to finish.",
+    "ru": "Дождитесь завершения текущей диктовки."
+  },
+  {
+    "en": "Select an English recognition model.",
+    "ru": "Выберите английскую модель распознавания."
+  },
+  {
+    "en": "Select English or Russian for local recognition.",
+    "ru": "Выберите английский или русский язык локального распознавания."
+  },
+  {
+    "en": "Could not start the Moonshine worker.",
+    "ru": "Не удалось запустить движок Moonshine."
+  },
+  {
+    "en": "Recognition message exceeds the limit.",
+    "ru": "Сообщение распознавания превышает допустимый размер."
+  },
+  {
+    "en": "The Moonshine worker exited.",
+    "ru": "Движок Moonshine завершился."
+  },
+  {
+    "en": "Moonshine did not respond within 90 seconds.",
+    "ru": "Moonshine не ответил за 90 секунд."
+  },
+  {
+    "en": "Recognition cancelled.",
+    "ru": "Распознавание отменено."
+  },
+  {
+    "en": "Invalid Moonshine worker response.",
+    "ru": "Некорректный ответ движка Moonshine."
+  },
+  {
+    "en": "The Moonshine worker could not process this recording.",
+    "ru": "Движок Moonshine не смог обработать запись."
+  },
+  {
+    "en": "Recognition stopped after an engine or audio queue error.",
+    "ru": "Распознавание остановлено из-за ошибки движка или очереди аудио."
+  },
+  {
+    "en": "The recognition audio queue overflowed or the engine stopped. Repeat your dictation.",
+    "ru": "Очередь аудио переполнена или движок остановился. Повторите диктовку."
+  },
+  {
+    "en": "No active Moonshine recording.",
+    "ru": "Нет активной записи Moonshine."
+  },
+  {
+    "en": "The recognition worker exited.",
+    "ru": "Процесс распознавания завершился."
+  },
+  {
+    "en": "Not enough disk space for Moonshine. Free 200 MB and try again.",
+    "ru": "Недостаточно места для Moonshine. Освободите 200 МБ и повторите попытку."
+  },
+  {
+    "en": "Invalid Moonshine runtime archive.",
+    "ru": "Некорректный архив движка Moonshine."
+  },
+  {
+    "en": "Russian speech with punctuation. A compact model for everyday dictation.",
+    "ru": "Русская речь с пунктуацией. Компактный вариант для повседневной диктовки."
+  },
+  {
+    "en": "Russian speech with punctuation. An alternative model to compare on your own phrases.",
+    "ru": "Русская речь с пунктуацией. Альтернативный вариант — сравните на своих фразах."
+  },
+  {
+    "en": "Unknown local model.",
+    "ru": "Неизвестная локальная модель."
+  }
+]

@@ -33,8 +33,15 @@ const CODE_BLOCK_PLACEHOLDER: &str = "фрагмент кода";
 const FOOTNOTES_HEADING: &str = "Сноски:";
 
 pub fn parse(path: &Path) -> Result<ParsedDocument, ParseError> {
+    parse_with_language(path, crate::preferences::Language::Ru)
+}
+
+pub fn parse_with_language(
+    path: &Path,
+    language: crate::preferences::Language,
+) -> Result<ParsedDocument, ParseError> {
     let raw = fs::read_to_string(path)?;
-    let text = extract(&raw);
+    let text = extract_with_language(&raw, language);
     Ok(ParsedDocument {
         text,
         is_scanned_pdf: false,
@@ -42,7 +49,22 @@ pub fn parse(path: &Path) -> Result<ParsedDocument, ParseError> {
     })
 }
 
+#[cfg(test)]
 pub(crate) fn extract(markdown: &str) -> String {
+    extract_with_language(markdown, crate::preferences::Language::Ru)
+}
+
+fn extract_with_language(markdown: &str, language: crate::preferences::Language) -> String {
+    let code_placeholder = if language == crate::preferences::Language::En {
+        "code fragment"
+    } else {
+        CODE_BLOCK_PLACEHOLDER
+    };
+    let footnotes_heading = if language == crate::preferences::Language::En {
+        "Footnotes:"
+    } else {
+        FOOTNOTES_HEADING
+    };
     let options =
         Options::ENABLE_FOOTNOTES | Options::ENABLE_TABLES | Options::ENABLE_STRIKETHROUGH;
 
@@ -69,12 +91,12 @@ pub(crate) fn extract(markdown: &str) -> String {
             Event::Start(Tag::CodeBlock(_)) => {
                 in_code_block = true;
                 if current_footnote_label.is_some() {
-                    push_with_space(&mut current_footnote_body, CODE_BLOCK_PLACEHOLDER);
+                    push_with_space(&mut current_footnote_body, code_placeholder);
                 } else if in_table_cell {
-                    push_with_space(&mut current_cell_text, CODE_BLOCK_PLACEHOLDER);
+                    push_with_space(&mut current_cell_text, code_placeholder);
                 } else {
                     ensure_paragraph_break(&mut body);
-                    body.push_str(CODE_BLOCK_PLACEHOLDER);
+                    body.push_str(code_placeholder);
                 }
             }
             Event::Start(Tag::Image { .. }) => {
@@ -175,7 +197,7 @@ pub(crate) fn extract(markdown: &str) -> String {
     let mut out = String::with_capacity(body_trimmed.len() + 64);
     out.push_str(body_trimmed);
     out.push_str("\n\n");
-    out.push_str(FOOTNOTES_HEADING);
+    out.push_str(footnotes_heading);
     for (label, text) in footnotes {
         out.push('\n');
         out.push_str(&label);
@@ -223,6 +245,19 @@ fn push_with_space(s: &mut String, addition: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn english_labels_preserve_user_text() {
+        let out = extract_with_language(
+            "Текст пользователя[^a].\n\n```rust\nfn main() {}\n```\n\n[^a]: Русская сноска.",
+            crate::preferences::Language::En,
+        );
+        assert!(out.contains("Текст пользователя"));
+        assert!(out.contains("Русская сноска."));
+        assert!(out.contains("code fragment"));
+        assert!(out.contains("Footnotes:"));
+        assert!(!out.contains(CODE_BLOCK_PLACEHOLDER));
+    }
 
     #[test]
     fn extract_strips_basic_formatting() {

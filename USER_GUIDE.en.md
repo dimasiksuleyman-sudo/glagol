@@ -1,193 +1,150 @@
-# User Guide — Glagol
+# Glagol user guide — 0.5.0
 
-Glagol turns long Russian texts into audio. Paste text or load a file — get a recording in a professional voice that you can listen to anywhere: on a walk, on the road, while doing chores.
+[Русский](USER_GUIDE.ru.md) · [README](README.md)
 
-Built for people who'd rather listen than read off a screen. If you love audiobooks but want to listen to *your own* documents — articles, contracts, books in PDF — Glagol is made for exactly that.
-
-> **Note:** Glagol is Russian-first. Optional local Silero TTS v5.5 is for noncommercial use under CC BY-NC-SA 4.0.
-
----
+Glagol reads English and Russian documents aloud and turns dictation into text.
+This guide describes [Glagol 0.5.0](docs/releases/v0.5.0.md).
 
 ## Installation
 
-1. Download the `Glagol_0.4.1_x64-setup.exe` installer from the [Releases page](https://github.com/dimasiksuleyman-sudo/glagol/releases/tag/v0.4.1).
-2. Run the installer.
-3. Windows may show a SmartScreen warning ("Windows protected your PC"). This is normal for new apps without a commercial signing certificate. Click **"More info"** → **"Run anyway"**.
-4. Done — Glagol launches automatically.
+Windows 10/11 x64 is required. Run the locally built `Glagol_0.5.0_x64-setup.exe`.
+The installer offers English and Russian, starts with Windows' language and uses
+English as fallback. The unsigned installer may trigger SmartScreen: check the
+artifact's source and SHA-256 before choosing More info → Run anyway. Installation
+and removal do not download speech models or accept Silero's terms.
 
-Glagol's icon is a white microphone on a red-orange background. It appears
-on the application, shortcut and idle tray icon; during recording, the tray
-switches to a circular red microphone indicator.
+On first launch choose **English / Русский** using the large buttons. Your choice
+is saved immediately. Then choose dictation and synthesis independently on two
+speech cards. Install either, both or neither; Continue opens the app without
+requiring a download. Closing and reopening resumes the saved setup step. With no
+network you can still skip setup and use the library or existing local components.
 
-**What you need:**
-- Windows 10 or 11 (64-bit)
-- Allow 1.9 GB of additional free space for optional Silero.
-- Internet for downloads; local inference works offline afterwards.
+On a new installation, both speech languages initially match the chosen interface;
+dictation starts in local mode. Changing the interface later changes neither speech
+language. Switch interface language in the shell or Settings without restarting.
 
----
+## Updating an existing installation
 
-## Upgrade from 0.2.1 or 0.4.0
+Back up your library, exit through the tray, run the new installer and retain the
+existing directory (choose “Do not uninstall” on the existing-installation page).
+The first upgrade from 0.4.1 also asks for interface language. Existing local/server/cloud
+modes, models, voices, addresses and credentials are retained, including old implicit
+Russian/cloud settings. The speech cards show the saved configuration. A Russian
+voice previously kept in the webview is transferred once into saved preferences.
 
-Create a backup in Settings and exit Glagol through its tray menu. Run the
-0.4.1 installer, choose “Do not uninstall” and retain the original application
-directory. Existing WAV recordings play without Silero. Enable Silero separately
-for new synthesis; the old SaluteSpeech key is no longer needed. Dictation
-settings and its key are preserved. Version 0.3.0 was not published separately.
+Existing WAVs need no installed TTS engine to play. Old document metadata is preserved;
+new synthesis stores its speech language. Restoring an older backup remains supported.
+Installation, live-microphone and listening checks of this candidate remain separate
+from automated tests; see the [work log](docs/workstreams/english-first/log.md).
+Older [0.4.0 screenshots](docs/screenshots/windows10-0.4.0/README.md) are historical.
 
-[Release coverage and limitations](docs/releases/v0.4.1.md) ·
-[Installation screenshots](docs/screenshots/windows10-0.4.0/README.md).
+## Optional Silero synthesis
 
-![First launch of 0.4.0: Silero installs separately](docs/screenshots/windows10-0.4.0/t19-app-first-launch.png)
+Both Silero **v3_en (English)** and **v5.5 (Russian)** are noncommercial components
+under [CC BY-NC-SA 4.0](docs/third-party/Silero-LICENSE.txt), by Silero Team. Glagol
+itself is MIT licensed; dictation does not require Silero. Cloud providers have their
+own terms. This version has no commercial TTS provider or SaluteSpeech integration.
 
-## Optional local Silero TTS
+1. Choose the synthesis language on Synthesize or in Settings.
+2. Read and explicitly acknowledge the selected model's license.
+3. Download and enable, or select the exact previously downloaded model file.
+4. Pick a voice and preview it. English offers EN 0, EN 1, EN 2, EN 3 (default EN 0).
+   Russian offers Aidar, Baya, Kseniya, Xenia and Eugene. Numerical English voice
+   IDs do not imply a guaranteed gender or US/UK accent.
 
-Silero TTS v5.5 is **for noncommercial use**, CC BY-NC-SA 4.0, Silero Team.
-Dictation and office servers do not require it. Glagol's MIT license and the
-selected STT provider's terms apply independently.
+English model: **57.2 MB** (`v3_en.pt`); Russian: **145.4 MB** (`v5_5_ru.pt`).
+Both use **one 249.3 MB runtime**. First English install downloads about 306.5 MB;
+first Russian install 394.8 MB. With valid RU Silero installed, adding English needs
+only its 57.2 MB model. The app accounts for existing files. Initial setup/staging
+needs 1.9 GB free. No system Python, pip, CUDA or SAPI registration is required.
 
-1. Settings → “Локальная озвучка — Silero v5.5”.
-2. Read the full license and acknowledge noncommercial use.
-3. Download and enable: 145.4 MB model + 249.3 MB runtime; allow 1.9 GB free space.
-4. Select a voice and use the preview button.
+Changing a language does not install anything. Interrupted downloads can resume;
+size and SHA-256 must match before activation. Repair checks damaged components.
+If the model server is unreachable, import the exact pinned file; arbitrary `.pt`
+files are rejected. Removing a language model removes its acknowledgement but keeps
+the other model, shared runtime and library. Conditions are acknowledged per model.
 
-No manual Python, pip or CUDA installation. Download happens only by choice;
-subsequent synthesis is offline. If the server is unreachable, choose an exact
-previously downloaded `v5_5_ru.pt`. Resume preserves downloaded parts; repair
-reinstalls verified components; removal frees space and resets acknowledgement
-without removing the library or dictation.
+A full-verification receipt lasts 30 days. Expiry, changes to key files or a worker
+failure trigger full verification. Opening Synthesize preloads the selected model;
+status shows preparation. Warm models unload after 15 idle minutes or on exit.
+Installed local synthesis works offline. This is process isolation, not an OS sandbox.
 
-After a full check, Glagol remembers its result for 30 days. Later launches
-quickly compare key files; a full check repeats monthly, when files change, or
-after an engine failure. The first launch after this update performs one full
-background check. Opening Synthesize preloads the model; files are not downloaded
-or extracted again. While the action is unavailable, the page shows preparation
-status, a moving progress indicator and timing guidance. The worker used up to
-roughly 752 MB on the tested computer and unloads after 15 idle minutes or when
-the application exits.
+## Reading a document
 
-Yandex SpeechKit v3 for commercial TTS is planned later, not included in 0.4.1.
-SaluteSpeech and its key are no longer used.
+Paste text or choose TXT, Markdown, DOCX or text-based PDF, then select a voice and
+Synthesize and save to library. Input files are limited to 10 MB and 500,000 extracted
+characters. Scanned PDFs need external OCR. Text stays in the editor when switching
+languages. Language/model changes are disabled during the corresponding operation.
 
-## Your first synthesis
+Long text is split and synthesized sequentially with progress and cancellation.
+Cancellation does not publish a partial recording as a completed library document.
+English text uses English number/abbreviation handling; Russian retains its existing
+stress and Latin-letter conversion. Dates and unusual notation may be read component
+by component: listen to important text. Choosing a language is not translation.
 
-1. Open **Synthesize** (Озвучить).
-2. Paste text into the field — or click **"Choose file"** and load a document.
-3. Pick a voice.
-4. Click **"Synthesize and save to library."**
+The Library supports play/pause, seek, 0.5–2× playback speed, volume, rename, WAV
+export and delete. User titles, document contents and
+historical records are not translated when changing the interface.
 
-The finished audio appears in your Library. Processing time depends on text length and CPU. The first synthesis waits for a full integrity result only while a monthly or failure-triggered check is still running.
+## Dictation
 
-Synthesis supports cancellation. Numbers become words; unknown Latin words are spelled out and dates may be read component by component.
+Hold `Ctrl+Shift+Space`. Wait for Preparing microphone to change to the red recording
+indicator and level bars; then speak and release. You receive one final text, without
+partial text or hands-free capture. Early release cancels preparation. The microphone
+is closed between attempts. The maximum recording duration is 60 seconds; silence
+is filtered. Queue overflow or an engine failure discards the attempt with an error
+instead of inserting a truncated transcript.
 
-**Supported file formats:** `.txt`, `.md`, `.docx`, `.pdf`.
+On Dictation choose language, microphone, hotkey and Auto-paste or Clipboard only.
+History is off by default; enabling it retains the last 10 transcripts. Turning it
+off stops additions; Clear history removes existing entries. Total dictated is a
+lifetime duration counter. UI, dictation and TTS languages are independent; each
+speech language remembers its local model and voice.
 
-**Voices (5):** Aidar, Baya, Kseniya, Xenia, Eugene.
+- **On this computer:** English Moonshine Small Streaming (158.8 MB initial download,
+  including 16.5 MB native runtime); Russian GigaAM v3 CTC/RNNT (272.2–273.7 MB model
+  plus 20.1 MB runtime). Windows x64 CPU. Models install by explicit choice, work offline
+  after verification and survive updates. Other-language installed models remain listed.
+  Remove an inactive model to free space; shared runtime is retained. Local speech uses
+  explicit EN/RU; mixed-language detection and translation are not included.
+- **Organization server:** OpenAI-compatible `/audio/transcriptions`; `/models` is
+  optional. Example `http://192.168.1.10:8000/v1`. Your administrator installs the
+  server. HTTP is allowed only for localhost/private IPs on a trusted network; audio
+  and keys are unencrypted there. Hostnames need trusted HTTPS. System proxies are
+  bypassed; an explicit proxy is available.
+- **Cloud service:** choose a preset or compatible endpoint, model, key and optional
+  dictation-only proxy. The existing remote `auto` language option is retained.
 
-**Language:** Glagol is made for **Russian text**. Latin script and other languages are "an acquired taste."
+Office/cloud profiles and keys stay separate. Save and use activates an edited profile;
+changing endpoints does not send the old key to the new service. Local Moonshine streams
+audio internally while you hold the hotkey; GigaAM/server profiles keep their batch path.
+Large GigaAM recordings are split at quiet boundaries; punctuation and rare terms may suffer.
+Dictation and synthesis can run independently.
 
-**Length:** comfortably handles several thousand characters at once. Large documents (books, long PDFs) are processed in full — the text is automatically split into chunks.
+## Windows limitations
 
----
+- Auto-paste restores previous text clipboard contents, but cannot restore images/files.
+  Clipboard managers changing line endings can prevent restoration. Windows Win+V
+  history may retain transcripts independently of Glagol's history setting.
+- Elevated windows may need Glagol at the same privilege level. Two identically named
+  microphones are hard to distinguish. Background noise can pass the silence filter.
+- `Ctrl+Shift+Space` conflicts with Office's nonbreaking space; choose another hotkey,
+  for example `Alt+Shift+D`. A failed hotkey change retains the old binding.
 
-## Library
+## Backup, data and troubleshooting
 
-All your recordings live in the Library. Here you can:
+Data remains in `%LOCALAPPDATA%\app.glagol.desktop\`: SQLite `glagol.db`, WAVs in
+`audio_cache`, STT in `speech_models`, Silero in `tts_models`. Settings → Create backup
+writes a ZIP of the library. Restore shows a confirmation, makes a protective backup
+and restarts the app after replacing the library. Old libraries/backups remain readable.
+Models, runtime, OS credentials, previews and Silero consent are excluded; enable speech
+components separately on another PC. Credentials are stored in Windows Credential Manager.
 
-- **▶ Play** — built-in player with seeking
-- **✏ Rename** — click the pencil, type a new name
-- **⬇ Download** — save the WAV file anywhere
-- **🗑 Delete** — remove from the library
+If TTS cannot start, check selected language, model installation and acknowledgement;
+repair if necessary. If a voice sounds wrong, check the speech language and try another
+voice. For recognition errors, retry after checking microphone/model, and verify files
+if needed. Close Glagol through the tray before collecting logs so they are flushed;
+never attach private speech, documents or credentials.
 
-A new installation starts with an empty library:
-
-![Empty library in 0.4.0](docs/screenshots/windows10-0.4.0/t20-empty-library.png)
-
-Documents are sorted newest first. Each shows its voice, character count, and when it was created.
-
----
-
-## Dictation (voice input)
-
-Glagol also does the reverse — turns your speech into text and inserts it into any application. Hold the hotkey, wait until the microphone is ready, speak, then release — the recognized text appears wherever your cursor is.
-
-When you press the hotkey, the pill first shows **"Подготовка микрофона…" (Preparing microphone)**. Start speaking when the **red dot and audio-level bars** appear: audio is now arriving from the microphone. Preparation may take about a second on some Windows 11 devices. Speech before the microphone is ready is not recorded. Releasing the hotkey during preparation cancels the attempt without transcription. The microphone opens for each dictation and is released when it ends; there is no capture between dictations.
-
-Everything is configured on the **Dictation** (Диктовка) page:
-
-- **Insertion mode** — "Auto-paste" (text is inserted for you, Ctrl+V) or "Clipboard only" (text is placed on the clipboard, you paste it yourself).
-- **Hotkey** — `Ctrl+Shift+Space` by default. Click **"Change"** and physically press the combination you want (or type it by hand if it isn't captured). If the combination is taken by another app, the previous hotkey stays active.
-- **Microphone** — "System default" or a specific device.
-- **History** — **off** by default. Turn it on to keep the last 10 transcripts (the "Copy" button puts a transcript back on the clipboard so you can re-paste something you said earlier). Turning it off stops new lines being written, but what's already there stays visible until you press "Clear history."
-- **Total dictated** — a lifetime minute counter.
-
-Under **Settings → Dictation**, choose where recognition runs:
-
-- **On this computer (На этом компьютере).** Choose GigaAM v3 CTC or RNNT and click “Download and use”. Both recognize Russian with punctuation. Each model is about 272–274 MB; the shared engine adds a 20 MB download. Keep at least 500 MB free. Settings shows progress; you can cancel and resume. After verification, dictation works offline. No separate Python or server installation is needed. Currently supported on Windows x64 using the CPU.
-- **Organization server (Сервер организации).** Enter the shared server URL, e.g. `http://192.168.1.10:8000/v1`, its model name and an API key if required. `http://localhost:8000/v1` also works. The server must implement OpenAI-compatible `/audio/transcriptions`; `/models` is optional. One server can serve multiple office computers without downloading models to each. Your administrator installs the server itself. HTTP is allowed for localhost and private IPs; it carries audio and keys unencrypted, so use it only on trusted networks. Hostnames require HTTPS with a trusted certificate. System proxies are bypassed in this mode; an explicit proxy can be configured.
-- **Cloud service (Облачный сервис).** Choose a preset or enter your own endpoint, model and key. A dictation-only proxy can be configured without a system-wide VPN.
-
-Server and cloud settings and keys are stored separately. Choosing a mode in the list opens its settings; “Save and use” or “Download and use” activates it. When changing endpoints, the old key is not sent to the new service; enter the appropriate key again.
-
-Downloaded models live in `%LOCALAPPDATA%\app.glagol.desktop\speech_models`, separately from the installer and audio library, and survive application updates. Downloads use GitHub and Hugging Face, with size and SHA-256 verification; on-device dictation makes no network requests. Remove unused models from Settings; switch model or mode before removing the active model. “Verify files and repair” repairs a damaged download. The engine package is shared and retained.
-
-The model loads into memory when selected or on the first dictation after launch. Long recordings are split near quiet boundaries into segments of up to 24 seconds; punctuation and rare words may suffer at those boundaries. Check foreign terms manually.
-
-### Known limitations
-
-Dictation runs on top of Windows, which has its own rules. Here's what's worth knowing up front.
-
-1. **A non-text clipboard is lost.** In auto-paste mode Glagol briefly swaps the clipboard for the transcript, then restores the previous contents. If those were an image or files (not text), they can't be restored — they'll be gone from the clipboard.
-2. **Clipboard managers that change line endings.** Some clipboard managers "normalize" text (they rewrite line endings). That makes Glagol think someone else changed the clipboard, so out of caution it doesn't restore the previous contents.
-3. **Windows run as administrator.** If the active window is elevated (running as administrator) and Glagol isn't, the hotkey won't reach it and you can't dictate into that window. Run Glagol as administrator if you need this regularly.
-4. **Noisy surroundings.** The silence threshold is absolute. In a quiet room it rejects silence and lets speech through. In a noisy place (a café, a car), background hum can pass the filter and recognition may produce stray text. Dictate in relative quiet.
-5. **Two identical microphones.** If two devices with the same name are connected, Glagol can't tell them apart in the list — the selection may not point to the one you expect.
-6. **Win+V and clipboard history.** If Windows clipboard history (`Win+V`) is enabled, every transcript lands in it. You can turn it off in Windows Settings → Clipboard.
-7. **`Ctrl+Shift+Space` conflict in Office.** In Microsoft Office that combination inserts a non-breaking space. If you dictate into Office, assign a different hotkey (for example `Alt+Shift+D`) on the Dictation page.
-
-**Log-sending tip:** before attaching logs to a bug report, **close Glagol completely** — on exit it flushes everything still buffered into the log file. Otherwise the last lines may not make it to disk.
-
----
-
-## Backup and transfer
-
-Glagol can save your entire library (documents + audio files) into a single archive — handy for backups or moving to another computer.
-
-**Create a backup:**
-Settings → **"Create backup"** → choose a folder. You get one `.zip` file with everything inside.
-
-**Restore / move to a new computer:**
-1. On the new computer, install Glagol and enable optional Silero separately if you need new synthesis.
-2. Settings → **"Restore from backup"** → select your `.zip`.
-3. Glagol shows what it will replace and asks for confirmation.
-4. After restoring, the app restarts — your whole library is back in place.
-
-Before restoring, Glagol automatically creates a backup of the current state — just in case something goes wrong.
-
----
-
-## If something doesn't work
-
-**Synthesis does not start**
-Check Silero installation and acknowledgement in Settings. Repair damaged components, or import the exact downloaded model if its server is unreachable.
-
-**Installer won't run — Windows warning**
-That's SmartScreen. "More info" → "Run anyway." See the Installation section.
-
-**A voice sounds odd**
-Try another of the five voices — each has its own manner. If you're synthesizing non-Russian text, that won't work well — Glagol is Russian-only.
-
----
-
-## Feedback
-
-Found a bug or have a suggestion? Open an [Issue](https://github.com/dimasiksuleyman-sudo/glagol/issues) on GitHub.
-
----
-
-## About
-
-I built Glagol for myself, to listen to long texts instead of reading them off a screen. It turned into something worth sharing.
-
-Built together with Claude (Anthropic) — AI as a tool under human control.
-
-Open source, MIT license.
+[Report a bug](https://github.com/dimasiksuleyman-sudo/glagol/issues).
+Glagol is independent open source software under MIT, created to listen to long texts.

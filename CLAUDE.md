@@ -5,7 +5,7 @@
 
 ## Project overview
 
-**Glagol** is an open source Windows desktop application for synthesizing speech from long Russian texts and documents using optional offline Silero TTS v5.5, plus independent local/office/cloud dictation. It is built with Tauri 2.x (Rust backend) + React 19 + TypeScript (frontend). The MIT-licensed project is independent and NOT affiliated with Sberbank.
+**Glagol** is an English-first Windows application with independently selected EN/RU interface, dictation and synthesis languages. Optional offline Silero v5.5 RU / v3 EN share one runtime; English dictation uses native Moonshine Small Streaming and Russian uses GigaAM. Office/cloud profiles remain independent. Tauri 2.x + React 19 + TypeScript; MIT application independent of model/service providers.
 
 **Core value proposition:** local library of synthesized documents with resume-playback, MIT application with optional CC BY-NC-SA 4.0 noncommercial Silero model; dictation remains independent.
 
@@ -40,7 +40,7 @@
 - Tesseract / OCR libraries (out of scope for MVP)
 - `tauri-plugin-sql` (was original plan, replaced with rusqlite in Sprint 2 — see PR #15 logical for rationale)
 
-## Repository layout (0.4.0)
+## Repository layout (0.5.0)
 
 See [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md). TTS lives in `tts/silero`,
 `commands/tts.rs`, `commands/synthesize.rs`, `TtsContext` and `TtsSection`.
@@ -101,12 +101,24 @@ These constraints apply to changes. Resolve required architectural changes befor
 5. **Public Rust APIs documented with `///` doc comments.**
 6. **No `console.log` in production code.** Use proper logging (`tracing` on Rust side, dev-only `console.*` in TS).
 
-## TTS 0.4.0 — current contract
+## Speech 0.5.0 — current contract
+
+- UI, STT and TTS languages are independent. First-launch and 0.4.1 upgrade ask
+  English/Русский, then optional speech setup. Persist choices immediately; preserve
+  old implicit RU/cloud behavior on upgrade. UI switching never changes speech.
+- Typed EN/RU dictionaries + React context/Intl; native errors are localized at
+  IPC/event boundaries. Never translate user documents, names or historical records.
+- Moonshine DLLs/Small are pinned, separate downloads. Hidden same-EXE child starts
+  before Tauri and verifies files before loading; bounded queue/protocol, 16 kHz
+  streaming outside callback, final insertion once, explicit error on overflow.
+- Silero EN is v3_en, four numerical voices; shared RU runtime, independent receipts,
+  models and consent. Shared operation lock prevents runtime replacement during TTS.
+  Removing one language model retains the other model and runtime. No Kokoro/G2P.
 
 - `tts/silero` owns optional files, consent, worker and download state; STT is separate.
 - `TtsBackend` defines provider, voices, chunk limit and on-disk WAV result. Future
   Yandex SpeechKit v3 is out of scope until separately requested.
-- Silero v5.5 is CC BY-NC-SA 4.0, not MIT. Unchecked acknowledgement before first
+- Silero v5.5 RU and v3 EN are CC BY-NC-SA 4.0, not MIT. Unchecked acknowledgement before first
   download; backend checks model/license hash. No consent in transferred backups.
 - Model/runtime excluded from installer. Pin all artifacts, verify before execution;
   read `docs/local-tts-runtime.md`. No hub, pip, arbitrary model or SAPI installation.
@@ -114,7 +126,8 @@ These constraints apply to changes. Resolve required architectural changes befor
   logging or network inference. Cancel/timeout/parent exit terminate the worker.
 - Pipeline streams chunks to a temporary WAV and transactionally publishes one row.
   Keep legacy audio/provider metadata, dictation profiles, keys and usage seconds.
-- New database migration only; old rows use `salutespeech-legacy`, new TTS `silero`.
+- Append-only migration 6 adds nullable speech_language: old rows stay NULL.
+  Providers remain `salutespeech-legacy`, `silero` and new `silero-en`.
 - Retired OAuth/client/certificate and quota UI are gone. Only a narrow one-time
   cleanup of `Glagol/salutespeech_auth_key` remains; never touch STT keys.
 - Version sources: package.json, Cargo.toml, Cargo.lock, tauri.conf.json; run
@@ -140,4 +153,4 @@ These constraints apply to changes. Resolve required architectural changes befor
 - [Context format](docs/context/README.md)
 - [Historical workflow snapshot](docs/history/claude-before-context-2026-09-13.md) — history only.
 
-Updated 2026-09-13. Historical sprint roadmaps and PR protocols are not current instructions.
+Updated 2026-09-24. Historical sprint roadmaps and PR protocols are not current instructions.

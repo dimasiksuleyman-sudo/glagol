@@ -1,3 +1,5 @@
+import { t } from "@/i18n";
+import { useI18n } from "@/contexts/PreferencesContext";
 import { useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -24,9 +26,9 @@ export function dispositionPillText(
 ): string | null {
   switch (disposition) {
     case "pasted":
-      return "Вставлено";
+      return t("Inserted");
     case "clipboard":
-      return "Скопировано";
+      return t("Copied");
     case "discarded":
       return null;
     default: {
@@ -57,6 +59,7 @@ const HIDE_AFTER_ERROR_MS = 3000;
 const BAR_MULTIPLIERS = [0.45, 0.75, 1.0, 0.85, 1.0, 0.7, 0.4];
 
 export function OverlayPill() {
+  useI18n();
   // Showing the window does not mean the microphone is ready. Only the backend's
   // first audio packet may switch this view to the recording indicator.
   const [state, setState] = useState<DictationState>({ kind: "starting" });
@@ -121,12 +124,13 @@ export function OverlayPill() {
 }
 
 function PillContent({ state, level }: { state: DictationState; level: number }) {
+  useI18n();
   switch (state.kind) {
     case "starting":
       return (
         <>
           <span style={spinnerStyle} aria-hidden />
-          <span style={labelStyle}>Подготовка микрофона…</span>
+          <span style={labelStyle}>{t("Preparing microphone…")}</span>
         </>
       );
     case "recording":
@@ -140,7 +144,7 @@ function PillContent({ state, level }: { state: DictationState; level: number })
       return (
         <>
           <span style={spinnerStyle} aria-hidden />
-          <span style={labelStyle}>Распознаю…</span>
+          <span style={labelStyle}>{t("Transcribing…")}</span>
         </>
       );
     case "done": {
@@ -156,7 +160,7 @@ function PillContent({ state, level }: { state: DictationState; level: number })
           </span>
           <span style={labelStyle}>
             {label}
-            {state.truncated ? " · обрезано по 60 с" : ""}
+            {state.truncated ? t(" · limited to 60 s") : ""}
           </span>
         </>
       );
@@ -174,6 +178,7 @@ function PillContent({ state, level }: { state: DictationState; level: number })
 }
 
 function LevelBars({ level }: { level: number }) {
+  useI18n();
   return (
     <div style={barsStyle}>
       {BAR_MULTIPLIERS.map((multiplier, index) => {

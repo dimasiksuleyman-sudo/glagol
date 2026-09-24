@@ -6,6 +6,11 @@
 
 ## Нативный smoke без микрофона
 
+0.5.0 EN: [Moonshine worker, очередь и ресемплер](english-runtime.md). GigaAM ниже —
+обязательная RU-регрессия. Для EN/RU проверить early release, тишину, 60 секунд,
+вставку ровно один раз, ошибку переполнения и начало/конец фразы. Восемь сочетаний
+UI/диктовка/TTS; смена интерфейса обновляет overlay и трей.
+
 В отдельный `.scratch/stt-smoke-input` положить два закреплённых GGUF,
 `runtime-0.2.3.tar.gz` и публичный `example.wav`, названные в runtime-инструкции.
 Проверить хеши по `src-tauri/src/stt/local/catalog.rs`.

@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Glagol",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "identifier": "app.glagol.desktop",
   "build": {
     "beforeDevCommand": "pnpm dev",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Глагол",
+        "title": "Glagol",
         "width": 800,
         "height": 600
       }
@@ -34,8 +34,8 @@
       "nsis"
     ],
     "category": "Productivity",
-    "shortDescription": "Диктовка и локальная озвучка русских текстов",
-    "longDescription": "Диктовка на компьютере, через офисный сервер или облако. Необязательная локальная озвучка Silero TTS v5.5 для некоммерческого использования, CC BY-NC-SA 4.0. Компоненты скачиваются отдельно по выбору пользователя.",
+    "shortDescription": "English and Russian dictation and offline text to speech",
+    "longDescription": "Independent English and Russian interface, dictation and synthesis. Optional Moonshine/GigaAM dictation and noncommercial Silero TTS components download separately. One compact application, with no bundled speech models or speech runtimes.",
     "publisher": "Glagol Contributors",
     "copyright": "Copyright (c) 2026 Glagol Contributors",
     "licenseFile": "../LICENSE",

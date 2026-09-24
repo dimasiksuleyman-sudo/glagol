@@ -44,33 +44,37 @@ pub const BACKUP_RESTORE_PROGRESS_EVENT: &str = "backup-restore-progress";
 
 #[tauri::command]
 pub async fn create_backup(app: AppHandle, target_folder: String) -> Result<String, String> {
-    let source_data_dir = app
-        .path()
-        .app_local_data_dir()
-        .map_err(|e| format!("Не удалось определить папку данных приложения: {e}"))?;
-    let target_path = PathBuf::from(&target_folder);
-    let app_version = env!("CARGO_PKG_VERSION").to_string();
+    (async {
+        let source_data_dir = app
+            .path()
+            .app_local_data_dir()
+            .map_err(|e| format!("Не удалось определить папку данных приложения: {e}"))?;
+        let target_path = PathBuf::from(&target_folder);
+        let app_version = env!("CARGO_PKG_VERSION").to_string();
 
-    let emit_handle = app.clone();
-    let result: Result<PathBuf, String> = tauri::async_runtime::spawn_blocking(move || {
-        create_backup_impl(
-            &source_data_dir,
-            &target_path,
-            &app_version,
-            BACKUP_FILENAME_PREFIX,
-            |current, total| {
-                let _ = emit_handle.emit(
-                    BACKUP_PROGRESS_EVENT,
-                    BackupProgressEvent { current, total },
-                );
-            },
-        )
-        .map_err(|e| e.to_string())
+        let emit_handle = app.clone();
+        let result: Result<PathBuf, String> = tauri::async_runtime::spawn_blocking(move || {
+            create_backup_impl(
+                &source_data_dir,
+                &target_path,
+                &app_version,
+                BACKUP_FILENAME_PREFIX,
+                |current, total| {
+                    let _ = emit_handle.emit(
+                        BACKUP_PROGRESS_EVENT,
+                        BackupProgressEvent { current, total },
+                    );
+                },
+            )
+            .map_err(|e| e.to_string())
+        })
+        .await
+        .map_err(|e| format!("Задача создания резервной копии прервалась: {e}"))?;
+
+        result.map(|path| path.to_string_lossy().into_owned())
     })
     .await
-    .map_err(|e| format!("Задача создания резервной копии прервалась: {e}"))?;
-
-    result.map(|path| path.to_string_lossy().into_owned())
+    .map_err(crate::i18n::error)
 }
 
 /// Pre-flight check for a candidate restore source. Reads the
@@ -80,77 +84,86 @@ pub async fn create_backup(app: AppHandle, target_folder: String) -> Result<Stri
 /// touches user data — safe to call from any UI flow.
 #[tauri::command]
 pub async fn validate_backup(source_path: String) -> Result<BackupManifest, String> {
-    let path = PathBuf::from(source_path);
-    tauri::async_runtime::spawn_blocking(move || {
-        validate_backup_impl(&path).map_err(|e| e.to_string())
+    (async {
+        let path = PathBuf::from(source_path);
+        tauri::async_runtime::spawn_blocking(move || {
+            validate_backup_impl(&path).map_err(|e| e.to_string())
+        })
+        .await
+        .map_err(|e| format!("Проверка резервной копии прервалась: {e}"))?
     })
     .await
-    .map_err(|e| format!("Проверка резервной копии прервалась: {e}"))?
+    .map_err(crate::i18n::error)
 }
 
 #[tauri::command]
 pub async fn restore_backup(app: AppHandle, source_path: String) -> Result<(), String> {
-    let source_zip = PathBuf::from(source_path);
-    let target_data_dir = app
-        .path()
-        .app_local_data_dir()
-        .map_err(|e| format!("Не удалось определить папку данных приложения: {e}"))?;
-    let app_version = env!("CARGO_PKG_VERSION").to_string();
+    (async {
+        let source_zip = PathBuf::from(source_path);
+        let target_data_dir = app
+            .path()
+            .app_local_data_dir()
+            .map_err(|e| format!("Не удалось определить папку данных приложения: {e}"))?;
+        let app_version = env!("CARGO_PKG_VERSION").to_string();
 
-    // Swap the real `Connection` out of `AppState` for an in-memory
-    // placeholder. Releasing the `Mutex` guard alone is not enough on
-    // Windows: the underlying SQLite file handle is owned by the
-    // `Connection` value, and `fs::remove_file(glagol.db)` returns
-    // `ERROR_SHARING_VIOLATION` (os error 32) while any handle is
-    // still open — even though SQLite uses `FILE_SHARE_DELETE`. Taking
-    // the `Connection` out by `mem::replace` and dropping it
-    // explicitly closes the handle before the destructive work
-    // starts.
-    //
-    // On success, `app.restart()` replaces the process and the
-    // placeholder is forgotten. On failure, [`try_restore_real_connection`]
-    // best-effort swaps a fresh `Connection` back so the user can keep
-    // using the app from the original (un-destroyed) data without a
-    // forced restart.
-    let placeholder = Connection::open_in_memory()
-        .map_err(|e| format!("Не удалось подготовить временное соединение с базой данных: {e}"))?;
-    let real_conn = {
-        let state = app.state::<AppState>();
-        let mut guard = state
-            .db
-            .lock()
-            .map_err(|e| format!("Не удалось получить блокировку базы данных: {e}"))?;
-        std::mem::replace(&mut *guard, placeholder)
-    };
-    // Explicit drop documents intent: this is *the* moment the SQLite
-    // file handle closes. Without the explicit drop the compiler is
-    // still free to keep `real_conn` alive until the end of the
-    // function — which is exactly the bug we're fixing.
-    drop(real_conn);
+        // Swap the real `Connection` out of `AppState` for an in-memory
+        // placeholder. Releasing the `Mutex` guard alone is not enough on
+        // Windows: the underlying SQLite file handle is owned by the
+        // `Connection` value, and `fs::remove_file(glagol.db)` returns
+        // `ERROR_SHARING_VIOLATION` (os error 32) while any handle is
+        // still open — even though SQLite uses `FILE_SHARE_DELETE`. Taking
+        // the `Connection` out by `mem::replace` and dropping it
+        // explicitly closes the handle before the destructive work
+        // starts.
+        //
+        // On success, `app.restart()` replaces the process and the
+        // placeholder is forgotten. On failure, [`try_restore_real_connection`]
+        // best-effort swaps a fresh `Connection` back so the user can keep
+        // using the app from the original (un-destroyed) data without a
+        // forced restart.
+        let placeholder = Connection::open_in_memory().map_err(|e| {
+            format!("Не удалось подготовить временное соединение с базой данных: {e}")
+        })?;
+        let real_conn = {
+            let state = app.state::<AppState>();
+            let mut guard = state
+                .db
+                .lock()
+                .map_err(|e| format!("Не удалось получить блокировку базы данных: {e}"))?;
+            std::mem::replace(&mut *guard, placeholder)
+        };
+        // Explicit drop documents intent: this is *the* moment the SQLite
+        // file handle closes. Without the explicit drop the compiler is
+        // still free to keep `real_conn` alive until the end of the
+        // function — which is exactly the bug we're fixing.
+        drop(real_conn);
 
-    let emit_handle = app.clone();
-    let restore_result: Result<(), String> = tauri::async_runtime::spawn_blocking(move || {
-        restore_backup_impl(
-            &source_zip,
-            &target_data_dir,
-            &app_version,
-            |current, total| {
-                let _ = emit_handle.emit(
-                    BACKUP_RESTORE_PROGRESS_EVENT,
-                    BackupProgressEvent { current, total },
-                );
-            },
-        )
-        .map_err(|e| e.to_string())
+        let emit_handle = app.clone();
+        let restore_result: Result<(), String> = tauri::async_runtime::spawn_blocking(move || {
+            restore_backup_impl(
+                &source_zip,
+                &target_data_dir,
+                &app_version,
+                |current, total| {
+                    let _ = emit_handle.emit(
+                        BACKUP_RESTORE_PROGRESS_EVENT,
+                        BackupProgressEvent { current, total },
+                    );
+                },
+            )
+            .map_err(|e| e.to_string())
+        })
+        .await
+        .map_err(|e| format!("Задача восстановления прервалась: {e}"))?;
+
+        if restore_result.is_err() {
+            try_restore_real_connection(&app);
+        }
+
+        restore_result
     })
     .await
-    .map_err(|e| format!("Задача восстановления прервалась: {e}"))?;
-
-    if restore_result.is_err() {
-        try_restore_real_connection(&app);
-    }
-
-    restore_result
+    .map_err(crate::i18n::error)
 }
 
 /// Best-effort recovery after a failed restore. Walks `app_local_data_dir`

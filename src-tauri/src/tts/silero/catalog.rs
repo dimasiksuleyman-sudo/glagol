@@ -21,3 +21,10 @@ pub const MODEL: Artifact = Artifact {
     bytes: 145420684,
     sha256: "50081637b602126ee06cb3bc8a744d25651d2da149ee8864b9a379bfdd934437",
 };
+
+pub const EN_MODEL: Artifact = Artifact {
+    file: "v3_en.pt",
+    url: "https://models.silero.ai/models/tts/en/v3_en.pt",
+    bytes: 57194546,
+    sha256: "02b71034d9f13bc4001195017bac9db1c6bb6115e03fea52983e8abcff13b665",
+};

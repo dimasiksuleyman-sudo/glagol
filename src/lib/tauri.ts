@@ -39,6 +39,7 @@ export async function synthesizeDocument(
   text: string,
   voice: string,
   onProgress: (event: ProgressEvent) => void,
+  provider = "silero",
 ): Promise<string> {
   const channel = new Channel<ProgressEvent>();
   channel.onmessage = onProgress;
@@ -46,6 +47,7 @@ export async function synthesizeDocument(
     text,
     voice,
     onProgress: channel,
+    provider,
   });
 }
 
@@ -85,6 +87,7 @@ export interface DocumentRecord {
   char_count: number;
   voice: string;
   provider: string;
+  speech_language: "en" | "ru" | null;
   status: string;
   error_message: string | null;
   /** Unix epoch milliseconds. */
@@ -278,7 +281,7 @@ export async function relaunchApp(): Promise<void> {
 export type SpeechMode = "local" | "server" | "cloud";
 export interface SpeechProfile { mode: SpeechMode; base_url: string; model: string; proxy: string; language: string }
 export interface SpeechSettings { profile: SpeechProfile; active_mode: SpeechMode; key_stored: boolean }
-export interface LocalModel { id: string; name: string; description: string; bytes: number; installed: boolean; partial_bytes: number }
+export interface LocalModel { id: string; name: string; description: string; language: "en" | "ru"; provider: string; runtime_bytes: number; download_bytes: number; bytes: number; installed: boolean; partial_bytes: number }
 export interface ModelProgress { model_id: string; stage: string; downloaded: number; total: number }
 export interface LocalModelsStatus { supported: boolean; runtime_bytes: number; runtime_installed: boolean; models: LocalModel[]; progress: ModelProgress | null }
 export const getSpeechSettings = (mode?: SpeechMode) => invoke<SpeechSettings>("get_speech_settings", { mode });

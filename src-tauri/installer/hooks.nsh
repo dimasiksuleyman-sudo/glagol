@@ -6,16 +6,20 @@ Function GlagolComponentsPage
   Call SkipIfPassive
   IfSilent 0 +2
     Abort
-  !insertmacro MUI_HEADER_TEXT "Glagol" "Dictation / Диктовка · TTS / Озвучка"
+  ${If} $LANGUAGE == 1049
+    !insertmacro MUI_HEADER_TEXT "Glagol" "Диктовка и озвучка EN/RU"
+  ${Else}
+    !insertmacro MUI_HEADER_TEXT "Glagol" "English and Russian dictation and speech"
+  ${EndIf}
   nsDialogs::Create 1018
   Pop $0
   ${If} $0 == error
     Abort
   ${EndIf}
   ${If} $LANGUAGE == 1049
-    ${NSD_CreateLabel} 0 0 100% 135u "Глагол можно использовать для диктовки, в том числе в организации и через собственный офисный сервер.$\r$\n$\r$\nОзвучка Silero TTS v5.5 — дополнительный компонент под лицензией CC BY-NC-SA 4.0 для некоммерческого использования.$\r$\n$\r$\nМодель и движок скачиваются отдельно, только по вашему выбору в настройках. Для диктовки Silero не нужна.$\r$\n$\r$\nСам Глагол распространяется под MIT. Условия выбранного провайдера диктовки действуют отдельно."
+    ${NSD_CreateLabel} 0 0 100% 135u "Glagol поддерживает английские и русские интерфейс, диктовку и озвучку. Их языки выбираются независимо.$\r$\n$\r$\nОбе модели озвучки Silero, RU и EN, — необязательные компоненты под CC BY-NC-SA 4.0 для некоммерческого использования.$\r$\n$\r$\nМодели и движки скачиваются отдельно по вашему выбору. Silero RU/EN используют общий runtime. Для диктовки Silero не нужна.$\r$\n$\r$\nКод Glagol — MIT. Диктовка доступна организациям; условия выбранной модели или провайдера действуют отдельно."
   ${Else}
-    ${NSD_CreateLabel} 0 0 100% 135u "Glagol supports dictation, including organization use with your own office server.$\r$\n$\r$\nSilero TTS v5.5 is an optional component under CC BY-NC-SA 4.0 for noncommercial use.$\r$\n$\r$\nThe model and runtime download separately only when you choose them in Settings. Dictation does not require Silero.$\r$\n$\r$\nGlagol itself is MIT licensed. Your chosen dictation provider's terms apply separately."
+    ${NSD_CreateLabel} 0 0 100% 135u "Glagol supports English and Russian interface, dictation and synthesis. Choose each language independently.$\r$\n$\r$\nBoth Silero TTS models, RU and EN, are optional components under CC BY-NC-SA 4.0 for noncommercial use.$\r$\n$\r$\nModels and runtimes download separately by choice. Silero RU/EN share one runtime. Dictation does not require Silero.$\r$\n$\r$\nGlagol code is MIT licensed. Dictation supports organization use; each selected model or provider has its own terms."
   ${EndIf}
   Pop $0
   nsDialogs::Show

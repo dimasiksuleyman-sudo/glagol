@@ -1,0 +1,21 @@
+{
+  "id": "silero-v3-en",
+  "version": "v3",
+  "language": "en",
+  "file": "v3_en.pt",
+  "url": "https://models.silero.ai/models/tts/en/v3_en.pt",
+  "bytes": 57194546,
+  "sha256": "02b71034d9f13bc4001195017bac9db1c6bb6115e03fea52983e8abcff13b665",
+  "runtime": "silero-cpu-win-x64-py311-torch271-1",
+  "license": {
+    "spdx": "CC-BY-NC-SA-4.0",
+    "source": "https://github.com/snakers4/silero-models/blob/d9355348e2781dc8fa25a135d1602c530afae24c/LICENSE",
+    "sha256": "1349a4b6148492b44f629e64eed676612e234fe9a839e4f3b277c1482c8849f1"
+  },
+  "provenance": {
+    "downloaded_from": "https://huggingface.co/Alevxis/silero_v3_en/resolve/23e0774444b3caf601a13d24ee4fc9a75608a0dd/v3_en.pt",
+    "matching_mirror": "https://huggingface.co/Derur/silero-models/tree/main/tts/en/en_v3",
+    "origin_verified": false,
+    "notes": "Official endpoint timed out in this environment; mirror LFS hashes agree. Package Python source and pickle globals inspected before probe. Application download must still match the pinned hash."
+  }
+}

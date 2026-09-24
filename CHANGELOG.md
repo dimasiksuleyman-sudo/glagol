@@ -11,6 +11,18 @@ the per-session master logs under [`docs/day-logs/`](docs/day-logs/).
 
 ## [Unreleased]
 
+## [v0.5.0] — 2026-09-24
+
+[Release notes, validation and limits / проверка и ограничения](docs/releases/v0.5.0.md).
+
+### Added
+
+- English-first EN/RU interface, installer, tray, overlay, player and guides; first-launch language choice also appears after upgrading from 0.4.1. / EN-first интерфейс, установщик, трей, overlay, плеер и руководства; выбор EN/RU появляется и при первом обновлении с 0.4.1.
+- Independent interface, dictation and synthesis languages, remembered models/voices per language, optional first-run speech setup. Existing profiles, keys and Russian voice are retained. / Независимые языки интерфейса, диктовки и озвучки, свои модели/голоса на язык, необязательная настройка речи; прежние профили, ключи и русский голос сохраняются.
+- Local English Moonshine Small Streaming dictation in a separate native worker; hold/speak/release produces one final text. GigaAM and remote profiles retain their existing path. / Локальная английская диктовка Moonshine Small Streaming в отдельном нативном процессе; удержать/говорить/отпустить — один готовый текст. Путь GigaAM и серверов сохранён.
+- Optional Silero English v3_en, four voices and English text handling, sharing the existing RU Python/PyTorch runtime. Adding English to a valid RU installation needs only a 57.2 MB model. Both models retain separate noncommercial acknowledgement and 30-day verification receipts. / Английская Silero v3_en, четыре голоса и свой адаптер текста с общим RU runtime: при исправной RU установке нужна только модель 57,2 МБ. Согласия и 30-дневные отметки проверки раздельны для обеих некоммерческих моделей.
+- New synthesis records store speech language; old metadata, WAVs and backups remain readable. Speech components remain outside the installer and library backups. / Новые озвучки сохраняют язык; старые метаданные, WAV и бэкапы читаются. Речевые компоненты не входят в установщик и бэкапы библиотеки.
+
 ## [v0.4.1] — 2026-09-15
 
 [Release notes, проверка и ограничения / validation and limits](docs/releases/v0.4.1.md).
@@ -240,7 +252,8 @@ the per-session master logs under [`docs/day-logs/`](docs/day-logs/).
   visible progress bar so the user can see «Озвучиваем фрагмент 5 из 12».
 - **System Save As dialog** for choosing where the resulting WAV goes.
 
-[Unreleased]: https://github.com/dimasiksuleyman-sudo/glagol/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/dimasiksuleyman-sudo/glagol/compare/v0.5.0...HEAD
+[v0.5.0]: https://github.com/dimasiksuleyman-sudo/glagol/releases/tag/v0.5.0
 [v0.4.1]: https://github.com/dimasiksuleyman-sudo/glagol/releases/tag/v0.4.1
 [v0.4.0]: https://github.com/dimasiksuleyman-sudo/glagol/releases/tag/v0.4.0
 [v0.2.1]: https://github.com/dimasiksuleyman-sudo/glagol/releases/tag/v0.2.1

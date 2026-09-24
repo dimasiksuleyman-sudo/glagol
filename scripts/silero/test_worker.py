@@ -9,6 +9,14 @@ spec.loader.exec_module(worker)
 sys.stdout=original
 
 class TextTests(unittest.TestCase):
+    def test_english_is_independent_and_keeps_numbers(self):
+        text=worker.normalize_english("USB PDF 2026 $12.50 14:30 001 20%")
+        self.assertIn("U S B P D F",text)
+        self.assertIn("two thousand and twenty-six",text)
+        self.assertIn("twelve point five dollars",text)
+        self.assertIn("zero zero one",text)
+        self.assertIn("twenty percent",text)
+        self.assertNotRegex(text,r"[а-яёА-ЯЁ0-9]")
     def test_numbers_and_latin_do_not_disappear(self):
         text=worker.normalize("Windows USB 2026,56 14:30 12.09.2026")
         self.assertIn("виндоус ю эс би",text)

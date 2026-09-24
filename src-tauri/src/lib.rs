@@ -32,6 +32,12 @@ pub mod backup;
 pub mod logging;
 
 // Shared Tauri application state.
+pub mod i18n;
+
+pub fn moonshine_worker_entry() -> Option<i32> {
+    stt::moonshine::child_entry()
+}
+pub mod preferences;
 pub mod state;
 
 // Dictation microphone recorder (Sprint 6 PR2): capture → 16 kHz mono S16LE.
@@ -71,6 +77,14 @@ impl dictation::LevelSink for tauri::AppHandle {
 /// separate window that never `invoke`s, so there is no channel to bind.
 impl dictation::pipeline::DictationEmitter for tauri::AppHandle {
     fn emit_state(&self, state: dictation::pipeline::DictationState) {
+        let state = match state {
+            dictation::pipeline::DictationState::Error { message } => {
+                dictation::pipeline::DictationState::Error {
+                    message: i18n::error(message),
+                }
+            }
+            other => other,
+        };
         // The tray and overlay share the same readiness signal. Opening a
         // stream alone is not evidence that the microphone is capturing audio.
         dictation::session::set_tray_recording(
@@ -120,7 +134,10 @@ pub fn run() {
             // Failure here is fatal: silently continuing with a broken DB would
             // corrupt every subsequent write.
             let db_path = crate::paths::database_path(app.handle())?;
+            let existing_database = db_path.exists();
             let conn = crate::db::init_database(&db_path)?;
+            preferences::initialize(&conn, existing_database)?;
+            preferences::activate(preferences::get(&conn)?.ui_language);
 
             // Ensure the audio cache directory exists. Synthesis writes
             // straight into it without a per-call mkdir, so the directory
@@ -144,11 +161,16 @@ pub fn run() {
                 paths::local_models_root(app.handle())?,
             )));
 
-            app.manage(std::sync::Arc::new(tts::silero::Silero::new(
-                paths::tts_models_root(app.handle())?,
-            )));
+            let silero = std::sync::Arc::new(tts::silero::Silero::new(paths::tts_models_root(
+                app.handle(),
+            )?));
+            app.manage(tts::silero::models::Models::new(silero.clone()));
+            app.manage(silero);
             tts::silero::Silero::verification_task(app.handle().clone());
             tts::silero::Silero::idle_task(app.handle().clone());
+            app.state::<std::sync::Arc<stt::local::LocalModels>>()
+                .moonshine
+                .idle_task();
             let cleanup_marker = db_path.with_file_name("legacy-tts-key-cleaned");
             tauri::async_runtime::spawn_blocking(move || {
                 if !cleanup_marker.exists() {
@@ -228,6 +250,13 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            commands::preferences::get_preferences,
+            commands::preferences::set_ui_language,
+            commands::preferences::migrate_legacy_voice,
+            commands::preferences::complete_onboarding,
+            commands::preferences::set_tts_preference,
+            commands::preferences::set_stt_preference,
+            commands::preferences::is_dictating,
             commands::metrics::report_ui_ready,
             commands::synthesize::synthesize_document,
             commands::tts::tts_status,
@@ -275,9 +304,9 @@ pub fn run() {
             // detached zombie (D2/lib.rs). Best-effort — the process is leaving.
             if let tauri::RunEvent::Exit = event {
                 app_handle.state::<state::AppState>().recorder.shutdown();
-                app_handle
-                    .state::<std::sync::Arc<tts::silero::Silero>>()
-                    .stop();
+                let models = app_handle.state::<tts::silero::models::Models>();
+                models.ru.stop();
+                models.en.stop();
             }
         });
 }

@@ -1,3 +1,6 @@
+import { currentLocale } from "@/i18n";
+import { t } from "@/i18n";
+import { useI18n } from "@/contexts/PreferencesContext";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { listen } from "@tauri-apps/api/event";
@@ -17,6 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { DevicePicker } from "@/components/dictation/DevicePicker";
 import { DictationHistory } from "@/components/dictation/DictationHistory";
 import { HotkeyEditor } from "@/components/dictation/HotkeyEditor";
+import { DictationSection } from "@/components/settings/DictationSection";
 import { pluralizeMinutes } from "@/lib/pluralize";
 import {
   clearDictationHistory,
@@ -53,6 +57,7 @@ type LoadState =
  * without a manual reload (the event-driven refresh convention).
  */
 export function Dictation() {
+  useI18n();
   const [load, setLoad] = useState<LoadState>({ kind: "loading" });
   const [settings, setSettings] = useState<DictationSettings | null>(null);
   const [devices, setDevices] = useState<string[]>([]);
@@ -146,7 +151,7 @@ export function Dictation() {
     // Throws on conflict/invalid — HotkeyEditor surfaces it and stays open.
     await setDictationHotkey(hotkey);
     setSettings((s) => (s ? { ...s, hotkey } : s));
-    toast.success("Хоткей обновлён.");
+    toast.success(t("Shortcut updated."));
   }
 
   async function handleHistoryToggle(enabled: boolean) {
@@ -173,7 +178,7 @@ export function Dictation() {
     try {
       await clearDictationHistory();
       setHistory([]);
-      toast.success("История очищена.");
+      toast.success(t("History cleared."));
     } catch (err) {
       toast.error(stringifyError(err));
     } finally {
@@ -184,20 +189,19 @@ export function Dictation() {
   async function handleCopy(text: string) {
     try {
       await navigator.clipboard.writeText(text);
-      toast.success("Скопировано в буфер обмена.");
+      toast.success(t("Copied to clipboard."));
     } catch {
-      toast.error("Не удалось скопировать в буфер обмена.");
+      toast.error(t("Could not copy to clipboard."));
     }
   }
 
   return (
     <div className="space-y-6">
+      <DictationSection />
       <div>
-        <h2 className="text-2xl font-semibold tracking-tight">Диктовка</h2>
+        <h2 className="text-2xl font-semibold tracking-tight">{t("Dictation")}</h2>
         <p className="text-muted-foreground mt-1 text-sm">
-          Голосовой ввод в любое приложение: удерживайте хоткей, говорите, отпустите —
-          распознанный текст вставится в активное окно.
-        </p>
+          {t("Dictate into any application: hold the shortcut, speak, then release it to insert the recognized text into the active window.")}{" "}</p>
       </div>
 
       {load.kind === "loading" && (
@@ -214,7 +218,7 @@ export function Dictation() {
         <Card>
           <CardContent className="py-6">
             <p className="text-muted-foreground text-sm">
-              Не удалось загрузить настройки диктовки: {load.message}
+              {t("Could not load dictation settings:")}{" "}{load.message}
             </p>
           </CardContent>
         </Card>
@@ -224,15 +228,13 @@ export function Dictation() {
         <>
           <Card>
             <CardHeader>
-              <CardTitle>Ввод и горячая клавиша</CardTitle>
+              <CardTitle>{t("Input and shortcut")}</CardTitle>
               <CardDescription>
-                Как распознанный текст попадает в приложение и какой комбинацией
-                запускается запись.
-              </CardDescription>
+                {t("Choose how recognized text reaches your application and which shortcut starts recording.")}{" "}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-3">
-                <Label>Режим вставки</Label>
+                <Label>{t("Insertion mode")}</Label>
                 <RadioGroup
                   value={settings.insertion_mode}
                   onValueChange={handleInsertionMode}
@@ -244,10 +246,9 @@ export function Dictation() {
                   >
                     <RadioGroupItem id="mode-paste" value="paste" className="mt-0.5" />
                     <span className="space-y-0.5">
-                      <span className="block text-sm font-medium">Автовставка</span>
+                      <span className="block text-sm font-medium">{t("Automatic insertion")}</span>
                       <span className="text-muted-foreground block text-xs">
-                        Текст вставляется в активное окно автоматически (Ctrl+V).
-                      </span>
+                        {t("Text is inserted into the active window automatically (Ctrl+V).")}{" "}</span>
                     </span>
                   </label>
                   <label
@@ -260,10 +261,9 @@ export function Dictation() {
                       className="mt-0.5"
                     />
                     <span className="space-y-0.5">
-                      <span className="block text-sm font-medium">Только буфер обмена</span>
+                      <span className="block text-sm font-medium">{t("Clipboard only")}</span>
                       <span className="text-muted-foreground block text-xs">
-                        Текст кладётся в буфер — вставьте вручную (Ctrl+V), когда удобно.
-                      </span>
+                        {t("Text is copied to the clipboard. Paste it manually (Ctrl+V) when convenient.")}{" "}</span>
                     </span>
                   </label>
                 </RadioGroup>
@@ -273,11 +273,9 @@ export function Dictation() {
 
               <div className="space-y-3">
                 <div className="space-y-0.5">
-                  <Label>Горячая клавиша</Label>
+                  <Label>{t("Shortcut")}</Label>
                   <p className="text-muted-foreground text-xs">
-                    Удерживайте, чтобы записывать. Если комбинация занята другим
-                    приложением, прежняя останется активной.
-                  </p>
+                    {t("Hold to record. If another application uses the combination, your previous shortcut stays active.")}{" "}</p>
                 </div>
                 <HotkeyEditor
                   value={settings.hotkey}
@@ -291,10 +289,9 @@ export function Dictation() {
 
               <div className="space-y-3">
                 <div className="space-y-0.5">
-                  <Label htmlFor="device">Микрофон</Label>
+                  <Label htmlFor="device">{t("Microphone")}</Label>
                   <p className="text-muted-foreground text-xs">
-                    «Системный по умолчанию» следует за настройкой Windows.
-                  </p>
+                    {t("System default follows your Windows setting.")}{" "}</p>
                 </div>
                 <DevicePicker
                   value={settings.device}
@@ -304,7 +301,7 @@ export function Dictation() {
                 />
                 {deviceError && (
                   <p className="text-muted-foreground text-xs">
-                    Не удалось получить список устройств: {deviceError}
+                    {t("Could not list devices:")}{" "}{deviceError}
                   </p>
                 )}
               </div>
@@ -313,11 +310,9 @@ export function Dictation() {
 
           <Card>
             <CardHeader>
-              <CardTitle>История диктовки</CardTitle>
+              <CardTitle>{t("Dictation history")}</CardTitle>
               <CardDescription>
-                Последние {HISTORY_LIMIT} расшифровок — чтобы перевставить сказанное
-                ранее. Хранится только на этом компьютере.
-              </CardDescription>
+                {t("Last")}{" "}{HISTORY_LIMIT} {t("transcripts, so you can reuse earlier dictation. Stored only on this computer.")}{" "}</CardDescription>
             </CardHeader>
             <CardContent>
               <DictationHistory
@@ -333,22 +328,20 @@ export function Dictation() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Статистика</CardTitle>
+              <CardTitle>{t("Statistics")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               <p className="text-sm">
-                Надиктовано всего:{" "}
+                {t("Total dictated:")}{" "}
                 <span className="font-medium">
-                  {new Intl.NumberFormat("ru-RU").format(minutes)} {pluralizeMinutes(minutes)}
+                  {new Intl.NumberFormat(currentLocale()).format(minutes)} {pluralizeMinutes(minutes)}
                 </span>
               </p>
               <p className="text-muted-foreground text-xs">
-                Провайдер распознавания и ключ настраиваются в разделе{" "}
+                {t("Configure the recognition provider and key in")}{" "}
                 <Link to="/settings" className="underline underline-offset-2">
-                  «Настройки»
-                </Link>{" "}
-                → «Диктовка (STT)».
-              </p>
+                  {t("Settings")}{" "}</Link>{" "}
+                {t("→ Dictation (STT).")}{" "}</p>
             </CardContent>
           </Card>
         </>

@@ -1,3 +1,7 @@
+import { currentLocale } from "@/i18n";
+import { AudioPlayer } from "@/components/AudioPlayer";
+import { t } from "@/i18n";
+import { useI18n } from "@/contexts/PreferencesContext";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { save } from "@tauri-apps/plugin-dialog";
@@ -43,6 +47,7 @@ type LibraryState =
   | { kind: "error"; message: string };
 
 export function Library() {
+  useI18n();
   const [state, setState] = useState<LibraryState>({ kind: "loading" });
 
   async function fetchDocuments() {
@@ -72,7 +77,7 @@ export function Library() {
     try {
       await deleteDocument(doc.id);
     } catch (err) {
-      toast.error(`Не удалось удалить: ${stringifyError(err)}`);
+      toast.error(t("Could not delete: {p0}", { p0: stringifyError(err) }));
       await fetchDocuments();
     }
   }
@@ -93,7 +98,7 @@ export function Library() {
     try {
       await updateDocumentTitle(doc.id, newTitle);
     } catch (err) {
-      toast.error(`Не удалось переименовать: ${stringifyError(err)}`);
+      toast.error(t("Could not rename: {p0}", { p0: stringifyError(err) }));
       // Revert the optimistic change. Re-read state (it may have
       // shifted out from under us) before mutating, but the common
       // path is: still in `ready`, just put the original title back.
@@ -114,7 +119,7 @@ export function Library() {
     const safeStem =
       doc.title.replace(/[\\/:*?"<>|]/g, "_").trim().slice(0, 80) || "glagol";
     const dest = await save({
-      title: "Сохранить WAV",
+      title: t("Save WAV"),
       defaultPath: `${safeStem}.wav`,
       filters: [{ name: "WAV audio", extensions: ["wav"] }],
     });
@@ -122,9 +127,9 @@ export function Library() {
     try {
       await exportAudio(doc.id, dest);
       const filename = dest.split(/[\\/]/).pop() ?? dest;
-      toast.success(`Сохранено: ${filename}`);
+      toast.success(t("Saved: {p0}", { p0: filename }));
     } catch (err) {
-      toast.error(`Не удалось сохранить: ${stringifyError(err)}`);
+      toast.error(t("Could not save: {p0}", { p0: stringifyError(err) }));
     }
   }
 
@@ -154,17 +159,18 @@ export function Library() {
 }
 
 function Header() {
+  useI18n();
   return (
     <div>
-      <h2 className="text-2xl font-semibold tracking-tight">Библиотека</h2>
+      <h2 className="text-2xl font-semibold tracking-tight">{t("Library")}</h2>
       <p className="text-muted-foreground mt-1 text-sm">
-        История озвученных документов.
-      </p>
+        {t("Your synthesized documents.")}{" "}</p>
     </div>
   );
 }
 
 function LoadingSkeleton() {
+  useI18n();
   return (
     <div className="space-y-3">
       {[0, 1, 2].map((i) => (
@@ -181,13 +187,14 @@ function LoadingSkeleton() {
 }
 
 function EmptyState() {
+  useI18n();
   return (
     <Card>
       <CardContent className="space-y-4 pt-12 pb-12 text-center">
         <AudioLines className="text-muted-foreground mx-auto h-12 w-12" />
-        <p className="text-lg">Здесь будут ваши озвученные документы</p>
+        <p className="text-lg">{t("Your synthesized documents will appear here")}</p>
         <Button asChild>
-          <Link to="/synthesize">Озвучить первый документ</Link>
+          <Link to="/synthesize">{t("Synthesize your first document")}</Link>
         </Button>
       </CardContent>
     </Card>
@@ -200,19 +207,19 @@ interface ErrorCardProps {
 }
 
 function ErrorCard({ message, onRetry }: ErrorCardProps) {
+  useI18n();
   return (
     <Card>
       <CardContent className="space-y-4 pt-6">
         <div className="flex items-start gap-3">
           <TriangleAlert className="text-destructive mt-0.5 h-5 w-5 shrink-0" />
           <div className="space-y-1">
-            <p className="font-medium">Не удалось загрузить библиотеку</p>
+            <p className="font-medium">{t("Could not load library")}</p>
             <p className="text-muted-foreground text-sm">{message}</p>
           </div>
         </div>
         <Button onClick={onRetry} variant="secondary">
-          Попробовать снова
-        </Button>
+          {t("Try again")}{" "}</Button>
       </CardContent>
     </Card>
   );
@@ -229,6 +236,7 @@ interface DocumentRowProps {
 }
 
 function DocumentRow({ document, onDelete, onExport, onRename }: DocumentRowProps) {
+  useI18n();
   // Asset URL is resolved lazily per row: getAudioPath is a cheap IPC
   // call, and doing it here keeps `list_documents` a thin wrapper.
   // For Sprint 2 row counts (<= a few dozen) parallel resolution is
@@ -289,7 +297,7 @@ function DocumentRow({ document, onDelete, onExport, onRename }: DocumentRowProp
     setDraft(null);
   }
 
-  const charCountLabel = `${document.char_count.toLocaleString("ru-RU")} симв.`;
+  const charCountLabel = t("{p0} chars", { p0: document.char_count.toLocaleString(currentLocale()) });
   const isEditing = draft !== null;
 
   return (
@@ -315,7 +323,7 @@ function DocumentRow({ document, onDelete, onExport, onRename }: DocumentRowProp
                 }}
                 autoFocus
                 onFocus={(e) => e.target.select()}
-                aria-label="Название документа"
+                aria-label={t("Document title")}
                 className="h-8"
               />
             ) : (
@@ -324,6 +332,7 @@ function DocumentRow({ document, onDelete, onExport, onRename }: DocumentRowProp
             <p className="text-muted-foreground mt-1 text-sm">
               {getVoiceLabel(document.voice)} · {charCountLabel} ·{" "}
               {formatRelativeTime(document.created_at)}
+              {document.speech_language && <> · {document.speech_language === "en" ? t("English") : t("Russian")}</>}
             </p>
           </div>
           <div className="flex shrink-0 gap-1">
@@ -332,8 +341,8 @@ function DocumentRow({ document, onDelete, onExport, onRename }: DocumentRowProp
               variant="ghost"
               onClick={enterEdit}
               disabled={isEditing}
-              title="Переименовать"
-              aria-label="Переименовать"
+              title={t("Rename")}
+              aria-label={t("Rename")}
             >
               <Pencil className="h-4 w-4" />
             </Button>
@@ -341,8 +350,8 @@ function DocumentRow({ document, onDelete, onExport, onRename }: DocumentRowProp
               size="icon"
               variant="ghost"
               onClick={onExport}
-              title="Сохранить на диск"
-              aria-label="Сохранить на диск"
+              title={t("Save to disk")}
+              aria-label={t("Save to disk")}
             >
               <Download className="h-4 w-4" />
             </Button>
@@ -350,22 +359,15 @@ function DocumentRow({ document, onDelete, onExport, onRename }: DocumentRowProp
               size="icon"
               variant="ghost"
               onClick={onDelete}
-              title="Удалить"
-              aria-label="Удалить"
+              title={t("Delete")}
+              aria-label={t("Delete")}
             >
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>
         </div>
         {assetUrl !== null && (
-          <audio
-            key={document.id}
-            src={assetUrl}
-            controls
-            controlsList="nodownload"
-            preload="none"
-            className="w-full"
-          />
+          <AudioPlayer key={document.id} src={assetUrl} />
         )}
       </CardContent>
     </Card>

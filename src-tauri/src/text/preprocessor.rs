@@ -52,6 +52,15 @@ const URL_PLACEHOLDER: &str = "ссылка";
 /// Replacement word emitted in place of every detected email address.
 const EMAIL_PLACEHOLDER: &str = "email";
 
+/// English narration does not expand Russian abbreviations or substitute Russian words.
+pub fn preprocess_english(input: &str) -> String {
+    let clean = normalize_whitespace(input);
+    let clean = replace_emails(&clean);
+    let clean = URL_SCHEMA_REGEX.replace_all(&clean, "link");
+    let clean = URL_WWW_REGEX.replace_all(&clean, "link");
+    URL_BARE_REGEX.replace_all(&clean, "link").into_owned()
+}
+
 /// Whitelist of top-level domains used by the bare-domain URL detector.
 /// Anything outside this list (e.g. `pdf`, `community`, `5`) is left as
 /// plain text so we don't false-positive on filenames, abbreviations,

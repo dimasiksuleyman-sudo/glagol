@@ -53,7 +53,28 @@ enum Phase {
     /// for the caller's `Stop`.
     Capped(PcmAudio),
     /// The stream's error callback fired: waiting for `Stop` to report it.
-    Faulted(String),
+    Faulted(RecorderError),
+}
+
+struct StreamingAudio {
+    resampler: super::stream_resample::StreamResampler,
+    input: crate::stt::moonshine::worker::Input,
+}
+impl StreamingAudio {
+    fn push(&mut self, samples: &[f32]) -> Result<(), RecorderError> {
+        let samples = self
+            .resampler
+            .push(samples)
+            .map_err(RecorderError::Streaming)?;
+        self.input.push(&samples).map_err(RecorderError::Streaming)
+    }
+    fn finish(&mut self) -> Result<(), RecorderError> {
+        let tail = self.resampler.finish().map_err(RecorderError::Streaming)?;
+        self.input
+            .push(&tail)
+            .and_then(|_| self.input.finish())
+            .map_err(RecorderError::Streaming)
+    }
 }
 
 /// Spawn the dedicated recorder thread and return a handle to it.
@@ -113,6 +134,7 @@ pub fn run_recorder<S: SampleSource, L: LevelSink>(
     // Rolling window for the RMS level meter (mono, native rate).
     let mut level_acc: Vec<f32> = Vec::new();
     let mut pending_start: Option<PendingStart> = None;
+    let mut streaming: Option<StreamingAudio> = None;
 
     loop {
         // Also check on busy queues: empty callbacks must not defeat the timeout.
@@ -124,10 +146,15 @@ pub fn run_recorder<S: SampleSource, L: LevelSink>(
             buffer.clear();
             level_acc.clear();
             phase = Phase::Idle;
+            streaming = None;
             abort_start(&mut pending_start, RecorderError::StartupTimeout);
         }
         match rx.recv_timeout(RECV_TIMEOUT) {
-            Ok(RecorderMsg::Start { device, reply }) => {
+            Ok(RecorderMsg::Start {
+                device,
+                reply,
+                streaming: input,
+            }) => {
                 if !matches!(phase, Phase::Idle) {
                     let _ = reply.send(Err(RecorderError::Busy));
                     continue;
@@ -141,6 +168,19 @@ pub fn run_recorder<S: SampleSource, L: LevelSink>(
                         sample_rate,
                         channels,
                     }) => {
+                        streaming = match input {
+                            Some(input) => {
+                                match super::stream_resample::StreamResampler::new(sample_rate) {
+                                    Ok(resampler) => Some(StreamingAudio { resampler, input }),
+                                    Err(error) => {
+                                        source.stop();
+                                        let _ = reply.send(Err(RecorderError::Streaming(error)));
+                                        continue;
+                                    }
+                                }
+                            }
+                            None => None,
+                        };
                         phase = Phase::Recording {
                             rate: sample_rate,
                             channels,
@@ -171,6 +211,21 @@ pub fn run_recorder<S: SampleSource, L: LevelSink>(
                     continue;
                 }
 
+                if let Some(stream) = streaming.as_mut() {
+                    let count = mono
+                        .len()
+                        .min(cap_samples(rate).saturating_sub(buffer.len()));
+                    if let Err(error) = stream.push(&mono[..count]) {
+                        source.stop();
+                        abort_start(&mut pending_start, error.clone());
+                        phase = Phase::Faulted(error);
+                        streaming = None;
+                        buffer.clear();
+                        level_acc.clear();
+                        continue;
+                    }
+                }
+
                 // Keep the first packet before announcing readiness: it may
                 // already contain the beginning of the user's first word.
                 buffer.extend_from_slice(&mono);
@@ -197,12 +252,16 @@ pub fn run_recorder<S: SampleSource, L: LevelSink>(
                 if buffer.len() >= max_samples {
                     buffer.truncate(max_samples);
                     source.stop();
-                    phase = match finalize_buffer(&buffer, rate, true) {
+                    let stream_result = streaming
+                        .take()
+                        .map(|mut stream| stream.finish())
+                        .unwrap_or(Ok(()));
+                    phase = match stream_result.and_then(|_| finalize_buffer(&buffer, rate, true)) {
                         Ok(pcm) => Phase::Capped(pcm),
                         // Unreachable for a real device (native rate is never 0),
                         // but propagated loudly rather than degrading silently
                         // (D8-A); the pending `Stop` surfaces it.
-                        Err(e) => Phase::Faulted(e.to_string()),
+                        Err(e) => Phase::Faulted(e),
                     };
                     buffer.clear();
                     level_acc.clear();
@@ -214,11 +273,12 @@ pub fn run_recorder<S: SampleSource, L: LevelSink>(
                     source.stop();
                     buffer.clear();
                     level_acc.clear();
+                    streaming = None;
                     if pending_start.is_some() {
                         abort_start(&mut pending_start, RecorderError::DeviceLost(msg));
                         phase = Phase::Idle;
                     } else {
-                        phase = Phase::Faulted(msg);
+                        phase = Phase::Faulted(RecorderError::DeviceLost(msg));
                     }
                 }
                 // A fault outside Recording has nothing to fault — ignore it.
@@ -228,16 +288,21 @@ pub fn run_recorder<S: SampleSource, L: LevelSink>(
                 let result = match std::mem::replace(&mut phase, Phase::Idle) {
                     Phase::Recording { rate, .. } => {
                         source.stop();
-                        finalize_buffer(&buffer, rate, false)
+                        let stream_result = streaming
+                            .take()
+                            .map(|mut stream| stream.finish())
+                            .unwrap_or(Ok(()));
+                        stream_result.and_then(|_| finalize_buffer(&buffer, rate, false))
                     }
                     Phase::Capped(pcm) => Ok(pcm),
-                    Phase::Faulted(msg) => Err(RecorderError::DeviceLost(msg)),
+                    Phase::Faulted(error) => Err(error),
                     // Stop with nothing recording: a benign race — hand back an
                     // empty clip rather than error the user.
                     Phase::Idle => Ok(PcmAudio::from_samples_16k(Vec::new(), false)),
                 };
                 buffer.clear();
                 level_acc.clear();
+                streaming = None;
                 abort_start(
                     &mut pending_start,
                     RecorderError::DeviceLost("capture stopped before first audio packet".into()),
@@ -246,6 +311,7 @@ pub fn run_recorder<S: SampleSource, L: LevelSink>(
             }
 
             Ok(RecorderMsg::Cancel) => {
+                streaming = None;
                 if matches!(phase, Phase::Recording { .. }) {
                     source.stop();
                 }
@@ -692,6 +758,71 @@ mod tests {
 
     // ── state machine ──
 
+    #[tokio::test]
+    async fn streaming_overflow_fails_whole_recording_and_allows_retry() {
+        let (handle, jh) = harness(FakeSource::new(16000, 1), FakeSink::default());
+        let (sender, _receiver) = tokio::sync::mpsc::channel(1);
+        let failed = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let input = crate::stt::moonshine::worker::Input {
+            sender,
+            failed: failed.clone(),
+        };
+        let (started, ()) = tokio::join!(handle.start_streaming(None, Some(input)), async {
+            handle
+                .sender()
+                .send(RecorderMsg::Samples(vec![0.25; 9000]))
+                .unwrap();
+        });
+        assert!(matches!(started, Err(RecorderError::Streaming(_))));
+        assert!(failed.load(std::sync::atomic::Ordering::Relaxed));
+        assert!(matches!(
+            handle.stop().await,
+            Err(RecorderError::Streaming(_))
+        ));
+        start_with_samples(&handle, vec![0.25; 160]).await.unwrap();
+        assert_eq!(handle.stop().await.unwrap().samples.len(), 160);
+        handle.shutdown();
+        jh.join().unwrap();
+    }
+
+    #[tokio::test]
+    async fn recorder_streams_every_sample_then_one_finish() {
+        let (handle, jh) = harness(FakeSource::new(48000, 2), FakeSink::default());
+        let (sender, mut receiver) = tokio::sync::mpsc::channel(32);
+        let input = crate::stt::moonshine::worker::Input {
+            sender,
+            failed: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+        };
+        let (ready, ()) = tokio::join!(handle.start_streaming(None, Some(input)), async {
+            handle
+                .sender()
+                .send(RecorderMsg::Samples(vec![0.25; 4800]))
+                .unwrap();
+        });
+        ready.unwrap();
+        for _ in 0..9 {
+            handle
+                .sender()
+                .send(RecorderMsg::Samples(vec![0.25; 4800]))
+                .unwrap();
+        }
+        handle.stop().await.unwrap();
+        let (mut frames, mut ends) = (0, 0);
+        while let Some(packet) = receiver.recv().await {
+            match packet {
+                crate::stt::moonshine::worker::Packet::Audio(samples) => {
+                    assert_eq!(ends, 0);
+                    frames += samples.len();
+                }
+                crate::stt::moonshine::worker::Packet::Finish => ends += 1,
+            }
+        }
+        assert_eq!(frames, 8000);
+        assert_eq!(ends, 1);
+        handle.shutdown();
+        jh.join().unwrap();
+    }
+
     /// Drive a real Start/Samples handshake without microphone hardware.
     async fn start_with_samples(
         handle: &RecorderHandle,
@@ -712,6 +843,7 @@ mod tests {
             .send(RecorderMsg::Start {
                 device: None,
                 reply,
+                streaming: None,
             })
             .unwrap();
         rx

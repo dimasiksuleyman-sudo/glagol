@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "observed_at": "2026-09-15T11:26:27.788Z",
-  "active_workstream": null,
+  "observed_at": "2026-09-24T23:26:24.923Z",
+  "active_workstream": "release-0.5.0",
   "links": [
     "AGENTS.md",
     "CLAUDE.md",
@@ -20,24 +20,28 @@
     "docs/workstreams/verification-tts-warm-start/README.md",
     "docs/workstreams/verification-tts-warm-start/log.md",
     "docs/workstreams/release-0.4.1/README.md",
-    "docs/workstreams/release-0.4.1/log.md"
+    "docs/workstreams/release-0.4.1/log.md",
+    "docs/workstreams/english-first/README.md",
+    "docs/workstreams/english-first/log.md",
+    "docs/workstreams/release-0.5.0/README.md",
+    "docs/workstreams/release-0.5.0/log.md"
   ],
   "observations": [
     {
       "id": "build",
       "label": "Локальная сборка",
       "status": "observed",
-      "summary": "Опубликован проверенный NSIS 0.4.1: 9 777 903 байта, SHA-256 5e23d37d606b8fa529e96ab2dc139e4c195c9f6b81f74f0424ef5b174e45df21. Локальные проверки и CI PASS; публичный asset скачан и побайтово сверен.",
-      "observed_at": "2026-09-15T11:26:27.788Z",
-      "source": "docs/workstreams/release-0.4.1/log.md"
+      "summary": "Локальный NSIS 0.5.0: 9947426 байт (+1,73% к 0.4.1), SHA-256 6d9d567975779eb9e157063ac34c7a132a5f88deb3c5107cbd22164eecdda762. Автоматические гейты и native speech smoke PASS; установка/публикация не выполнялись, ручная QA E5 остаётся открытой.",
+      "observed_at": "2026-09-24T22:41:57.739Z",
+      "source": "docs/workstreams/english-first/qa.md"
     },
     {
       "id": "installed",
       "label": "Установленная версия",
       "status": "observed",
-      "summary": "Установленная 0.4.0 тихо обновлена до 0.4.1: NSIS exit 0, EXE сообщает 0.4.1, запуск подтвердил отметку 2 мс, UI 699 мс и warmup 3873 мс. Новая clean install NOT_RUN.",
-      "observed_at": "2026-09-15T11:15:00.000Z",
-      "source": "docs/workstreams/release-0.4.1/log.md"
+      "summary": "По новому разрешению пользователя основная 0.4.1 обновлена до 0.5.0: NSIS exit 0, FileVersion 0.5.0, запуск и schema 6 подтверждены. Бэкап проверен; 4 документа/4 WAV и прежние настройки сохранены. Ожидаются ручные UI/микрофон/прослушивание.",
+      "observed_at": "2026-09-24T22:48:17.479Z",
+      "source": "docs/workstreams/english-first/live-qa.md"
     },
     {
       "id": "published",
@@ -94,6 +98,14 @@
       "summary": "Candidate ускорения Silero прошёл direct-run QA: отметка 2–3 мс, UI 637–805 мс, worker/прогрев около 3,5 с, повторная подготовка 0 мс, idle unload через 901 926 мс; пользователь подтвердил UI. Live-microphone regression NOT_RUN. Решение — выпуск v0.4.1.",
       "observed_at": "2026-09-15T11:02:00.000Z",
       "source": "docs/workstreams/verification-tts-warm-start/log.md"
+    },
+    {
+      "id": "english-first-live-qa",
+      "label": "Пользовательская проверка 0.5.0",
+      "status": "reported",
+      "summary": "На основной машине пользователь подтвердил RU/EN диктовку и озвучку, переключение интерфейса с сохранением текста и языков речи. English-first завершена в согласованном сокращённом объёме; расширенная изолированная QA отложена, не PASS. Далее использование и обратная связь; публикации 0.5.0 не было.",
+      "observed_at": "2026-09-24T23:17:37.835Z",
+      "source": "docs/workstreams/english-first/live-qa.md"
     }
   ],
   "git_refs": [
@@ -113,6 +125,11 @@
       "sha": "6bcb18691ad3aa9980722b697b0986f04ea27763",
       "scope": "release",
       "ref": "refs/tags/v0.4.1"
+    },
+    {
+      "id": "english-first-baseline",
+      "sha": "68d507fe04273743932a17a1c5da87a28fb4ef4f",
+      "scope": "local"
     }
   ]
 }

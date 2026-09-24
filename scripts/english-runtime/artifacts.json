@@ -1,0 +1,217 @@
+{
+  "schema_version": 1,
+  "runtime_version": "0.1.5",
+  "abi_version": 30000,
+  "target": "windows-x86_64",
+  "model_revision": "0bf2f2e5aff22e6fbba4300b00a4e00bbc4f8aae",
+  "runtime": {
+    "file": "runtime.whl",
+    "url": "https://files.pythonhosted.org/packages/ea/05/ad3457baa56170a13829c98327598a4d99d6cd4bdff8ae59df4c47ebdd11/moonshine_voice-0.1.5-py3-none-win_amd64.whl",
+    "bytes": 16542073,
+    "sha256": "7fc9a84e827360ddb85c2735f44a1502c5575c27dcb476a2555646cd20a70e9d",
+    "members": [
+      {
+        "entry": "moonshine_voice/moonshine.dll",
+        "file": "native/moonshine.dll",
+        "bytes": 9595392,
+        "sha256": "5785b084680b7cb335e95b2e99e9c243e4b15833a30b1add5a4598694f8b48aa"
+      },
+      {
+        "entry": "moonshine_voice/onnxruntime.dll",
+        "file": "native/onnxruntime.dll",
+        "bytes": 14186016,
+        "sha256": "dec964ab1ee36cc9b0ae247d13b376627992fc57dec0454354017ab8fd84f1ea"
+      }
+    ]
+  },
+  "licenses": {
+    "moonshine-stt": {
+      "spdx": "MIT",
+      "source": "https://github.com/moonshine-ai/moonshine/blob/v0.1.5/LICENSE"
+    },
+    "kokoro": {
+      "spdx": "Apache-2.0",
+      "source": "https://huggingface.co/hexgrad/Kokoro-82M/blob/f3ff3571791e39611d31c381e3a41a3af07b4987/README.md"
+    },
+    "cmudict": {
+      "spdx": "BSD-2-Clause",
+      "source": "https://github.com/cmusphinx/cmudict/blob/74790861f652b15e4ac49015a90074ad62a27690/LICENSE"
+    },
+    "moonshine-g2p": {
+      "spdx": null,
+      "status": "unresolved",
+      "source": "https://github.com/moonshine-ai/moonshine/blob/v0.1.5/core/moonshine-tts/data/en_us/README.md",
+      "reason": "OOV model is trained by Moonshine; root LICENSE excludes TTS/G2P assets from MIT default, and linked training repository has no license file. Explicit terms for model.ort and onnx-config.json not located."
+    }
+  },
+  "artifacts": [
+    {
+      "kind": "stt",
+      "file": "stt/adapter.ort",
+      "url": "https://huggingface.co/moonshine-ai/moonshine-voice-assets/resolve/0bf2f2e5aff22e6fbba4300b00a4e00bbc4f8aae/model/small-streaming-en/quantized_26_08_21/adapter.ort",
+      "bytes": 2870368,
+      "sha256": "c665f742364febad597cc9ac1e0b341ffbee0e24a1466e2f3bde95e6e4771762",
+      "license": "moonshine-stt"
+    },
+    {
+      "kind": "stt",
+      "file": "stt/cross_kv.ort",
+      "url": "https://huggingface.co/moonshine-ai/moonshine-voice-assets/resolve/0bf2f2e5aff22e6fbba4300b00a4e00bbc4f8aae/model/small-streaming-en/quantized_26_08_21/cross_kv.ort",
+      "bytes": 5356536,
+      "sha256": "e2d3417144e9514055ebfefe8dcc4c0a55a55adcb8530435844c75c53e352bf6",
+      "license": "moonshine-stt"
+    },
+    {
+      "kind": "stt",
+      "file": "stt/decoder_kv.ort",
+      "url": "https://huggingface.co/moonshine-ai/moonshine-voice-assets/resolve/0bf2f2e5aff22e6fbba4300b00a4e00bbc4f8aae/model/small-streaming-en/quantized_26_08_21/decoder_kv.ort",
+      "bytes": 81878600,
+      "sha256": "1a05465b1dd955858dfcbee039c0020fb5dd982b0f5094c34e61735d518d771b",
+      "license": "moonshine-stt"
+    },
+    {
+      "kind": "stt",
+      "file": "stt/encoder.ort",
+      "url": "https://huggingface.co/moonshine-ai/moonshine-voice-assets/resolve/0bf2f2e5aff22e6fbba4300b00a4e00bbc4f8aae/model/small-streaming-en/quantized_26_08_21/encoder.ort",
+      "bytes": 44148576,
+      "sha256": "2d4d973e91e8aca08c51e7e7efa28a46ab265b63d809d5294d18b86bcd85b993",
+      "license": "moonshine-stt"
+    },
+    {
+      "kind": "stt",
+      "file": "stt/frontend.model.ort",
+      "url": "https://huggingface.co/moonshine-ai/moonshine-voice-assets/resolve/0bf2f2e5aff22e6fbba4300b00a4e00bbc4f8aae/model/small-streaming-en/quantized_26_08_21/frontend.model.ort",
+      "bytes": 26944,
+      "sha256": "09b1210ae30dc5f0f3e45f0ebab914c254741323114f53fbbe5ae62cca35058f",
+      "license": "moonshine-stt"
+    },
+    {
+      "kind": "stt",
+      "file": "stt/frontend.weights.ort",
+      "url": "https://huggingface.co/moonshine-ai/moonshine-voice-assets/resolve/0bf2f2e5aff22e6fbba4300b00a4e00bbc4f8aae/model/small-streaming-en/quantized_26_08_21/frontend.weights.ort",
+      "bytes": 7769464,
+      "sha256": "7ef97521bd4bad3928f5bb6808586f4fcc6e92bd5990394112eed7d4052ec338",
+      "license": "moonshine-stt"
+    },
+    {
+      "kind": "stt",
+      "file": "stt/streaming_config.json",
+      "url": "https://huggingface.co/moonshine-ai/moonshine-voice-assets/resolve/0bf2f2e5aff22e6fbba4300b00a4e00bbc4f8aae/model/small-streaming-en/quantized_26_08_21/streaming_config.json",
+      "bytes": 512,
+      "sha256": "26f02b6afb22d60871a5efd85c3d38e569cc0ddb6c5eb6e93d3260152ae8a47a",
+      "license": "moonshine-stt"
+    },
+    {
+      "kind": "stt",
+      "file": "stt/tokenizer.bin",
+      "url": "https://huggingface.co/moonshine-ai/moonshine-voice-assets/resolve/0bf2f2e5aff22e6fbba4300b00a4e00bbc4f8aae/model/small-streaming-en/quantized_26_08_21/tokenizer.bin",
+      "bytes": 249974,
+      "sha256": "6884b35fd6377d4c4d32336a0bc152f36b64d1e45b6503683cdc238250a8472d",
+      "license": "moonshine-stt"
+    },
+    {
+      "kind": "tts",
+      "file": "tts/en_us/dict_filtered_heteronyms.tsv",
+      "url": "https://huggingface.co/moonshine-ai/moonshine-voice-assets/resolve/0bf2f2e5aff22e6fbba4300b00a4e00bbc4f8aae/tts/en_us/dict_filtered_heteronyms.tsv",
+      "bytes": 2900453,
+      "sha256": "8fb0fa0e3ce1a74b864f03c06ace015257660fa2116c6157d11061f4e35bb6b7",
+      "license": "cmudict"
+    },
+    {
+      "kind": "tts",
+      "file": "tts/en_us/g2p-config.json",
+      "url": "https://huggingface.co/moonshine-ai/moonshine-voice-assets/resolve/0bf2f2e5aff22e6fbba4300b00a4e00bbc4f8aae/tts/en_us/g2p-config.json",
+      "bytes": 60,
+      "sha256": "f10e652b28c49edd90a94ceb139b94d2368de5814650d81289fcb985fe1ca0f5",
+      "license": "moonshine-g2p"
+    },
+    {
+      "kind": "tts",
+      "file": "tts/en_us/oov/model.ort",
+      "url": "https://huggingface.co/moonshine-ai/moonshine-voice-assets/resolve/0bf2f2e5aff22e6fbba4300b00a4e00bbc4f8aae/tts/en_us/oov/model.ort",
+      "bytes": 22143488,
+      "sha256": "ef8d07a0577a07617fabf5282d80d680e4e17ad07a763e7e3748417f94554d94",
+      "license": "moonshine-g2p"
+    },
+    {
+      "kind": "tts",
+      "file": "tts/en_us/oov/onnx-config.json",
+      "url": "https://huggingface.co/moonshine-ai/moonshine-voice-assets/resolve/0bf2f2e5aff22e6fbba4300b00a4e00bbc4f8aae/tts/en_us/oov/onnx-config.json",
+      "bytes": 4641,
+      "sha256": "60a7cf2592ae66702f56e4368a8614e72235eef89205de96f4cf6bace96c5692",
+      "license": "moonshine-g2p"
+    },
+    {
+      "kind": "tts",
+      "file": "tts/kokoro/prosody.model.ort",
+      "url": "https://huggingface.co/moonshine-ai/moonshine-voice-assets/resolve/0bf2f2e5aff22e6fbba4300b00a4e00bbc4f8aae/tts/kokoro/prosody.model.ort",
+      "bytes": 12376656,
+      "sha256": "e4f83bf18d786ab8c9cd2ad21e326021b9d7d5fe776458755e075c8574ff876a",
+      "license": "kokoro"
+    },
+    {
+      "kind": "tts",
+      "file": "tts/kokoro/prosody.weights.ort",
+      "url": "https://huggingface.co/moonshine-ai/moonshine-voice-assets/resolve/0bf2f2e5aff22e6fbba4300b00a4e00bbc4f8aae/tts/kokoro/prosody.weights.ort",
+      "bytes": 16480288,
+      "sha256": "7ead0eed0498a6b8f7abebb7c9bc2867293c5d7cbb71d2bdf442b7ba48ae77e7",
+      "license": "kokoro"
+    },
+    {
+      "kind": "tts",
+      "file": "tts/kokoro/decoder.model.ort",
+      "url": "https://huggingface.co/moonshine-ai/moonshine-voice-assets/resolve/0bf2f2e5aff22e6fbba4300b00a4e00bbc4f8aae/tts/kokoro/decoder.model.ort",
+      "bytes": 39257640,
+      "sha256": "1deaf4c42124a9034e325cf6057ebe58f80f429af68401c573c519a3dd7e56bd",
+      "license": "kokoro"
+    },
+    {
+      "kind": "tts",
+      "file": "tts/kokoro/decoder.weights.ort",
+      "url": "https://huggingface.co/moonshine-ai/moonshine-voice-assets/resolve/0bf2f2e5aff22e6fbba4300b00a4e00bbc4f8aae/tts/kokoro/decoder.weights.ort",
+      "bytes": 15299512,
+      "sha256": "80272c16d48026641ee0971252be2a3e24ae0bea75a35ad1a822c124cb3a266e",
+      "license": "kokoro"
+    },
+    {
+      "kind": "tts",
+      "file": "tts/kokoro/config.json",
+      "url": "https://huggingface.co/moonshine-ai/moonshine-voice-assets/resolve/0bf2f2e5aff22e6fbba4300b00a4e00bbc4f8aae/tts/kokoro/config.json",
+      "bytes": 2351,
+      "sha256": "5abb01e2403b072bf03d04fde160443e209d7a0dad49a423be15196b9b43c17f",
+      "license": "kokoro"
+    },
+    {
+      "kind": "tts",
+      "file": "tts/kokoro/voices/af_heart.kokorovoice",
+      "url": "https://huggingface.co/moonshine-ai/moonshine-voice-assets/resolve/0bf2f2e5aff22e6fbba4300b00a4e00bbc4f8aae/tts/kokoro/voices/af_heart.kokorovoice",
+      "bytes": 522252,
+      "sha256": "908e14de5b4709da55562129164e618f5d135fcc34dac419e0c3de5189b72d2c",
+      "license": "kokoro"
+    },
+    {
+      "kind": "tts",
+      "file": "tts/kokoro/voices/bf_emma.kokorovoice",
+      "url": "https://huggingface.co/moonshine-ai/moonshine-voice-assets/resolve/0bf2f2e5aff22e6fbba4300b00a4e00bbc4f8aae/tts/kokoro/voices/bf_emma.kokorovoice",
+      "bytes": 522252,
+      "sha256": "f956baef58dfb4ef837e805d5954bdc5074131260590220265bc3c2c9f389eea",
+      "license": "kokoro"
+    },
+    {
+      "kind": "tts",
+      "file": "tts/kokoro/voices/am_michael.kokorovoice",
+      "url": "https://huggingface.co/moonshine-ai/moonshine-voice-assets/resolve/0bf2f2e5aff22e6fbba4300b00a4e00bbc4f8aae/tts/kokoro/voices/am_michael.kokorovoice",
+      "bytes": 522252,
+      "sha256": "5656ad6770d9cce2bddf6c0d0446569151555a7d284971fe3cd763f4f74f726f",
+      "license": "kokoro"
+    },
+    {
+      "kind": "tts",
+      "file": "tts/kokoro/voices/bm_george.kokorovoice",
+      "url": "https://huggingface.co/moonshine-ai/moonshine-voice-assets/resolve/0bf2f2e5aff22e6fbba4300b00a4e00bbc4f8aae/tts/kokoro/voices/bm_george.kokorovoice",
+      "bytes": 522252,
+      "sha256": "753b8b7893281d692709c3efadc38182aca49d1de02f74b9d9ca422a81535eb2",
+      "license": "kokoro"
+    }
+  ]
+}

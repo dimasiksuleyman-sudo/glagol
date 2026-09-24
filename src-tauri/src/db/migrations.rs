@@ -81,6 +81,8 @@ const MIGRATIONS_SLICE: &[M<'static>] = &[
     "#,
     ),
     M::up("ALTER TABLE documents ADD COLUMN provider TEXT NOT NULL DEFAULT 'salutespeech-legacy';"),
+    // Do not guess the language of existing user documents or legacy audio.
+    M::up("ALTER TABLE documents ADD COLUMN speech_language TEXT CHECK (speech_language IN ('en', 'ru') OR speech_language IS NULL);"),
 ];
 
 /// Apply every pending migration to `conn`. Idempotent: calling twice on the
@@ -114,6 +116,7 @@ mod tests {
         apply_migrations(&mut conn).unwrap();
         let row = crate::db::repository::get(&conn, "old").unwrap().unwrap();
         assert_eq!(row.provider, "salutespeech-legacy");
+        assert_eq!(row.speech_language, None);
         assert_eq!(row.voice, "Nec_24000");
         assert_eq!(row.audio_path.as_deref(), Some("old.wav"));
         assert_eq!(row.audio_duration_ms, Some(4000));

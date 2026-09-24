@@ -1,3 +1,5 @@
+import { t } from "@/i18n";
+import { useI18n } from "@/contexts/PreferencesContext";
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -100,6 +102,7 @@ type Mode =
  *   stuck (Phase 0).
  */
 export function HotkeyEditor({ value, onSave, onError, disabled }: HotkeyEditorProps) {
+  useI18n();
   const [mode, setMode] = useState<Mode>({ kind: "idle" });
   const [saving, setSaving] = useState(false);
   const [showFallbackHint, setShowFallbackHint] = useState(false);
@@ -154,7 +157,7 @@ export function HotkeyEditor({ value, onSave, onError, disabled }: HotkeyEditorP
       <div className="space-y-2">
         <div className="border-input bg-muted/40 flex items-center justify-between gap-3 rounded-md border border-dashed px-3 py-2">
           <span className="text-sm">
-            {saving ? "Сохраняю…" : "Нажмите комбинацию клавиш…"}
+            {saving ? t("Saving…") : t("Press a key combination…")}
           </span>
           <Button
             variant="ghost"
@@ -162,8 +165,7 @@ export function HotkeyEditor({ value, onSave, onError, disabled }: HotkeyEditorP
             onClick={() => setMode({ kind: "idle" })}
             disabled={saving}
           >
-            Отмена
-          </Button>
+            {t("Cancel")}{" "}</Button>
         </div>
         <button
           type="button"
@@ -171,8 +173,8 @@ export function HotkeyEditor({ value, onSave, onError, disabled }: HotkeyEditorP
           onClick={() => setMode({ kind: "manual", draft: value })}
         >
           {showFallbackHint
-            ? "Комбинация не распозналась? Введите её вручную"
-            : "…или ввести вручную"}
+            ? t("Shortcut not recognized? Enter it manually")
+            : t("…or enter it manually")}
         </button>
       </div>
     );
@@ -201,20 +203,18 @@ export function HotkeyEditor({ value, onSave, onError, disabled }: HotkeyEditorP
             onClick={() => void commit(draft.trim())}
             disabled={saving || draft.trim().length === 0}
           >
-            Сохранить
-          </Button>
+            {t("Save")}{" "}</Button>
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setMode({ kind: "idle" })}
             disabled={saving}
           >
-            Отмена
-          </Button>
+            {t("Cancel")}{" "}</Button>
         </div>
         <p className="text-muted-foreground text-xs">
-          Формат: модификатор(ы) + клавиша, например{" "}
-          <code>CmdOrCtrl+Shift+Space</code> или <code>Alt+Shift+D</code>.
+          {t("Format: modifier(s) + key, for example")}{" "}
+          <code>CmdOrCtrl+Shift+Space</code> {t("or")}{" "}<code>Alt+Shift+D</code>.
         </p>
       </div>
     );
@@ -235,8 +235,7 @@ export function HotkeyEditor({ value, onSave, onError, disabled }: HotkeyEditorP
         onClick={() => setMode({ kind: "capturing" })}
         disabled={disabled}
       >
-        Изменить
-      </Button>
+        {t("Change")}{" "}</Button>
     </div>
   );
 }

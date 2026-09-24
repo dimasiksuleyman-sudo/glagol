@@ -1,3 +1,6 @@
+import { currentLocale } from "@/i18n";
+import { t } from "@/i18n";
+import { useI18n, usePreferences } from "@/contexts/PreferencesContext";
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { open, save } from "@tauri-apps/plugin-dialog";
@@ -32,7 +35,8 @@ import {
   synthesizeDocument,
   type ProgressEvent,
 } from "@/lib/tauri";
-import { DEFAULT_VOICE_ID, VOICES } from "@/lib/voices";
+import { voicesFor } from "@/lib/voices";
+import { TtsLanguageSwitch } from "@/components/TtsLanguageSwitch";
 
 /**
  * Synthesize page — paste text, pick a voice, hit "Озвучить и
@@ -46,11 +50,15 @@ import { DEFAULT_VOICE_ID, VOICES } from "@/lib/voices";
  * Readiness depends on optional local TTS, independently of dictation.
  */
 export function Synthesize() {
-  const { status, error } = useTts();
+  useI18n();
+  const { status, error, provider } = useTts();
   const state = !status && !error ? "unknown" : status?.installed && status.accepted ? "valid" : "invalid";
   const navigate = useNavigate();
   const [text, setText] = useState<string>("");
-  const [voice, setVoice] = useState<string>(() => { const saved = localStorage.getItem("tts-voice"); return VOICES.some(v => v.id === saved) ? saved! : DEFAULT_VOICE_ID; });
+  const { preferences, setTtsVoice } = usePreferences();
+  const speechLanguage = preferences?.tts_language ?? "ru";
+  const voice = (speechLanguage === "en" ? preferences?.tts_voice_en : preferences?.tts_voice_ru) ?? (speechLanguage === "en" ? "en_0" : "xenia");
+  const VOICES = voicesFor(speechLanguage);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [progress, setProgress] = useState<ProgressEvent | null>(null);
   // The document_id of the most recent successful synthesis — drives
@@ -64,28 +72,29 @@ export function Synthesize() {
   const [isLoadingFile, setIsLoadingFile] = useState<boolean>(false);
   const [scannedPdfOpen, setScannedPdfOpen] = useState<boolean>(false);
   const [isWarmingUp, setIsWarmingUp] = useState<boolean>(true);
-  const warmupStarted = useRef(false);
+  const warmupStarted = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!status?.installed || !status.accepted || warmupStarted.current) return;
-    warmupStarted.current = true;
+    if (!status?.installed || !status.accepted || warmupStarted.current === provider) return;
+    warmupStarted.current = provider;
+    setIsWarmingUp(true);
     // The backend reports preparation failures through TTS status; the warm-up
     // must not produce a duplicate toast before the user starts an operation.
-    void prepareTts()
+    void prepareTts(provider)
       .catch(() => undefined)
-      .finally(() => setIsWarmingUp(false));
-  }, [status?.accepted, status?.installed]);
+      .finally(() => { if (warmupStarted.current === provider) setIsWarmingUp(false); });
+  }, [provider, status?.accepted, status?.installed]);
 
   async function handleSynthesize() {
     setIsLoading(true);
     setProgress(null);
     setLastDocumentId(null);
     try {
-      const documentId = await synthesizeDocument(text, voice, setProgress);
+      const documentId = await synthesizeDocument(text, voice, setProgress, provider);
       setLastDocumentId(documentId);
-      toast.success("Сохранено в библиотеку", {
+      toast.success(t("Saved to library"), {
         action: {
-          label: "Открыть библиотеку",
+          label: t("Open library"),
           onClick: () => navigate("/library"),
         },
         duration: 8000,
@@ -104,10 +113,10 @@ export function Synthesize() {
       const picked = await open({
         multiple: false,
         directory: false,
-        title: "Выберите файл",
+        title: t("Choose a file"),
         filters: [
-          { name: "Поддерживаемые", extensions: ["txt", "md", "docx", "pdf"] },
-          { name: "Все файлы", extensions: ["*"] },
+          { name: t("Supported files"), extensions: ["txt", "md", "docx", "pdf"] },
+          { name: t("All files"), extensions: ["*"] },
         ],
       });
       if (picked === null) return; // user cancelled — preserve current textarea
@@ -126,7 +135,7 @@ export function Synthesize() {
 
       setText(parsed.text);
       const chars = parsed.text.length;
-      toast.success(`Файл загружен (${chars.toLocaleString("ru-RU")} симв.)`);
+      toast.success(t("File loaded ({p0} chars)", { p0: chars.toLocaleString(currentLocale()) }));
     } catch (err) {
       // Backend errors come back as Russian-language strings already
       // (file too big, content too long, parse error). Surface them
@@ -142,7 +151,7 @@ export function Synthesize() {
     setIsExporting(true);
     try {
       const dest = await save({
-        title: "Сохранить WAV",
+        title: t("Save WAV"),
         defaultPath: `glagol-${lastDocumentId.slice(0, 8)}.wav`,
         filters: [{ name: "WAV audio", extensions: ["wav"] }],
       });
@@ -150,7 +159,7 @@ export function Synthesize() {
 
       await exportAudio(lastDocumentId, dest);
       const filename = dest.split(/[\\/]/).pop() ?? dest;
-      toast.success(`Сохранено: ${filename}`);
+      toast.success(t("Saved: {p0}", { p0: filename }));
     } catch (err) {
       toast.error(stringifyError(err));
     } finally {
@@ -162,7 +171,7 @@ export function Synthesize() {
     return (
       <div className="space-y-6">
         <Header />
-        <p className="text-muted-foreground text-sm">Загружаем…</p>
+        <p className="text-muted-foreground text-sm">{t("Loading…")}</p>
       </div>
     );
   }
@@ -173,14 +182,14 @@ export function Synthesize() {
         <Header />
         <Card>
           <CardHeader>
-            <CardTitle>Установите локальную озвучку</CardTitle>
+            <CardTitle>{t("Install local text to speech")}</CardTitle>
             <CardDescription>
-              Silero v5.5 скачивается отдельно и предназначена для некоммерческого использования. Диктовка доступна без неё. {error}
+              {t("Silero is downloaded separately for noncommercial use. Dictation is available without it.")}{" "}{error}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Button asChild>
-              <Link to="/settings">Перейти в Настройки →</Link>
+              <Link to="/settings">{t("Go to Settings →")}</Link>
             </Button>
           </CardContent>
         </Card>
@@ -195,7 +204,7 @@ export function Synthesize() {
 
   return (
     <div className="space-y-6">
-      <Header />
+      <Header disabled={isLoading || preparationActive} />
 
       <Card>
         <CardContent className="space-y-4 pt-6">
@@ -203,19 +212,16 @@ export function Synthesize() {
             <div className="space-y-2 rounded-lg border bg-muted/30 p-3" role="status" aria-live="polite">
               <div className="flex items-center gap-2 text-sm font-medium">
                 <Loader2Icon className="h-4 w-4 animate-spin" aria-hidden="true" />
-                Подготавливаем локальную озвучку…
-              </div>
-              <Progress aria-label="Подготовка локальной озвучки" />
+                {t("Preparing local speech…")}{" "}</div>
+              <Progress aria-label={t("Preparing local speech")} />
               <p className="text-muted-foreground text-xs">
-                Проверяем готовность файлов и загружаем модель. Обычно это занимает около 4 секунд;
-                раз в 30 дней полная проверка может занять до минуты.
-              </p>
+                {t("Verifying files and loading the model. A full integrity check runs every 30 days and may take longer.")}{" "}</p>
             </div>
           )}
           {status?.error && <p role="alert" className="text-destructive text-sm">{status.error}</p>}
           <div className="space-y-2">
             <div className="flex items-center justify-between gap-2">
-              <Label htmlFor="text">Текст</Label>
+              <Label htmlFor="text">{t("Text")}</Label>
               <Button
                 type="button"
                 variant="outline"
@@ -224,25 +230,24 @@ export function Synthesize() {
                 disabled={isLoading || isLoadingFile}
               >
                 <FileUp className="mr-1 h-4 w-4" />
-                {isLoadingFile ? "Открываем…" : "Выбрать файл"}
+                {isLoadingFile ? t("Opening…") : t("Choose a file")}
               </Button>
             </div>
             <Textarea
               id="text"
               rows={12}
-              placeholder="Вставьте сюда русский текст для озвучивания."
+              placeholder={t("Paste the text you want to read aloud.")}
               value={text}
               onChange={(event) => setText(event.target.value)}
               disabled={isLoading}
             />
             <p className="text-muted-foreground text-xs">
-              {trimmedTextLength.toLocaleString("ru-RU")} символов
-            </p>
+              {trimmedTextLength.toLocaleString(currentLocale())} {t("characters")}{" "}</p>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="voice">Голос</Label>
-            <Select value={voice} onValueChange={value => { setVoice(value); localStorage.setItem("tts-voice", value); }} disabled={isLoading}>
+            <Label htmlFor="voice">{t("Voice")}</Label>
+            <Select value={voice} onValueChange={value => { void setTtsVoice(value).catch(e => toast.error(String(e))); }} disabled={isLoading}>
               <SelectTrigger id="voice" className="w-full">
                 <SelectValue />
               </SelectTrigger>
@@ -258,10 +263,10 @@ export function Synthesize() {
 
           <Button onClick={handleSynthesize} disabled={!canSynthesize} className="w-full">
             {isLoading
-              ? "Озвучиваем…"
+              ? t("Synthesizing…")
               : preparationActive
-                ? "Подготовка озвучки…"
-                : "Озвучить и сохранить в библиотеку"}
+                ? t("Preparing speech…")
+                : t("Synthesize and save to library")}
           </Button>
 
           {lastDocumentId !== null && (
@@ -271,11 +276,11 @@ export function Synthesize() {
               disabled={!canExport}
               className="w-full"
             >
-              {isExporting ? "Сохраняем…" : "Сохранить на диск"}
+              {isExporting ? t("Saving…") : t("Save to disk")}
             </Button>
           )}
 
-          {isLoading && <Button variant="outline" onClick={() => void cancelTts().catch(e => toast.error(String(e)))}>Отменить озвучку</Button>}
+          {isLoading && <Button variant="outline" onClick={() => void cancelTts().catch(e => toast.error(String(e)))}>{t("Cancel synthesis")}</Button>}
           {progress !== null && <ProgressIndicator event={progress} />}
         </CardContent>
       </Card>
@@ -285,13 +290,14 @@ export function Synthesize() {
   );
 }
 
-function Header() {
+function Header({ disabled = false }: { disabled?: boolean }) {
+  useI18n();
   return (
     <div>
-      <h2 className="text-2xl font-semibold tracking-tight">Озвучить</h2>
+      <TtsLanguageSwitch disabled={disabled} />
+      <h2 className="text-2xl font-semibold tracking-tight">{t("Synthesize")}</h2>
       <p className="text-muted-foreground mt-1 text-sm">
-        Текст превратится в WAV-файл и попадёт в библиотеку.
-      </p>
+        {t("Your text will become a WAV file in your library.")}{" "}</p>
     </div>
   );
 }
@@ -301,6 +307,7 @@ interface ProgressIndicatorProps {
 }
 
 function ProgressIndicator({ event }: ProgressIndicatorProps) {
+  useI18n();
   // Translate a discriminated ProgressEvent into a [0..100] percentage
   // plus a Russian status line. Reserve 5% for chunking, 90% for the
   // per-chunk loop, and 5% for the final join.
@@ -308,19 +315,19 @@ function ProgressIndicator({ event }: ProgressIndicatorProps) {
   let label = "";
   switch (event.kind) {
     case "preparing":
-      label = "Подготовка локальной озвучки…";
+      label = t("Preparing local speech…");
       break;
     case "chunked":
       percent = 5;
-      label = `Текст разбит на ${event.total.toLocaleString("ru-RU")} фрагментов`;
+      label = t("Text split into {p0} chunks", { p0: event.total.toLocaleString(currentLocale()) });
       break;
     case "synthesizingChunk":
       percent = 5 + Math.round((event.current / event.total) * 90);
-      label = `Озвучиваем фрагмент ${event.current} из ${event.total}`;
+      label = t("Synthesizing chunk {p0} of {p1}", { p0: event.current, p1: event.total });
       break;
     case "joining":
       percent = 95;
-      label = "Склеиваем WAV…";
+      label = t("Joining WAV…");
       break;
   }
   return (

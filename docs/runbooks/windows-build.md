@@ -29,6 +29,8 @@ node scripts/check-version.mjs
 node scripts/runbook-check.mjs
 node --test scripts/runbook-check.test.mjs
 pnpm exec tsc --noEmit
+node scripts/i18n-check.mjs
+node --test scripts/i18n-check.test.mjs
 pnpm build
 cargo fmt --manifest-path src-tauri/Cargo.toml --check
 cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
@@ -36,6 +38,9 @@ cargo test --manifest-path src-tauri/Cargo.toml
 ```
 
 Нативные тесты с моделями запускаются отдельно по ранбукам TTS/STT.
+EN: [english-runtime](english-runtime.md). Для NSIS проверить отсутствие speech
+weights/runtime в resources, сравнить размер с 0.4.1 (9 777 903 байта). Pdfium —
+документный компонент. EN/RU installation/removal и OS fallback проверяются отдельно.
 Ignored-тесты не считать пройденными. ESLint/Vitest не настроены.
 
 ## Известные локальные ограничения

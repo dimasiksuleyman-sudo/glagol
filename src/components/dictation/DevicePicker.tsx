@@ -1,3 +1,5 @@
+import { t } from "@/i18n";
+import { useI18n } from "@/contexts/PreferencesContext";
 import {
   Select,
   SelectContent,
@@ -33,6 +35,7 @@ interface DevicePickerProps {
  * selection to default.
  */
 export function DevicePicker({ value, devices, onChange, disabled }: DevicePickerProps) {
+  useI18n();
   const savedMissing = value !== "" && !devices.includes(value);
 
   return (
@@ -45,14 +48,14 @@ export function DevicePicker({ value, devices, onChange, disabled }: DevicePicke
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value={SYSTEM_DEFAULT}>Системный по умолчанию</SelectItem>
+        <SelectItem value={SYSTEM_DEFAULT}>{t("System default")}</SelectItem>
         {devices.map((name) => (
           <SelectItem key={name} value={name}>
             {name}
           </SelectItem>
         ))}
         {savedMissing && (
-          <SelectItem value={value}>{value} (недоступно)</SelectItem>
+          <SelectItem value={value}>{value} {t("(unavailable)")}</SelectItem>
         )}
       </SelectContent>
     </Select>

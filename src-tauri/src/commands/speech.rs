@@ -80,7 +80,7 @@ pub fn read_profile(conn: &Connection, mode: Option<Mode>) -> Result<Profile, St
             base_url: String::new(),
             model: read("local_model", "gigaam-v3-e2e-ctc")?,
             proxy: String::new(),
-            language: "ru".into(),
+            language: read("local_language", "ru")?,
         });
     }
     Ok(Profile {
@@ -108,7 +108,15 @@ pub fn read_profile(conn: &Connection, mode: Option<Mode>) -> Result<Profile, St
 
 pub fn validate_profile(p: &Profile) -> Result<(), String> {
     if p.mode == Mode::Local {
-        crate::stt::local::catalog::model(&p.model)?;
+        if p.language == "en" {
+            if p.model != crate::stt::moonshine::catalog::ID {
+                return Err("Select an English recognition model.".into());
+            }
+        } else if p.language == "ru" {
+            crate::stt::local::catalog::model(&p.model)?;
+        } else {
+            return Err("Select English or Russian for local recognition.".into());
+        }
         return Ok(());
     }
     if p.mode == Mode::Server {
@@ -207,8 +215,16 @@ pub fn remote_provider(conn: &Connection, p: &Profile) -> Result<OpenAiCompatStt
         );
     }
     let client = builder.build().map_err(|e| e.to_string())?;
-    Ok(OpenAiCompatStt::new(client, &p.base_url, &p.model, key)
-        .with_prompt(Some(crate::stt::DICTATION_PROMPT.into())))
+    Ok(
+        OpenAiCompatStt::new(client, &p.base_url, &p.model, key).with_prompt(Some(
+            if p.language == "en" {
+                "Glagol."
+            } else {
+                crate::stt::DICTATION_PROMPT
+            }
+            .into(),
+        )),
+    )
 }
 
 #[tauri::command]
@@ -216,14 +232,17 @@ pub fn get_speech_settings(
     state: tauri::State<'_, AppState>,
     mode: Option<Mode>,
 ) -> Result<Settings, String> {
-    let conn = state.db.lock().map_err(|e| e.to_string())?;
-    let profile = read_profile(&conn, mode)?;
-    let key_stored = profile_key(&conn, &profile)?.is_some();
-    Ok(Settings {
-        profile,
-        key_stored,
-        active_mode: active_mode(&conn)?,
-    })
+    (|| {
+        let conn = state.db.lock().map_err(|e| e.to_string())?;
+        let profile = read_profile(&conn, mode)?;
+        let key_stored = profile_key(&conn, &profile)?.is_some();
+        Ok(Settings {
+            profile,
+            key_stored,
+            active_mode: active_mode(&conn)?,
+        })
+    })()
+    .map_err(crate::i18n::error)
 }
 
 /// Store a profile atomically, preserving the other remote profile and weights.
@@ -237,6 +256,8 @@ pub fn persist_profile(conn: &mut Connection, p: &Profile, new_key: bool) -> Res
     };
     if p.mode == Mode::Local {
         set("stt_local_model", &p.model)?;
+        set("stt_local_language", &p.language)?;
+        set(&format!("stt_local_model_{}", p.language), &p.model)?;
     } else {
         let binding = format!("{}_key_endpoint", p.mode.prefix());
         if new_key {
@@ -277,44 +298,60 @@ pub async fn save_speech_settings(
     mut profile: Profile,
     api_key: Option<String>,
 ) -> Result<(), String> {
-    profile.base_url = profile.base_url.trim().trim_end_matches('/').into();
-    profile.model = profile.model.trim().into();
-    profile.proxy = profile.proxy.trim().into();
-    validate_profile(&profile)?;
-    let models = app.state::<Arc<LocalModels>>().inner().clone();
-    let _operation = models
-        .operation
-        .try_lock()
-        .map_err(|_| "Дождитесь операции с локальной моделью.".to_string())?;
-    if profile.mode == Mode::Local {
-        let models = models.clone();
-        let id = profile.model.clone();
-        tauri::async_runtime::spawn_blocking(move || models.prepare(&id))
+    (async {
+        profile.base_url = profile.base_url.trim().trim_end_matches('/').into();
+        profile.model = profile.model.trim().into();
+        profile.proxy = profile.proxy.trim().into();
+        validate_profile(&profile)?;
+        if *state.dictation.lock().map_err(|e| e.to_string())?
+            != crate::dictation::DictationPhase::Idle
+        {
+            return Err("Wait for the current dictation to finish.".into());
+        }
+        let models = app.state::<Arc<LocalModels>>().inner().clone();
+        let _operation = models
+            .operation
+            .try_lock()
+            .map_err(|_| "Дождитесь операции с локальной моделью.".to_string())?;
+        if profile.mode == Mode::Local && profile.language == "ru" {
+            let models = models.clone();
+            let id = profile.model.clone();
+            tauri::async_runtime::spawn_blocking(move || models.prepare(&id))
+                .await
+                .map_err(|e| e.to_string())??;
+        }
+        let has_new_key = api_key.as_ref().is_some_and(|k| !k.trim().is_empty());
+        if has_new_key && profile.mode != Mode::Local {
+            let key = api_key.as_ref().unwrap().trim();
+            keyring::set_bound_stt_key(profile.mode == Mode::Server, &profile.base_url, key)
+                .map_err(|e| e.to_string())?;
+        }
+        {
+            let phase = state.dictation.lock().map_err(|e| e.to_string())?;
+            if *phase != crate::dictation::DictationPhase::Idle {
+                return Err("Wait for the current dictation to finish.".into());
+            }
+            let mut conn = state.db.lock().map_err(|e| e.to_string())?;
+            persist_profile(&mut conn, &profile, has_new_key)?;
+            if let Ok(preferences) = crate::preferences::get(&conn) {
+                let _ = app.emit("preferences-changed", &preferences);
+            }
+        }
+        *state.stt_key_validated.lock().await = false;
+        if profile.mode != Mode::Local {
+            let models = models.clone();
+            tauri::async_runtime::spawn_blocking(move || {
+                *models.engine.lock().map_err(|e| e.to_string())? = None;
+                Ok::<_, String>(())
+            })
             .await
             .map_err(|e| e.to_string())??;
-    }
-    let has_new_key = api_key.as_ref().is_some_and(|k| !k.trim().is_empty());
-    if has_new_key && profile.mode != Mode::Local {
-        let key = api_key.as_ref().unwrap().trim();
-        keyring::set_bound_stt_key(profile.mode == Mode::Server, &profile.base_url, key)
-            .map_err(|e| e.to_string())?;
-    }
-    {
-        let mut conn = state.db.lock().map_err(|e| e.to_string())?;
-        persist_profile(&mut conn, &profile, has_new_key)?;
-    }
-    *state.stt_key_validated.lock().await = false;
-    if profile.mode != Mode::Local {
-        let models = models.clone();
-        tauri::async_runtime::spawn_blocking(move || {
-            *models.engine.lock().map_err(|e| e.to_string())? = None;
-            Ok::<_, String>(())
-        })
-        .await
-        .map_err(|e| e.to_string())??;
-    }
-    let _ = app.emit("speech-settings-changed", ());
-    Ok(())
+        }
+        let _ = app.emit("speech-settings-changed", ());
+        Ok(())
+    })
+    .await
+    .map_err(crate::i18n::error)
 }
 
 #[tauri::command]
@@ -322,43 +359,57 @@ pub async fn test_speech_settings(
     app: tauri::AppHandle,
     state: tauri::State<'_, AppState>,
 ) -> Result<(), String> {
-    let (p, remote) = {
-        let conn = state.db.lock().map_err(|e| e.to_string())?;
-        let p = read_profile(&conn, None)?;
-        let remote = if p.mode != Mode::Local {
-            Some(remote_provider(&conn, &p)?)
-        } else {
-            None
+    (async {
+        let (p, remote) = {
+            let conn = state.db.lock().map_err(|e| e.to_string())?;
+            let p = read_profile(&conn, None)?;
+            let remote = if p.mode != Mode::Local {
+                Some(remote_provider(&conn, &p)?)
+            } else {
+                None
+            };
+            (p, remote)
         };
-        (p, remote)
-    };
-    if let Some(provider) = remote {
-        super::dictation::check_provider(&provider, &p.language).await
-    } else {
-        let models = app.state::<Arc<LocalModels>>().inner().clone();
-        tauri::async_runtime::spawn_blocking(move || models.prepare(&p.model))
-            .await
-            .map_err(|e| e.to_string())?
-    }
+        if let Some(provider) = remote {
+            super::dictation::check_provider(&provider, &p.language).await
+        } else {
+            let models = app.state::<Arc<LocalModels>>().inner().clone();
+            if p.language == "en" {
+                let stream = models.moonshine.begin().await?;
+                stream.input.finish()?;
+                let result = stream.result.lock().unwrap().take().unwrap();
+                result.await.map_err(|e| e.to_string())??;
+                return Ok(());
+            }
+            tauri::async_runtime::spawn_blocking(move || models.prepare(&p.model))
+                .await
+                .map_err(|e| e.to_string())?
+        }
+    })
+    .await
+    .map_err(crate::i18n::error)
 }
 
 #[tauri::command]
 pub fn delete_speech_key(mode: Mode) -> Result<(), String> {
-    if mode != Mode::Local {
-        match keyring::delete_bound_stt_key(mode == Mode::Server) {
-            Ok(()) | Err(keyring::KeyringError::NotFound) => {}
-            Err(e) => return Err(e.to_string()),
+    (|| {
+        if mode != Mode::Local {
+            match keyring::delete_bound_stt_key(mode == Mode::Server) {
+                Ok(()) | Err(keyring::KeyringError::NotFound) => {}
+                Err(e) => return Err(e.to_string()),
+            }
         }
-    }
-    let result = match mode {
-        Mode::Local => return Ok(()),
-        Mode::Server => keyring::delete_server_stt_key(),
-        Mode::Cloud => keyring::delete_stt_key(),
-    };
-    match result {
-        Ok(()) | Err(keyring::KeyringError::NotFound) => Ok(()),
-        Err(e) => Err(e.to_string()),
-    }
+        let result = match mode {
+            Mode::Local => return Ok(()),
+            Mode::Server => keyring::delete_server_stt_key(),
+            Mode::Cloud => keyring::delete_stt_key(),
+        };
+        match result {
+            Ok(()) | Err(keyring::KeyringError::NotFound) => Ok(()),
+            Err(e) => Err(e.to_string()),
+        }
+    })()
+    .map_err(crate::i18n::error)
 }
 
 pub fn build_backend(
@@ -367,6 +418,15 @@ pub fn build_backend(
 ) -> Result<(SttBackend, Profile), String> {
     let p = read_profile(conn, None)?;
     let backend = if p.mode == Mode::Local {
+        if p.language == "en" {
+            validate_profile(&p)?;
+            return Ok((
+                SttBackend::Moonshine(crate::stt::moonshine::Provider::new(
+                    app.state::<Arc<LocalModels>>().moonshine.clone(),
+                )),
+                p,
+            ));
+        }
         crate::stt::local::catalog::model(&p.model)?;
         SttBackend::Local(LocalProvider {
             models: app.state::<Arc<LocalModels>>().inner().clone(),

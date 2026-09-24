@@ -21,7 +21,8 @@ use tauri::{Emitter, Manager};
 pub struct LocalModels {
     pub root: PathBuf,
     pub engine: Mutex<Option<engine::Engine>>,
-    pub operation: tokio::sync::Mutex<()>,
+    pub operation: Arc<tokio::sync::Mutex<()>>,
+    pub moonshine: Arc<super::moonshine::Moonshine>,
     cancel: AtomicBool,
     progress: Mutex<Option<Progress>>,
 }
@@ -38,7 +39,11 @@ pub struct Progress {
 pub struct ModelStatus {
     pub id: &'static str,
     pub name: &'static str,
-    pub description: &'static str,
+    pub description: String,
+    pub language: &'static str,
+    pub provider: &'static str,
+    pub runtime_bytes: u64,
+    pub download_bytes: u64,
     pub bytes: u64,
     pub installed: bool,
     pub partial_bytes: u64,
@@ -55,10 +60,16 @@ pub struct LocalStatus {
 
 impl LocalModels {
     pub fn new(root: PathBuf) -> Self {
+        let operation = Arc::new(tokio::sync::Mutex::new(()));
+        let moonshine = Arc::new(super::moonshine::Moonshine::new(
+            root.join("moonshine-0.1.5"),
+            operation.clone(),
+        ));
         Self {
             root,
             engine: Mutex::new(None),
-            operation: tokio::sync::Mutex::new(()),
+            operation,
+            moonshine,
             cancel: AtomicBool::new(false),
             progress: Mutex::new(None),
         }
@@ -73,7 +84,11 @@ impl LocalModels {
                 .map(|m| ModelStatus {
                     id: m.id,
                     name: m.name,
-                    description: m.description,
+                    description: crate::i18n::error(m.description.into()),
+                    language: "ru",
+                    provider: "gigaam",
+                    runtime_bytes: RUNTIME.bytes,
+                    download_bytes: if self.root.join(m.artifact.file).exists() { 0 } else { m.artifact.bytes } + if self.root.join(RUNTIME_DIR).join("transcribe.dll").exists() { 0 } else { RUNTIME.bytes },
                     bytes: m.artifact.bytes,
                     installed: std::fs::metadata(self.root.join(m.artifact.file))
                         .is_ok_and(|s| s.len() == m.artifact.bytes),
@@ -83,7 +98,17 @@ impl LocalModels {
                     .map(|s| s.len())
                     .unwrap_or(0),
                 })
-                .collect(),
+                .chain([ModelStatus {
+                    id: super::moonshine::catalog::ID,
+                    name: "Moonshine Small Streaming",
+                    description: crate::preferences::message("English dictation processed while you speak. Text appears after releasing the shortcut.", "Английская диктовка обрабатывается во время речи. Текст появится после отпускания клавиши."),
+                    language: "en", provider: "moonshine",
+                    bytes: super::moonshine::catalog::FILES.iter().map(|a| a.bytes).sum(),
+                    runtime_bytes: super::moonshine::catalog::RUNTIME.bytes,
+                    download_bytes: super::moonshine::download_bytes(&self.moonshine.root),
+                    installed: super::moonshine::installed(&self.moonshine.root),
+                    partial_bytes: super::moonshine::partial_bytes(&self.moonshine.root),
+                }]).collect(),
             progress: self.progress.lock().unwrap().clone(),
         }
     }
@@ -198,78 +223,106 @@ pub async fn download_local_model(
     state: tauri::State<'_, Arc<LocalModels>>,
     id: String,
 ) -> Result<(), String> {
-    if !cfg!(all(windows, target_arch = "x86_64")) {
-        return Err("Локальные модели пока поддерживаются на Windows x64.".into());
-    }
-    let m = *model(&id)?;
-    let _operation = state
-        .operation
-        .try_lock()
-        .map_err(|_| "Дождитесь текущей операции с моделью.".to_string())?;
-    state.cancel.store(false, Ordering::Relaxed);
-    std::fs::create_dir_all(&state.root).map_err(|e| e.to_string())?;
-    std::fs::write(
-        state.root.join("GigaAM-LICENSE.txt"),
-        include_bytes!("../../../../docs/third-party/GigaAM-LICENSE.txt"),
-    )
-    .map_err(|e| e.to_string())?;
-    // Reserve enough for the model, archive and unpacked runtime. Partials are reusable.
-    let remaining = m.artifact.bytes.saturating_sub(
-        std::fs::metadata(state.root.join(format!("{}.part", m.artifact.file)))
-            .map(|s| s.len())
-            .unwrap_or(0),
-    );
-    if fs2::available_space(&state.root).map_err(|e| e.to_string())? < remaining + 200_000_000 {
-        return Err("Недостаточно места: освободите не менее 500 МБ и повторите загрузку.".into());
-    }
-    let total = RUNTIME.bytes + m.artifact.bytes;
-    let last_emit = Mutex::new(Instant::now() - std::time::Duration::from_secs(1));
-    let emit = |stage: &str, downloaded| {
-        let p = Progress {
-            model_id: id.clone(),
-            stage: stage.into(),
-            downloaded,
-            total,
+    (async {
+        if !cfg!(all(windows, target_arch = "x86_64")) {
+            return Err("Локальные модели пока поддерживаются на Windows x64.".into());
+        }
+        let _operation = state
+            .operation
+            .try_lock()
+            .map_err(|_| "Дождитесь текущей операции с моделью.".to_string())?;
+        state.cancel.store(false, Ordering::Relaxed);
+        if id == super::moonshine::catalog::ID {
+            state.moonshine.close().await;
+            let result = super::moonshine::install(
+                &app,
+                &state.moonshine.root,
+                &state.cancel,
+                |stage, downloaded, total| {
+                    let p = Progress {
+                        model_id: id.clone(),
+                        stage: stage.into(),
+                        downloaded,
+                        total,
+                    };
+                    *state.progress.lock().unwrap() = Some(p.clone());
+                    let _ = app.emit("local-model-progress", p);
+                },
+            )
+            .await;
+            *state.progress.lock().unwrap() = None;
+            let _ = app.emit("local-models-changed", ());
+            return result;
+        }
+        let m = *model(&id)?;
+        std::fs::create_dir_all(&state.root).map_err(|e| e.to_string())?;
+        std::fs::write(
+            state.root.join("GigaAM-LICENSE.txt"),
+            include_bytes!("../../../../docs/third-party/GigaAM-LICENSE.txt"),
+        )
+        .map_err(|e| e.to_string())?;
+        // Reserve enough for the model, archive and unpacked runtime. Partials are reusable.
+        let remaining = m.artifact.bytes.saturating_sub(
+            std::fs::metadata(state.root.join(format!("{}.part", m.artifact.file)))
+                .map(|s| s.len())
+                .unwrap_or(0),
+        );
+        if fs2::available_space(&state.root).map_err(|e| e.to_string())? < remaining + 200_000_000 {
+            return Err(
+                "Недостаточно места: освободите не менее 500 МБ и повторите загрузку.".into(),
+            );
+        }
+        let total = RUNTIME.bytes + m.artifact.bytes;
+        let last_emit = Mutex::new(Instant::now() - std::time::Duration::from_secs(1));
+        let emit = |stage: &str, downloaded| {
+            let p = Progress {
+                model_id: id.clone(),
+                stage: stage.into(),
+                downloaded,
+                total,
+            };
+            *state.progress.lock().unwrap() = Some(p.clone());
+            let mut last = last_emit.lock().unwrap();
+            if downloaded == total || last.elapsed() >= std::time::Duration::from_millis(100) {
+                let _ = app.emit("local-model-progress", p);
+                *last = Instant::now();
+            }
         };
-        *state.progress.lock().unwrap() = Some(p.clone());
-        let mut last = last_emit.lock().unwrap();
-        if downloaded == total || last.elapsed() >= std::time::Duration::from_millis(100) {
-            let _ = app.emit("local-model-progress", p);
-            *last = Instant::now();
+        emit("downloading", 0);
+        let result = async {
+            let client = reqwest::Client::builder()
+                .https_only(true)
+                .connect_timeout(std::time::Duration::from_secs(20))
+                .read_timeout(std::time::Duration::from_secs(30))
+                .user_agent("Glagol local-model downloader")
+                .build()
+                .map_err(|e| e.to_string())?;
+            download::fetch(&client, &RUNTIME, &state.root, &state.cancel, |n| {
+                emit("downloading", n)
+            })
+            .await?;
+            download::fetch(&client, &m.artifact, &state.root, &state.cancel, |n| {
+                emit("downloading", RUNTIME.bytes + n)
+            })
+            .await?;
+            if state.cancel.load(Ordering::Relaxed) {
+                return Err("Загрузка отменена.".into());
+            }
+            emit("verifying", total);
+            let root = state.root.clone();
+            tauri::async_runtime::spawn_blocking(move || install_runtime(&root))
+                .await
+                .map_err(|e| e.to_string())??;
+            tracing::info!(model = %id, "local STT download verified");
+            Ok(())
         }
-    };
-    emit("downloading", 0);
-    let result = async {
-        let client = reqwest::Client::builder()
-            .https_only(true)
-            .connect_timeout(std::time::Duration::from_secs(20))
-            .read_timeout(std::time::Duration::from_secs(30))
-            .user_agent("Glagol local-model downloader")
-            .build()
-            .map_err(|e| e.to_string())?;
-        download::fetch(&client, &RUNTIME, &state.root, &state.cancel, |n| {
-            emit("downloading", n)
-        })
-        .await?;
-        download::fetch(&client, &m.artifact, &state.root, &state.cancel, |n| {
-            emit("downloading", RUNTIME.bytes + n)
-        })
-        .await?;
-        if state.cancel.load(Ordering::Relaxed) {
-            return Err("Загрузка отменена.".into());
-        }
-        emit("verifying", total);
-        let root = state.root.clone();
-        tauri::async_runtime::spawn_blocking(move || install_runtime(&root))
-            .await
-            .map_err(|e| e.to_string())??;
-        tracing::info!(model = %id, "local STT download verified");
-        Ok(())
-    }
-    .await;
-    *state.progress.lock().unwrap() = None;
-    let _ = app.emit("local-models-changed", ());
-    result
+        .await;
+        *state.progress.lock().unwrap() = None;
+        let _ = app.emit("local-models-changed", ());
+        result
+    })
+    .await
+    .map_err(crate::i18n::error)
 }
 
 #[tauri::command]
@@ -278,41 +331,51 @@ pub async fn remove_local_model(
     state: tauri::State<'_, Arc<LocalModels>>,
     id: String,
 ) -> Result<(), String> {
-    let m = *model(&id)?;
-    let _operation = state
-        .operation
-        .try_lock()
-        .map_err(|_| "Дождитесь текущей операции с моделью.".to_string())?;
-    let app_state = app.state::<crate::state::AppState>();
-    {
-        let conn = app_state.db.lock().map_err(|e| e.to_string())?;
-        let profile = crate::commands::speech::read_profile(&conn, None)?;
-        if profile.mode == crate::commands::speech::Mode::Local && profile.model == id {
-            return Err("Сначала выберите другую модель или режим диктовки.".into());
-        }
-    }
-    let state = state.inner().clone();
-    tauri::async_runtime::spawn_blocking(move || {
-        let mut engine = state.engine.lock().map_err(|e| e.to_string())?;
-        if engine.as_ref().is_some_and(|e| e.model_id == id) {
-            *engine = None;
-        }
-        for file in [
-            m.artifact.file.to_string(),
-            format!("{}.part", m.artifact.file),
-        ] {
-            match std::fs::remove_file(state.root.join(file)) {
-                Ok(()) => {}
-                Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
-                Err(e) => return Err(e.to_string()),
+    (async {
+        let _operation = state
+            .operation
+            .try_lock()
+            .map_err(|_| "Дождитесь текущей операции с моделью.".to_string())?;
+        let app_state = app.state::<crate::state::AppState>();
+        {
+            let conn = app_state.db.lock().map_err(|e| e.to_string())?;
+            let profile = crate::commands::speech::read_profile(&conn, None)?;
+            if profile.mode == crate::commands::speech::Mode::Local && profile.model == id {
+                return Err("Сначала выберите другую модель или режим диктовки.".into());
             }
         }
-        Ok::<_, String>(())
+        if id == super::moonshine::catalog::ID {
+            state.moonshine.close().await;
+            super::moonshine::remove(&state.moonshine.root)?;
+            let _ = app.emit("local-models-changed", ());
+            return Ok(());
+        }
+        let m = *model(&id)?;
+        let state = state.inner().clone();
+        tauri::async_runtime::spawn_blocking(move || {
+            let mut engine = state.engine.lock().map_err(|e| e.to_string())?;
+            if engine.as_ref().is_some_and(|e| e.model_id == id) {
+                *engine = None;
+            }
+            for file in [
+                m.artifact.file.to_string(),
+                format!("{}.part", m.artifact.file),
+            ] {
+                match std::fs::remove_file(state.root.join(file)) {
+                    Ok(()) => {}
+                    Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+                    Err(e) => return Err(e.to_string()),
+                }
+            }
+            Ok::<_, String>(())
+        })
+        .await
+        .map_err(|e| e.to_string())??;
+        let _ = app.emit("local-models-changed", ());
+        Ok(())
     })
     .await
-    .map_err(|e| e.to_string())??;
-    let _ = app.emit("local-models-changed", ());
-    Ok(())
+    .map_err(crate::i18n::error)
 }
 
 pub struct LocalProvider {

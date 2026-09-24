@@ -17,6 +17,8 @@ PROTOCOL = sys.stdout
 sys.stdout = sys.stderr
 VOICES = ("aidar", "baya", "kseniya", "xenia", "eugene")
 MODEL_HASH = "50081637b602126ee06cb3bc8a744d25651d2da149ee8864b9a379bfdd934437"
+EN_MODEL_HASH = "02b71034d9f13bc4001195017bac9db1c6bb6115e03fea52983e8abcff13b665"
+EN_VOICES = ("en_0", "en_1", "en_2", "en_3")
 
 
 def emit(payload):
@@ -65,6 +67,25 @@ def normalize(text):
     return re.sub(r"\s+", " ", text).strip()
 
 
+def normalize_english(text):
+    from num2words import num2words
+    from decimal import Decimal
+    def number(match):
+        value = match.group()
+        if len(value) > 15 or (len(value) > 1 and value.startswith("0") and not value.startswith("0.")):
+            return " ".join("point" if c == "." else num2words(int(c), lang="en") for c in value)
+        return num2words(Decimal(value), lang="en")
+    # Expand common written forms before the model's symbol filtering.
+    text = re.sub(r"(?<=\d),(?=\d{3}(?:\D|$))", "", text)
+    text = re.sub(r"\$([0-9]+(?:\.[0-9]+)?)", r"\1 dollars", text)
+    text = re.sub(r"£([0-9]+(?:\.[0-9]+)?)", r"\1 pounds", text)
+    text = re.sub(r"(?<=\d):(?=\d)", " ", text)
+    text = re.sub(r"[0-9]+(?:\.[0-9]+)?", number, text)
+    text = re.sub(r"\b[A-Z]{2,6}\b", lambda m: " ".join(m[0]), text)
+    text = text.replace("%", " percent ").replace("№", " number ")
+    return re.sub(r"\s+", " ", text).strip()
+
+
 def segments(text, limit=480):
     while len(text) > limit:
         end = max(text.rfind(mark, 0, limit) for mark in (". ", "! ", "? ", "; "))
@@ -81,10 +102,15 @@ def segments(text, limit=480):
 
 
 def main():
-    model_path, output_dir, parent = sys.argv[1:]
+    model_path, output_dir, parent = sys.argv[1:4]
+    language = sys.argv[4] if len(sys.argv) == 5 else "ru"
+    if language not in ("en", "ru"):
+        raise ValueError("invalid_language")
+    voices = EN_VOICES if language == "en" else VOICES
+    model_hash = EN_MODEL_HASH if language == "en" else MODEL_HASH
     watch_parent(int(parent))
     with open(model_path, "rb") as source:
-        if hashlib.file_digest(source, "sha256").hexdigest() != MODEL_HASH:
+        if hashlib.file_digest(source, "sha256").hexdigest() != model_hash:
             raise ValueError("model_hash")
     import torch
     torch.set_num_threads(2)
@@ -101,11 +127,11 @@ def main():
             raise ValueError("protocol_limit")
         request = json.loads(line)
         text, voice = request["text"], request["voice"]
-        if not isinstance(text, str) or not 1 <= len(text) <= 300 or voice not in VOICES:
+        if not isinstance(text, str) or not 1 <= len(text) <= 300 or voice not in voices:
             raise ValueError("invalid_request")
         try:
-            normalized = normalize(text)
-            if not re.search("[а-яёА-ЯЁ]", normalized):
+            normalized = normalize_english(text) if language == "en" else normalize(text)
+            if not re.search("[a-zA-Z]" if language == "en" else "[а-яёА-ЯЁ]", normalized):
                 emit({"empty": True})
                 continue
             with wave.open(str(output), "wb") as writer:
@@ -114,7 +140,8 @@ def main():
                 writer.setframerate(24000)
                 for segment in segments(normalized):
                     with torch.inference_mode():
-                        audio = model.apply_tts(text=segment, speaker=voice, sample_rate=24000, put_accent=True, put_yo=True)
+                        options = {} if language == "en" else {"put_accent": True, "put_yo": True}
+                        audio = model.apply_tts(text=segment, speaker=voice, sample_rate=24000, **options)
                     if not torch.isfinite(audio).all() or audio.numel() > 24000 * 300:
                         raise ValueError("audio_limit")
                     pcm = (audio.clamp(-1, 1) * 32767).round().to(torch.int16).cpu().numpy().astype("<i2")

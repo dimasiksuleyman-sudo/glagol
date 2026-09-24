@@ -1,3 +1,5 @@
+import { t } from "@/i18n";
+import { useI18n } from "@/contexts/PreferencesContext";
 import { useEffect, useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { listen } from "@tauri-apps/api/event";
@@ -50,6 +52,7 @@ type PendingRestore = {
 };
 
 export function BackupSection() {
+  useI18n();
   const [activeOp, setActiveOp] = useState<ActiveOperation>(null);
   const [progress, setProgress] = useState<ProgressState | null>(null);
   const [pendingRestore, setPendingRestore] = useState<PendingRestore | null>(null);
@@ -78,7 +81,7 @@ export function BackupSection() {
     const folder = await open({
       directory: true,
       multiple: false,
-      title: "Выберите папку для резервной копии",
+      title: t("Choose a backup folder"),
     });
     if (typeof folder !== "string") {
       return;
@@ -89,9 +92,9 @@ export function BackupSection() {
     try {
       const fullPath = await createBackup(folder);
       const filename = fullPath.split(/[\\/]/).pop() ?? fullPath;
-      toast.success(`Резервная копия создана: ${filename}`);
+      toast.success(t("Backup created: {p0}", { p0: filename }));
     } catch (err) {
-      toast.error(`Не удалось создать резервную копию: ${stringifyError(err)}`);
+      toast.error(t("Could not create backup: {p0}", { p0: stringifyError(err) }));
     } finally {
       setActiveOp(null);
       setProgress(null);
@@ -102,8 +105,8 @@ export function BackupSection() {
     const file = await open({
       multiple: false,
       directory: false,
-      title: "Выберите резервную копию",
-      filters: [{ name: "Резервная копия Glagol", extensions: ["zip"] }],
+      title: t("Choose a backup"),
+      filters: [{ name: t("Glagol backup"), extensions: ["zip"] }],
     });
     if (typeof file !== "string") {
       return;
@@ -116,7 +119,7 @@ export function BackupSection() {
       manifest = await validateBackup(file);
     } catch (err) {
       toast.error(
-        `Этот файл не является корректной резервной копией Glagol: ${stringifyError(err)}`,
+        t("This file is not a valid Glagol backup: {p0}", { p0: stringifyError(err) }),
       );
       return;
     }
@@ -145,13 +148,13 @@ export function BackupSection() {
     setProgress({ current: 0, total: 0 });
     try {
       await restoreBackup(sourcePath);
-      toast.success("Восстановление завершено. Приложение перезапустится.");
+      toast.success(t("Restore complete. The application will restart."));
       // Brief pause so the success toast is readable before the
       // process is replaced. relaunchApp never resolves on success.
       await new Promise((resolve) => setTimeout(resolve, RELAUNCH_DELAY_MS));
       await relaunchApp();
     } catch (err) {
-      toast.error(`Восстановление не удалось: ${stringifyError(err)}`);
+      toast.error(t("Restore failed: {p0}", { p0: stringifyError(err) }));
       setActiveOp(null);
       setProgress(null);
     }
@@ -163,32 +166,28 @@ export function BackupSection() {
       ? Math.min(100, Math.round((progress.current / progress.total) * 100))
       : 0;
   const progressTitle =
-    activeOp === "restore" ? "Восстановление из резервной копии" : "Создание резервной копии";
-  const progressVerb = activeOp === "restore" ? "Восстанавливаю" : "Создаю резервную копию";
+    activeOp === "restore" ? t("Restore from backup") : t("Creating backup");
+  const progressVerb = activeOp === "restore" ? t("Restoring") : t("Creating backup");
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Резервное копирование</CardTitle>
+        <CardTitle>{t("Backup")}</CardTitle>
         <CardDescription>
-          Сохраните или восстановите всю библиотеку — документы и аудиофайлы — одним
-          архивом.
-        </CardDescription>
+          {t("Save or restore your entire library, including documents and audio, in one archive.")}{" "}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-wrap gap-2">
           <Button onClick={handleCreateBackup} disabled={operationInProgress}>
             <Archive className="mr-2 size-4" />
-            Создать резервную копию
-          </Button>
+            {t("Create backup")}{" "}</Button>
           <Button
             variant="secondary"
             onClick={handlePickRestoreSource}
             disabled={operationInProgress}
           >
             <Upload className="mr-2 size-4" />
-            Восстановить из резервной копии
-          </Button>
+            {t("Restore from backup")}{" "}</Button>
         </div>
       </CardContent>
 
@@ -211,7 +210,7 @@ export function BackupSection() {
                       {progress.current} / {progress.total} {pluralizeFiles(progress.total)}
                     </span>
                   ) : (
-                    <span className="text-muted-foreground">подготовка…</span>
+                    <span className="text-muted-foreground">{t("preparing…")}</span>
                   )}
                 </p>
                 <Progress value={percent} />
@@ -230,21 +229,21 @@ export function BackupSection() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Восстановление из резервной копии</AlertDialogTitle>
+            <AlertDialogTitle>{t("Restore from backup")}</AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-3 text-sm">
-                <p>Эта операция полностью заменит текущую библиотеку:</p>
+                <p>{t("This will replace your entire current library:")}</p>
                 {pendingRestore && (
                   <ul className="bg-muted/40 space-y-1 rounded-md border p-3 font-mono text-xs">
                     <li>
-                      Сейчас в библиотеке:{" "}
+                      {t("Currently in library:")}{" "}
                       <span className="text-foreground font-semibold">
                         {pendingRestore.currentCount}
                       </span>{" "}
                       {pluralizeDocuments(pendingRestore.currentCount)}
                     </li>
                     <li>
-                      В резервной копии:{" "}
+                      {t("In backup:")}{" "}
                       <span className="text-foreground font-semibold">
                         {pendingRestore.manifest.document_count}
                       </span>{" "}
@@ -252,22 +251,19 @@ export function BackupSection() {
                     </li>
                   </ul>
                 )}
-                <p>Текущие данные будут безвозвратно удалены.</p>
+                <p>{t("Current data will be permanently deleted.")}</p>
                 <p className="text-muted-foreground">
-                  Резервная копия текущего состояния создаётся автоматически перед
-                  восстановлением (в той же папке, что и исходный файл).
-                </p>
+                  {t("A backup of the current state is created automatically before restoring, in the same folder as the selected backup.")}{" "}</p>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogCancel>{t("Cancel")}</AlertDialogCancel>
             <AlertDialogAction
               className={cn(buttonVariants({ variant: "destructive" }))}
               onClick={handleConfirmRestore}
             >
-              Восстановить
-            </AlertDialogAction>
+              {t("Restore")}{" "}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

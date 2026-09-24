@@ -1,5 +1,6 @@
 //! Optional, verified CPU runtime and an owned offline worker process.
 pub mod catalog;
+pub mod models;
 mod runtime;
 mod worker;
 use crate::stt::local::download;
@@ -118,6 +119,13 @@ pub struct Progress {
 }
 #[derive(Serialize)]
 pub struct Status {
+    pub provider: &'static str,
+    pub model_id: &'static str,
+    pub voices: &'static [&'static str],
+    pub dependencies: Vec<Dependency>,
+    pub language: crate::preferences::Language,
+    pub model_file: &'static str,
+    pub download_bytes: u64,
     pub supported: bool,
     pub installed: bool,
     pub accepted: bool,
@@ -131,10 +139,30 @@ pub struct Status {
     pub error: Option<String>,
 }
 
+#[derive(Serialize)]
+pub struct Dependency {
+    pub id: &'static str,
+    pub shared: bool,
+    pub installed: bool,
+    pub bytes: u64,
+}
+
+fn missing_bytes(root: &Path, artifact: &crate::stt::local::catalog::Artifact) -> u64 {
+    if std::fs::metadata(root.join(artifact.file)).is_ok_and(|m| m.len() == artifact.bytes) {
+        return 0;
+    }
+    artifact.bytes.saturating_sub(
+        std::fs::metadata(root.join(format!("{}.part", artifact.file)))
+            .map(|m| m.len().min(artifact.bytes))
+            .unwrap_or(0),
+    )
+}
+
 /// TTS state and files are separate from dictation and database backups.
 pub struct Silero {
     pub root: PathBuf,
-    pub operation: tokio::sync::Mutex<()>,
+    pub operation: Arc<tokio::sync::Mutex<()>>,
+    pub model: &'static models::Model,
     pub worker: tokio::sync::Mutex<Option<Worker>>,
     pub cancel: Arc<AtomicBool>,
     verification: VerificationCache,
@@ -143,9 +171,18 @@ pub struct Silero {
 }
 impl Silero {
     pub fn new(root: PathBuf) -> Self {
+        Self::for_model(root, &models::RU, Arc::new(tokio::sync::Mutex::new(())))
+    }
+    /// Construct a language manager sharing the operation gate.
+    pub fn for_model(
+        root: PathBuf,
+        model: &'static models::Model,
+        operation: Arc<tokio::sync::Mutex<()>>,
+    ) -> Self {
         Self {
             root,
-            operation: tokio::sync::Mutex::new(()),
+            operation,
+            model,
             worker: tokio::sync::Mutex::new(None),
             cancel: Arc::new(AtomicBool::new(false)),
             verification: VerificationCache::default(),
@@ -154,10 +191,10 @@ impl Silero {
         }
     }
     pub fn accepted(&self) -> bool {
-        std::fs::read_to_string(self.root.join("acknowledgement.json"))
+        std::fs::read_to_string(self.root.join(self.model.acknowledgement))
             .ok()
             .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
-            .is_some_and(|v| v["model"] == MODEL_ID && v["license_sha256"] == LICENSE_HASH)
+            .is_some_and(|v| v["model"] == self.model.id && v["license_sha256"] == LICENSE_HASH)
     }
     pub fn require_consent(&self) -> Result<(), String> {
         if self.accepted() {
@@ -171,15 +208,15 @@ impl Silero {
             return Err("Подтвердите актуальные условия Silero перед загрузкой.".into());
         }
         std::fs::create_dir_all(&self.root).map_err(|e| e.to_string())?;
-        let data = serde_json::json!({"model": MODEL_ID, "license_sha256": LICENSE_HASH, "accepted_at": chrono::Utc::now().to_rfc3339()});
-        std::fs::write(self.root.join("acknowledgement.json"), data.to_string())
+        let data = serde_json::json!({"model": self.model.id, "license_sha256": LICENSE_HASH, "accepted_at": chrono::Utc::now().to_rfc3339()});
+        std::fs::write(self.root.join(self.model.acknowledgement), data.to_string())
             .map_err(|e| e.to_string())
     }
     pub fn status(&self) -> Status {
         let runtime_bytes = catalog::ARTIFACTS.iter().map(|a| a.bytes).sum();
         let partial_bytes = catalog::ARTIFACTS
             .iter()
-            .chain(std::iter::once(&catalog::MODEL))
+            .chain(std::iter::once(self.model.artifact))
             .map(|a| {
                 std::fs::metadata(self.root.join(format!("{}.part", a.file)))
                     .map(|m| m.len())
@@ -187,18 +224,42 @@ impl Silero {
             })
             .sum();
         Status {
+            provider: self.model.provider,
+            model_id: self.model.id,
+            voices: self.model.voices,
+            dependencies: vec![Dependency {
+                id: "silero-python311-torch271",
+                shared: true,
+                installed: self.root.join("runtime/python.exe").is_file(),
+                bytes: runtime_bytes,
+            }],
+            language: self.model.language,
+            model_file: self.model.artifact.file,
+            download_bytes: missing_bytes(&self.root, self.model.artifact)
+                + (if self.root.join("runtime/python.exe").is_file() {
+                    0
+                } else {
+                    catalog::ARTIFACTS
+                        .iter()
+                        .map(|a| missing_bytes(&self.root, a))
+                        .sum()
+                }),
             supported: cfg!(all(windows, target_arch = "x86_64")),
             installed: self.root.join("runtime/python.exe").is_file()
-                && self.root.join(catalog::MODEL.file).is_file(),
+                && self.root.join(self.model.artifact.file).is_file(),
             accepted: self.accepted(),
-            model_bytes: catalog::MODEL.bytes,
+            model_bytes: self.model.artifact.bytes,
             runtime_bytes,
-            disk_bytes: 1_900_000_000,
+            disk_bytes: if self.root.join("runtime/python.exe").is_file() {
+                self.model.artifact.bytes * 2
+            } else {
+                1_900_000_000
+            },
             partial_bytes,
             license: LICENSE,
             license_hash: LICENSE_HASH,
             progress: self.progress.lock().unwrap().clone(),
-            error: self.error.lock().unwrap().clone(),
+            error: self.error.lock().unwrap().clone().map(crate::i18n::error),
         }
     }
     pub fn stage(&self, app: &tauri::AppHandle, stage: &str, downloaded: u64, total: u64) {
@@ -223,7 +284,7 @@ impl Silero {
         }
     }
     fn recent_verification_valid(&self) -> bool {
-        let Ok(contents) = std::fs::read_to_string(self.root.join(VERIFICATION_STAMP)) else {
+        let Ok(contents) = std::fs::read_to_string(self.root.join(self.model.verification)) else {
             return false;
         };
         let Ok(stamp) = serde_json::from_str::<VerificationStamp>(&contents) else {
@@ -231,13 +292,13 @@ impl Silero {
         };
         let age = chrono::Utc::now().timestamp() - stamp.verified_at;
         if stamp.schema_version != 1
-            || stamp.model != MODEL_ID
+            || stamp.model != self.model.id
             || !(0..=VERIFICATION_MAX_AGE).contains(&age)
             || stamp.runtime_manifest_sha256 != runtime_manifest_sha256()
         {
             return false;
         }
-        fingerprint(&self.root.join(catalog::MODEL.file)).is_ok_and(|value| {
+        fingerprint(&self.root.join(self.model.artifact.file)).is_ok_and(|value| {
             value.bytes == stamp.model_file.bytes
                 && value.modified_ns == stamp.model_file.modified_ns
         }) && fingerprint(&self.root.join("runtime/python.exe")).is_ok_and(|value| {
@@ -251,15 +312,15 @@ impl Silero {
     fn record_verification(&self) -> Result<(), String> {
         let stamp = VerificationStamp {
             schema_version: 1,
-            model: MODEL_ID.into(),
+            model: self.model.id.into(),
             verified_at: chrono::Utc::now().timestamp(),
             runtime_manifest_sha256: runtime_manifest_sha256(),
-            model_file: fingerprint(&self.root.join(catalog::MODEL.file))?,
+            model_file: fingerprint(&self.root.join(self.model.artifact.file))?,
             python_exe: fingerprint(&self.root.join("runtime/python.exe"))?,
             python_dll: fingerprint(&self.root.join("runtime/python311.dll"))?,
         };
-        let destination = self.root.join(VERIFICATION_STAMP);
-        let partial = self.root.join(format!("{VERIFICATION_STAMP}.part"));
+        let destination = self.root.join(self.model.verification);
+        let partial = self.root.join(format!("{}.part", self.model.verification));
         std::fs::write(
             &partial,
             serde_json::to_vec(&stamp).map_err(|e| e.to_string())?,
@@ -280,7 +341,10 @@ impl Silero {
                         if this.recent_verification_valid() {
                             return Ok(false);
                         }
-                        download::verify(&this.root.join(catalog::MODEL.file), &catalog::MODEL)?;
+                        download::verify(
+                            &this.root.join(this.model.artifact.file),
+                            this.model.artifact,
+                        )?;
                         runtime::verify(&this.root.join("runtime"), &this.cancel)?;
                         if this.record_verification().is_err() {
                             tracing::warn!("local TTS verification stamp could not be saved");
@@ -310,7 +374,11 @@ impl Silero {
     }
     pub async fn invalidate_verification(&self) {
         self.verification.invalidate().await;
-        let _ = std::fs::remove_file(self.root.join(VERIFICATION_STAMP));
+        let _ = std::fs::remove_file(self.root.join(self.model.verification));
+    }
+    /// Shared runtime maintenance invalidates RAM caches, retaining per-model receipts.
+    pub async fn clear_verification_cache(&self) {
+        self.verification.invalidate().await;
     }
     pub async fn install(
         self: &Arc<Self>,
@@ -324,14 +392,44 @@ impl Silero {
         self.cancel.store(false, Ordering::Relaxed);
         self.close_worker().await;
         self.invalidate_verification().await;
-        let total = catalog::MODEL.bytes + catalog::ARTIFACTS.iter().map(|a| a.bytes).sum::<u64>();
-        let missing = std::iter::once(&catalog::MODEL)
-            .chain(catalog::ARTIFACTS.iter())
+        // A second language must not download or reassemble an intact shared runtime.
+        let this = self.clone();
+        let reuse_runtime = tokio::task::spawn_blocking(move || {
+            runtime::verify(&this.root.join("runtime"), &this.cancel).is_ok()
+        })
+        .await
+        .map_err(|e| e.to_string())?;
+        if self.cancel.load(Ordering::Relaxed) {
+            return Err("Операция отменена.".into());
+        }
+        let runtime_artifacts = if reuse_runtime {
+            &[][..]
+        } else {
+            catalog::ARTIFACTS
+        };
+        let total =
+            self.model.artifact.bytes + runtime_artifacts.iter().map(|a| a.bytes).sum::<u64>();
+        let missing = std::iter::once(self.model.artifact)
+            .chain(runtime_artifacts.iter())
             .filter(|a| !self.root.join(a.file).exists())
             .map(|a| a.bytes)
             .sum::<u64>();
-        if fs2::available_space(&self.root).map_err(|e| e.to_string())? < missing + 1_400_000_000 {
-            return Err("Недостаточно места: освободите 1,9 ГБ для компонентов озвучки.".into());
+        let staging_bytes = if reuse_runtime {
+            self.model.artifact.bytes
+        } else {
+            1_400_000_000
+        };
+        if fs2::available_space(&self.root).map_err(|e| e.to_string())? < missing + staging_bytes {
+            return Err(crate::preferences::message(
+                &format!(
+                    "Not enough disk space. Speech setup requires {} MB free.",
+                    (missing + staging_bytes).div_ceil(1_000_000)
+                ),
+                &format!(
+                    "Недостаточно места. Для установки озвучки нужно {} МБ свободного места.",
+                    (missing + staging_bytes).div_ceil(1_000_000)
+                ),
+            ));
         }
         let client = reqwest::Client::builder()
             .connect_timeout(Duration::from_secs(15))
@@ -340,14 +438,15 @@ impl Silero {
             .map_err(|e| e.to_string())?;
         if let Some(source) = model_path {
             self.stage(app, "verifying", 0, total);
-            let target = self.root.join(catalog::MODEL.file);
+            let target = self.root.join(self.model.artifact.file);
+            let artifact = self.model.artifact;
             tokio::task::spawn_blocking(move || {
-                download::verify(&source, &catalog::MODEL)?;
+                download::verify(&source, artifact)?;
                 // Import only the exact pinned model, never arbitrary PyTorch code.
                 if source != target {
                     let partial = target.with_extension("importing");
                     std::fs::copy(&source, &partial).map_err(|e| e.to_string())?;
-                    download::verify(&partial, &catalog::MODEL)?;
+                    download::verify(&partial, artifact)?;
                     std::fs::rename(partial, target).map_err(|e| e.to_string())?;
                 }
                 Ok::<_, String>(())
@@ -356,7 +455,7 @@ impl Silero {
             .map_err(|e| e.to_string())??;
         }
         let mut complete = 0;
-        for artifact in std::iter::once(&catalog::MODEL).chain(catalog::ARTIFACTS.iter()) {
+        for artifact in std::iter::once(self.model.artifact).chain(runtime_artifacts.iter()) {
             download::fetch(&client, artifact, &self.root, &self.cancel, |n| {
                 self.stage(app, "downloading", complete + n, total)
             })
@@ -364,10 +463,12 @@ impl Silero {
             complete += artifact.bytes;
         }
         self.stage(app, "verifying", total, total);
-        let this = self.clone();
-        tokio::task::spawn_blocking(move || runtime::assemble(&this.root, &this.cancel))
-            .await
-            .map_err(|e| e.to_string())??;
+        if !reuse_runtime {
+            let this = self.clone();
+            tokio::task::spawn_blocking(move || runtime::assemble(&this.root, &this.cancel))
+                .await
+                .map_err(|e| e.to_string())??;
+        }
         std::fs::write(self.root.join("Silero-LICENSE.txt"), LICENSE).map_err(|e| e.to_string())?;
         if self.record_verification().is_err() {
             tracing::warn!("local TTS verification stamp could not be saved");
@@ -389,13 +490,13 @@ impl Silero {
         }
         self.stage(app, "preparing", 0, 0);
         let verification_performed = self.verify_installed().await?;
-        let worker = match Worker::start(&self.root, self.cancel.clone()).await {
+        let worker = match Worker::start_for(&self.root, self.cancel.clone(), self.model).await {
             Ok(worker) => worker,
             Err(_) if !verification_performed => {
                 tracing::warn!("local TTS worker startup failed; forcing integrity verification");
                 self.invalidate_verification().await;
                 self.verify_installed().await?;
-                Worker::start(&self.root, self.cancel.clone()).await?
+                Worker::start_for(&self.root, self.cancel.clone(), self.model).await?
             }
             Err(error) => return Err(error),
         };
@@ -409,47 +510,53 @@ impl Silero {
         Ok(())
     }
     pub fn verification_task(app: tauri::AppHandle) {
-        tauri::async_runtime::spawn(async move {
-            let state = app.state::<Arc<Silero>>().inner().clone();
-            let status = state.status();
-            if !status.supported || !status.installed || !status.accepted {
-                return;
-            }
-            let started = std::time::Instant::now();
-            let result = state.verify_installed().await;
-            match &result {
-                Ok(verification_performed) => tracing::info!(
-                    elapsed_ms = started.elapsed().as_millis(),
-                    verification_performed,
-                    "local TTS background verification available"
-                ),
-                Err(error) => {
-                    *state.error.lock().unwrap() = Some(error.clone());
-                    tracing::warn!(
-                        elapsed_ms = started.elapsed().as_millis(),
-                        "local TTS background verification failed"
-                    );
-                    let _ = app.emit("tts-status", ());
+        let models = app.state::<models::Models>();
+        for state in [models.ru.clone(), models.en.clone()] {
+            let app = app.clone();
+            tauri::async_runtime::spawn(async move {
+                // Installation can replace shared files; never inspect a half-written runtime.
+                let _operation = state.operation.lock().await;
+                let status = state.status();
+                if !status.supported || !status.installed || !status.accepted {
+                    return;
                 }
-            }
-        });
+                let started = std::time::Instant::now();
+                match state.verify_installed().await {
+                    Ok(verification_performed) => tracing::info!(
+                        model = state.model.id,
+                        elapsed_ms = started.elapsed().as_millis(),
+                        verification_performed,
+                        "local TTS background verification available"
+                    ),
+                    Err(error) => {
+                        *state.error.lock().unwrap() = Some(error);
+                        let _ = app.emit("tts-status", ());
+                    }
+                }
+            });
+        }
     }
     pub fn idle_task(app: tauri::AppHandle) {
         tauri::async_runtime::spawn(async move {
             loop {
                 tokio::time::sleep(Duration::from_secs(30)).await;
-                let state = app.state::<Arc<Silero>>();
-                if let Ok(_operation) = state.operation.try_lock() {
-                    let mut worker = state.worker.lock().await;
-                    let idle_ms = worker.as_ref().and_then(|worker| {
-                        let idle = worker.last_used.elapsed();
-                        (idle > WORKER_IDLE_TIMEOUT).then_some(idle.as_millis())
-                    });
-                    if let Some(idle_ms) = idle_ms {
-                        *worker = None;
-                        tracing::info!(idle_ms, "local TTS worker unloaded after idle");
-                    }
-                };
+                let models = app.state::<models::Models>();
+                for state in [models.ru.clone(), models.en.clone()] {
+                    if let Ok(_operation) = state.operation.try_lock() {
+                        let mut worker = state.worker.lock().await;
+                        let idle = worker.as_ref().map(|worker| worker.last_used.elapsed());
+                        if let Some(idle) = idle.filter(|idle| *idle > WORKER_IDLE_TIMEOUT) {
+                            if let Some(mut process) = worker.take() {
+                                process.shutdown().await;
+                            }
+                            tracing::info!(
+                                model = state.model.id,
+                                idle_ms = idle.as_millis(),
+                                "local TTS worker unloaded after idle"
+                            );
+                        }
+                    };
+                }
             }
         });
     }

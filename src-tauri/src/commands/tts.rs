@@ -1,93 +1,109 @@
 //! Optional TTS choices are independent of dictation.
 use crate::{
     paths,
-    tts::silero::{Silero, Status},
+    tts::silero::{models::Models, Status},
 };
-use std::{path::PathBuf, sync::Arc, time::Instant};
+use std::{path::PathBuf, time::Instant};
 #[tauri::command]
-pub fn tts_status(state: tauri::State<'_, Arc<Silero>>) -> Status {
-    state.status()
+pub fn tts_status(
+    models: tauri::State<'_, Models>,
+    provider: Option<String>,
+) -> Result<Status, String> {
+    (|| Ok(models.select(provider.as_deref())?.status()))().map_err(crate::i18n::error)
 }
 #[tauri::command]
 pub async fn prepare_tts(
     app: tauri::AppHandle,
-    state: tauri::State<'_, Arc<Silero>>,
+    models: tauri::State<'_, Models>,
+    provider: Option<String>,
 ) -> Result<(), String> {
-    let started = Instant::now();
-    let _operation = state
-        .operation
-        .try_lock()
-        .map_err(|_| "Другая операция озвучки ещё выполняется.".to_string())?;
-    state
-        .cancel
-        .store(false, std::sync::atomic::Ordering::Relaxed);
-    let result = state.inner().prepare(&app).await;
-    match &result {
-        Ok(()) => tracing::info!(
-            elapsed_ms = started.elapsed().as_millis(),
-            "local TTS warmup request completed"
-        ),
-        Err(_) => tracing::warn!(
-            elapsed_ms = started.elapsed().as_millis(),
-            "local TTS warmup request failed"
-        ),
-    }
-    state.finish(&app, &result);
-    result
+    (async {
+        let state = models.select(provider.as_deref())?;
+        let started = Instant::now();
+        // Startup verification also holds this lock. A warm-up may wait for it;
+        // it must not report a spurious operation failure on the first screen.
+        let _operation = state.operation.lock().await;
+        state
+            .cancel
+            .store(false, std::sync::atomic::Ordering::Relaxed);
+        let result = state.prepare(&app).await;
+        match &result {
+            Ok(()) => tracing::info!(
+                elapsed_ms = started.elapsed().as_millis(),
+                "local TTS warmup request completed"
+            ),
+            Err(_) => tracing::warn!(
+                elapsed_ms = started.elapsed().as_millis(),
+                "local TTS warmup request failed"
+            ),
+        }
+        state.finish(&app, &result);
+        result
+    })
+    .await
+    .map_err(crate::i18n::error)
 }
 #[tauri::command]
 pub async fn install_tts(
     app: tauri::AppHandle,
-    state: tauri::State<'_, Arc<Silero>>,
+    models: tauri::State<'_, Models>,
+    provider: Option<String>,
     accepted: bool,
     license_hash: String,
     model_path: Option<String>,
 ) -> Result<(), String> {
-    let _operation = state
-        .operation
-        .try_lock()
-        .map_err(|_| "Другая операция озвучки ещё выполняется.".to_string())?;
-    state.acknowledge(accepted, &license_hash)?;
-    let result = state
-        .inner()
-        .install(&app, model_path.map(PathBuf::from))
-        .await;
-    state.finish(&app, &result);
-    result
+    (async {
+        let state = models.select(provider.as_deref())?;
+        let _operation = state
+            .operation
+            .try_lock()
+            .map_err(|_| "Другая операция озвучки ещё выполняется.".to_string())?;
+        state.acknowledge(accepted, &license_hash)?;
+        models.close_workers().await;
+        models.ru.clear_verification_cache().await;
+        models.en.clear_verification_cache().await;
+        let result = state.install(&app, model_path.map(PathBuf::from)).await;
+        state.finish(&app, &result);
+        result
+    })
+    .await
+    .map_err(crate::i18n::error)
 }
 #[tauri::command]
-pub fn cancel_tts(state: tauri::State<'_, Arc<Silero>>) {
-    state.stop();
+pub fn cancel_tts(models: tauri::State<'_, Models>) {
+    models.ru.stop();
+    models.en.stop();
 }
 #[tauri::command]
 pub async fn remove_tts(
     app: tauri::AppHandle,
-    state: tauri::State<'_, Arc<Silero>>,
+    models: tauri::State<'_, Models>,
+    provider: Option<String>,
 ) -> Result<(), String> {
-    let _operation = state
-        .operation
-        .try_lock()
-        .map_err(|_| "Сначала отмените текущую операцию озвучки.".to_string())?;
-    state.close_worker().await;
-    state.invalidate_verification().await;
-    let root = paths::tts_models_root(&app)?;
-    let result = tokio::task::spawn_blocking(move || {
-        if root.exists() {
-            std::fs::remove_dir_all(root).map_err(|e| e.to_string())?;
-        }
-        Ok(())
+    (async {
+        let state = models.select(provider.as_deref())?;
+        let _operation = state
+            .operation
+            .try_lock()
+            .map_err(|_| "Сначала отмените текущую операцию озвучки.".to_string())?;
+        state.close_worker().await;
+        state.invalidate_verification().await;
+        let result = models.remove_model_files(&state);
+        state.finish(&app, &result);
+        result
     })
     .await
-    .map_err(|e| e.to_string())?;
-    state.finish(&app, &result);
-    result
+    .map_err(crate::i18n::error)
 }
 #[tauri::command]
 pub async fn preview_tts(
     app: tauri::AppHandle,
-    state: tauri::State<'_, Arc<Silero>>,
+    models: tauri::State<'_, Models>,
+    provider: Option<String>,
     voice: String,
 ) -> Result<String, String> {
+    (async {
+    let state = models.select(provider.as_deref())?;
     let started = Instant::now();
     let mut preparation_ms = 0;
     let mut synthesis_ms = 0;
@@ -99,11 +115,11 @@ pub async fn preview_tts(
         .cancel
         .store(false, std::sync::atomic::Ordering::Relaxed);
     let result = async {
-        if !crate::tts::silero::VOICES.contains(&voice.as_str()) {
+        if !state.model.voices.contains(&voice.as_str()) {
             return Err("Неизвестный голос.".into());
         }
         let preparation_started = Instant::now();
-        let preparation_result = state.inner().prepare(&app).await;
+        let preparation_result = state.prepare(&app).await;
         preparation_ms = preparation_started.elapsed().as_millis();
         preparation_result?;
 
@@ -115,7 +131,7 @@ pub async fn preview_tts(
                 .as_mut()
                 .unwrap()
                 .synthesize_chunk(
-                    "Привет! Это Глагол. Теперь я могу озвучивать ваши тексты без интернета.",
+                    if state.model.language == crate::preferences::Language::En { "Hello! This is Glagol. I can read your documents without an internet connection." } else { "Привет! Это Глагол. Теперь я могу озвучивать ваши тексты без интернета." },
                     &voice,
                 )
                 .await?
@@ -151,4 +167,5 @@ pub async fn preview_tts(
         ),
     }
     result
+}).await.map_err(crate::i18n::error)
 }

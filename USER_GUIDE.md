@@ -1,9 +1,7 @@
-# Руководство пользователя / User Guide
+# Glagol user guides / Руководства
 
-**[Русский](USER_GUIDE.ru.md)** · **[English](USER_GUIDE.en.md)**
+- [English — Glagol 0.5.0](USER_GUIDE.en.md)
+- [Русский — Глагол 0.5.0](USER_GUIDE.ru.md)
 
----
-
-Глагол превращает длинные русские тексты в аудио. Выберите язык руководства выше.
-
-Glagol turns long Russian texts into audio. Choose your guide language above.
+These guides describe the local 0.5.0 candidate; [0.4.1](docs/releases/v0.4.1.md) is the latest published release.
+Руководства описывают локальный кандидат 0.5.0; последний опубликованный выпуск — 0.4.1.

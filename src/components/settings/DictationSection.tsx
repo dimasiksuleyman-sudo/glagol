@@ -1,3 +1,7 @@
+import { currentLocale } from "@/i18n";
+import { t } from "@/i18n";
+import { useI18n, usePreferences } from "@/contexts/PreferencesContext";
+import { SttLanguageSwitch, useDictationBusy } from "@/components/SttLanguageSwitch";
 import { useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { toast } from "sonner";
@@ -13,19 +17,22 @@ import {
   type SpeechMode, type SpeechProfile, type LocalModelsStatus, type ModelProgress,
 } from "@/lib/tauri";
 
-const MODES: Record<SpeechMode, string> = {
-  local: "На этом компьютере", server: "Сервер организации", cloud: "Облачный сервис",
-};
 const PRESETS = [
   { id: "aitunnel", label: "AITunnel", base_url: "https://api.aitunnel.ru/v1", model: "whisper-large-v3-turbo" },
   { id: "proxyapi", label: "ProxyAPI", base_url: "https://api.proxyapi.ru/openai/v1", model: "whisper-1" },
   { id: "vsegpt", label: "VseGPT", base_url: "https://api.vsegpt.ru/v1", model: "whisper-1" },
   { id: "groq", label: "Groq", base_url: "https://api.groq.com/openai/v1", model: "whisper-large-v3-turbo" },
 ];
-const size = (bytes: number) => `${new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 1 }).format(bytes / 1_000_000)} МБ`;
+const size = (bytes: number) => t("{p0} MB", { p0: new Intl.NumberFormat(currentLocale(), { maximumFractionDigits: 1 }).format(bytes / 1_000_000) });
 const errorText = (error: unknown) => error instanceof Error ? error.message : String(error);
 
 export function DictationSection() {
+  const { language } = useI18n();
+  const { preferences } = usePreferences();
+  const dictating = useDictationBusy();
+  const MODES: Record<SpeechMode, string> = {
+    local: t("On this computer"), server: t("Organization server"), cloud: t("Cloud service"),
+  };
   const [profile, setProfile] = useState<SpeechProfile | null>(null);
   const [active, setActive] = useState<SpeechMode>("cloud");
   const [activeModel, setActiveModel] = useState("");
@@ -37,6 +44,16 @@ export function DictationSection() {
   const [message, setMessage] = useState("");
   const [loadError, setLoadError] = useState("");
   const alive = useRef(true);
+
+  useEffect(() => { void refreshModels().catch(() => undefined); }, [language]);
+  useEffect(() => {
+    if (profile?.mode !== "local") return;
+    let disposed = false;
+    void getSpeechSettings("local").then(settings => {
+      if (!disposed) { setProfile(settings.profile); setActiveModel(settings.profile.model); }
+    }).catch(() => undefined);
+    return () => { disposed = true; };
+  }, [preferences?.stt_language]);
 
   async function refreshModels() {
     const status = await localModelsStatus();
@@ -80,7 +97,7 @@ export function DictationSection() {
     const settings = await getSpeechSettings(p.mode);
     if (alive.current) {
       setKeyStored(settings.key_stored);
-      setMessage(test ? "Подключение работает." : p.mode === "local" ? "Модель готова. Можно диктовать." : "Настройки сохранены.");
+      setMessage(test ? t("Connection works.") : p.mode === "local" ? t("Model ready. You can start dictating.") : t("Settings saved."));
     }
   }
   async function remoteSave(test: boolean) {
@@ -92,12 +109,12 @@ export function DictationSection() {
   }
   async function useModel(id: string, installed: boolean) {
     if (!profile) return;
-    setBusy(true); setMessage(installed ? "Подготовка модели…" : "Скачивание модели…");
+    setBusy(true); setMessage(installed ? t("Preparing model…") : t("Downloading model…"));
     try {
-      if (!installed || !models?.runtime_installed) await downloadLocalModel(id);
+      if (!installed || (models?.models.find(m => m.id === id)?.download_bytes ?? 0) > 0) await downloadLocalModel(id);
       if (!alive.current) return;
-      setMessage("Подготовка модели…");
-      const p = { ...profile, mode: "local" as const, model: id };
+      setMessage(t("Preparing model…"));
+      const p = { ...profile, mode: "local" as const, model: id, language: models?.models.find(m => m.id === id)?.language ?? profile.language };
       await save(p); setProfile(p);
     } catch (e) { if (alive.current) { setMessage(errorText(e)); toast.error(errorText(e)); } }
     finally { if (alive.current) { setBusy(false); await refreshModels(); } }
@@ -111,87 +128,88 @@ export function DictationSection() {
   async function clearKey() {
     if (!profile) return;
     setBusy(true);
-    try { await deleteSpeechKey(profile.mode); setKeyStored(false); setApiKey(""); setMessage("Ключ удалён."); }
+    try { await deleteSpeechKey(profile.mode); setKeyStored(false); setApiKey(""); setMessage(t("Key deleted.")); }
     catch (e) { toast.error(errorText(e)); }
     finally { setBusy(false); }
   }
 
-  const locked = busy || progress !== null;
+  const locked = busy || progress !== null || dictating;
   return <Card>
     <CardHeader>
-      <CardTitle>Диктовка</CardTitle>
-      <CardDescription>Распознавание на компьютере, на сервере вашей организации или в облаке.</CardDescription>
+      <CardTitle>{t("Dictation")}</CardTitle>
+      <CardDescription>{t("Recognize speech on this computer, on your organization's server, or in the cloud.")}</CardDescription>
     </CardHeader>
     <CardContent className="space-y-4">
       {loadError && <p role="alert" className="text-sm text-destructive">{loadError}</p>}
       {!profile && !loadError && <Skeleton className="h-32 w-full" />}
       {profile && <>
         <div className="space-y-2">
-          <Label htmlFor="speech-mode">Где распознавать речь</Label>
+          <Label htmlFor="speech-mode">{t("Where to recognize speech")}</Label>
           <Select value={profile.mode} onValueChange={v => void chooseMode(v as SpeechMode)} disabled={locked}>
             <SelectTrigger id="speech-mode" className="w-full"><SelectValue /></SelectTrigger>
             <SelectContent>{Object.entries(MODES).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent>
           </Select>
-          <p className="text-xs text-muted-foreground">Сейчас используется: {MODES[active]}.</p>
+          <p className="text-xs text-muted-foreground">{t("Currently using:")}{" "}{MODES[active]}.</p>
         </div>
         {profile.mode === "local" ? <>
-          <p className="text-sm text-muted-foreground">Скачайте модель один раз. Затем голос распознаётся без интернета и остаётся на этом компьютере. Обновления Глагола сохраняют скачанные модели.</p>
-          {models && !models.supported && <p role="alert">Локальные модели пока доступны на Windows x64. Подключение к серверу работает и на других системах.</p>}
-          {models && !models.runtime_installed && <p className="text-xs text-muted-foreground">При первой загрузке также скачается движок распознавания: {size(models.runtime_bytes)}.</p>}
-          {models?.models.map(m => {
-            const selected = active === "local" && activeModel === m.id;
+          <SttLanguageSwitch disabled={locked} />
+          <p className="text-sm text-muted-foreground">{t("Download a model once to recognize speech offline on this computer. Glagol updates preserve downloaded models.")}</p>
+          {models && !models.supported && <p role="alert">{t("Local models currently require Windows x64. Server connections also work on other systems.")}</p>}
+          {models?.models.filter(m => m.language === (preferences?.stt_language ?? "en") || m.installed).map(m => {
+            const selected = active === "local" && activeModel === m.id && m.installed && m.download_bytes === 0;
             return <div key={m.id} className="rounded-lg border p-4 space-y-2">
-              <div className="flex flex-wrap justify-between gap-2"><span className="font-medium">{m.name}</span><span className="text-sm text-muted-foreground">{size(m.bytes)}{selected ? " · Используется" : m.installed ? " · Скачана" : ""}</span></div>
+              <div className="flex flex-wrap justify-between gap-2"><span className="font-medium">{m.name}</span><span className="text-sm text-muted-foreground">{size(m.bytes)}{selected ? t(" · In use") : m.installed ? t(" · Downloaded") : ""}</span></div>
               <p className="text-sm text-muted-foreground">{m.description}</p>
+              <p className="text-xs text-muted-foreground">{t("downloadRequired", { size: new Intl.NumberFormat(currentLocale(), { maximumFractionDigits: 1 }).format(m.download_bytes / 1_000_000) })}</p>
               <div className="flex flex-wrap gap-2">
                 <Button disabled={locked || !models.supported || selected} onClick={() => void useModel(m.id, m.installed)}>
-                  {selected ? "Выбрана" : m.installed ? "Использовать" : m.partial_bytes > 0 ? "Продолжить и использовать" : "Скачать и использовать"}
+                  {selected ? t("Selected") : m.installed ? t("Use") : m.partial_bytes > 0 ? t("Resume and use") : t("Download and use")}
                 </Button>
-                {selected && <Button variant="outline" disabled={locked} onClick={() => void useModel(m.id, false)}>Проверить файлы и восстановить</Button>}
-                {(m.installed || m.partial_bytes > 0) && <Button variant="outline" disabled={locked || selected} onClick={() => void remove(m.id)}>Удалить · {size(m.installed ? m.bytes : m.partial_bytes)}</Button>}
+                {selected && <Button variant="outline" disabled={locked} onClick={() => void useModel(m.id, false)}>{t("Verify files and repair")}</Button>}
+                {(m.installed || m.partial_bytes > 0) && <Button variant="outline" disabled={locked || selected} onClick={() => void remove(m.id)}>{t("Remove ·")}{" "}{size(m.installed ? m.bytes : m.partial_bytes)}</Button>}
               </div>
             </div>;
           })}
           {progress && <div className="space-y-2" role="status">
-            <p className="text-sm">{progress.stage === "verifying" ? "Проверка файлов…" : `Скачано ${size(progress.downloaded)} из ${size(progress.total)}`}</p>
-            <progress className="h-2 w-full accent-primary" value={progress.downloaded} max={progress.total} aria-label="Загрузка модели" />
-            <Button variant="outline" disabled={progress.stage === "verifying"} onClick={() => void cancelModelDownload().catch(e => toast.error(errorText(e)))}>Отменить загрузку</Button>
+            <p className="text-sm">{progress.stage === "verifying" ? t("Verifying files…") : t("Downloaded {p0} of {p1}", { p0: size(progress.downloaded), p1: size(progress.total) })}</p>
+            <progress className="h-2 w-full accent-primary" value={progress.downloaded} max={progress.total} aria-label={t("Model download")} />
+            <Button variant="outline" disabled={progress.stage === "verifying"} onClick={() => void cancelModelDownload().catch(e => toast.error(errorText(e)))}>{t("Cancel download")}</Button>
           </div>}
         </> : <>
-          {profile.mode === "server" ? <p className="text-sm text-muted-foreground">Один сервер распознавания может обслуживать компьютеры всего офиса. Модели на этот компьютер скачивать не нужно. Поддерживаются серверы с API /v1/audio/transcriptions.</p> : <div className="space-y-2">
-            <Label htmlFor="speech-provider">Провайдер</Label>
+          {profile.mode === "server" ? <p className="text-sm text-muted-foreground">{t("One speech server can serve every computer in your office. No local model download is needed. Servers with the /v1/audio/transcriptions API are supported.")}</p> : <div className="space-y-2">
+            <Label htmlFor="speech-provider">{t("Provider")}</Label>
             <Select value={PRESETS.find(p => p.base_url === profile.base_url)?.id ?? "custom"} disabled={locked} onValueChange={id => {
               const p = PRESETS.find(p => p.id === id); if (p) update({ base_url: p.base_url, model: p.model });
               else update({ base_url: "", model: "" });
             }}>
               <SelectTrigger id="speech-provider" className="w-full"><SelectValue /></SelectTrigger>
-              <SelectContent>{PRESETS.map(p => <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>)}<SelectItem value="custom">Свой сервис</SelectItem></SelectContent>
+              <SelectContent>{PRESETS.map(p => <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>)}<SelectItem value="custom">{t("Custom service")}</SelectItem></SelectContent>
             </Select>
           </div>}
           <div className="space-y-2">
-            <Label htmlFor="speech-url">Адрес {profile.mode === "server" ? "сервера" : "сервиса"}</Label>
+            <Label htmlFor="speech-url">{profile.mode === "server" ? t("serverAddress") : t("serviceAddress")}</Label>
             <Input id="speech-url" value={profile.base_url} onChange={e => update({ base_url: e.target.value })} disabled={locked} spellCheck={false} autoComplete="off" placeholder={profile.mode === "server" ? "http://192.168.1.10:8000/v1" : "https://api.example.com/v1"} />
-            <p className="text-xs text-muted-foreground">Включая путь /v1.{profile.mode === "server" ? " HTTP допустим для частного IP-адреса и localhost; для доменного имени используйте HTTPS." : " Для внешних адресов используйте HTTPS."}</p>
-            {profile.mode === "server" && profile.base_url.startsWith("http://") && <p className="text-xs text-muted-foreground">HTTP передаёт голос и ключ без шифрования. Используйте его только в доверенной офисной сети.</p>}
+            <p className="text-xs text-muted-foreground">{t("Include the /v1 path.")}{profile.mode === "server" ? t(" HTTP is allowed for private IP addresses and localhost; use HTTPS for domain names.") : t(" Use HTTPS for external addresses.")}</p>
+            {profile.mode === "server" && profile.base_url.startsWith("http://") && <p className="text-xs text-muted-foreground">{t("HTTP sends speech and keys without encryption. Use it only on a trusted office network.")}</p>}
           </div>
-          <div className="space-y-2"><Label htmlFor="speech-model">Название модели на сервере</Label><Input id="speech-model" value={profile.model} onChange={e => update({ model: e.target.value })} disabled={locked} spellCheck={false} /></div>
+          <div className="space-y-2"><Label htmlFor="speech-model">{t("Model name on server")}</Label><Input id="speech-model" value={profile.model} onChange={e => update({ model: e.target.value })} disabled={locked} spellCheck={false} /></div>
           <div className="space-y-2">
-            <Label htmlFor="speech-language">Язык</Label>
+            <Label htmlFor="speech-language">{t("Language")}</Label>
             <Select value={profile.language} onValueChange={language => update({ language })} disabled={locked}>
               <SelectTrigger id="speech-language" className="w-full"><SelectValue /></SelectTrigger>
-              <SelectContent><SelectItem value="ru">Русский</SelectItem><SelectItem value="en">Английский</SelectItem><SelectItem value="auto">Автоопределение</SelectItem></SelectContent>
+              <SelectContent><SelectItem value="ru">{t("Russian")}</SelectItem><SelectItem value="en">{t("English")}</SelectItem><SelectItem value="auto">{t("Auto-detect")}</SelectItem></SelectContent>
             </Select>
           </div>
-          <div className="space-y-2"><Label htmlFor="speech-proxy">Прокси для диктовки (необязательно)</Label><Input id="speech-proxy" value={profile.proxy} onChange={e => update({ proxy: e.target.value })} disabled={locked} autoComplete="off" placeholder="host:port или socks5://host:port" /></div>
+          <div className="space-y-2"><Label htmlFor="speech-proxy">{t("Dictation proxy (optional)")}</Label><Input id="speech-proxy" value={profile.proxy} onChange={e => update({ proxy: e.target.value })} disabled={locked} autoComplete="off" placeholder={t("host:port or socks5://host:port")} /></div>
           <div className="space-y-2">
-            <Label htmlFor="speech-key">API-ключ{profile.mode === "server" ? " (если сервер требует)" : ""}</Label>
-            <Input id="speech-key" type="password" value={apiKey} onChange={e => setApiKey(e.target.value)} disabled={locked} autoComplete="off" placeholder={keyStored ? "Ключ сохранён для этого профиля" : "Введите ключ"} />
-            <p className="text-xs text-muted-foreground">Ключи облака и сервера хранятся отдельно. При смене адреса введите ключ для нового сервиса.</p>
+            <Label htmlFor="speech-key">{t("API key")}{profile.mode === "server" ? t(" (if required by the server)") : ""}</Label>
+            <Input id="speech-key" type="password" value={apiKey} onChange={e => setApiKey(e.target.value)} disabled={locked} autoComplete="off" placeholder={keyStored ? t("A key is saved for this profile") : t("Enter a key")} />
+            <p className="text-xs text-muted-foreground">{t("Cloud and server keys are stored separately. Enter a new key when changing the service address.")}</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button disabled={locked} onClick={() => void remoteSave(false)}>Сохранить и использовать</Button>
-            <Button variant="secondary" disabled={locked} onClick={() => void remoteSave(true)}>Сохранить и проверить</Button>
-            <Button variant="outline" disabled={locked || !keyStored} onClick={() => void clearKey()}>Удалить ключ</Button>
+            <Button disabled={locked} onClick={() => void remoteSave(false)}>{t("Save and use")}</Button>
+            <Button variant="secondary" disabled={locked} onClick={() => void remoteSave(true)}>{t("Save and test")}</Button>
+            <Button variant="outline" disabled={locked || !keyStored} onClick={() => void clearKey()}>{t("Delete key")}</Button>
           </div>
         </>}
         {message && <p role="status" className="text-sm">{message}</p>}

@@ -35,6 +35,7 @@ pub mod pipeline;
 pub mod recorder;
 pub mod resample;
 pub mod session;
+pub mod stream_resample;
 
 use thiserror::Error;
 use tokio::sync::oneshot;
@@ -105,6 +106,7 @@ pub enum RecorderMsg {
     Start {
         device: Option<String>,
         reply: oneshot::Sender<Result<StartedInfo, RecorderError>>,
+        streaming: Option<crate::stt::moonshine::worker::Input>,
     },
     /// Stop capture and finalize; replies with the normalized [`PcmAudio`].
     Stop {
@@ -172,9 +174,21 @@ impl RecorderHandle {
     /// Start capture and wait for the first nonempty audio packet (silence counts).
     /// `device = None` uses the system default. The first packet is retained.
     pub async fn start(&self, device: Option<String>) -> Result<StartedInfo, RecorderError> {
+        self.start_streaming(device, None).await
+    }
+
+    pub async fn start_streaming(
+        &self,
+        device: Option<String>,
+        streaming: Option<crate::stt::moonshine::worker::Input>,
+    ) -> Result<StartedInfo, RecorderError> {
         let (reply, rx) = oneshot::channel();
         self.tx
-            .send(RecorderMsg::Start { device, reply })
+            .send(RecorderMsg::Start {
+                device,
+                reply,
+                streaming,
+            })
             .map_err(|_| RecorderError::DeviceLost("recorder thread stopped".into()))?;
         rx.await
             .map_err(|_| RecorderError::DeviceLost("recorder thread stopped".into()))?
@@ -237,6 +251,8 @@ pub enum DictationPhase {
 /// (`commands::dictation::recorder_error_to_user_facing_ru`).
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
 pub enum RecorderError {
+    #[error("streaming recognition failed: {0}")]
+    Streaming(String),
     /// The stream opened but delivered no audio before the startup deadline.
     #[error("microphone startup timed out waiting for audio")]
     StartupTimeout,

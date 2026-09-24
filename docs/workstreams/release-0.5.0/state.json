@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "id": "release-0.5.0",
+  "title": "Публикация Glagol 0.5.0",
+  "status": "active",
+  "next": "P1",
+  "reason": null,
+  "claim": {
+    "owner": "codex",
+    "at": "2026-09-24T23:26:24.923Z",
+    "branch": "main"
+  },
+  "links": [
+    "docs/workstreams/release-0.5.0/README.md",
+    "docs/workstreams/release-0.5.0/log.md",
+    "docs/runbooks/release.md"
+  ],
+  "steps": [
+    {
+      "id": "P1",
+      "title": "Подготовка, CI и публикация 0.5.0",
+      "status": "in_progress",
+      "depends_on": [],
+      "required": [
+        "publication"
+      ],
+      "checks": [
+        {
+          "id": "publication",
+          "status": "NOT_RUN",
+          "method": "command",
+          "command": "GitHub CI, publish and public asset verification",
+          "cwd": ".",
+          "at": "2026-09-24T23:26:24.923Z",
+          "environment": {
+            "os": "Windows 11 x64",
+            "runtime": "Node 24.19.0"
+          },
+          "exit_code": null,
+          "output": "Pending release preparation, CI and public verification",
+          "evidence": "docs/workstreams/release-0.5.0/log.md"
+        }
+      ]
+    }
+  ]
+}

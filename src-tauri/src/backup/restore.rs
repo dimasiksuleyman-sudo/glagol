@@ -313,6 +313,7 @@ mod tests {
                     char_count: 100,
                     voice: "Nec_24000".to_string(),
                     provider: "salutespeech-legacy".into(),
+                    speech_language: None,
                     status: "ready".to_string(),
                     error_message: None,
                     created_at: 1_700_000_000_000 + i as i64,

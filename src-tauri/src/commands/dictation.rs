@@ -129,12 +129,16 @@ pub struct DictationSettings {
 
 #[tauri::command]
 pub async fn get_stt_settings(state: tauri::State<'_, AppState>) -> Result<SttSettings, String> {
-    let conn = state
-        .db
-        .lock()
-        .map_err(|e| format!("Не удалось получить блокировку базы данных: {e}"))?;
-    get_stt_settings_impl(&conn)
-        .map_err(|e| format!("Не удалось прочитать настройки диктовки: {e}"))
+    (async {
+        let conn = state
+            .db
+            .lock()
+            .map_err(|e| format!("Не удалось получить блокировку базы данных: {e}"))?;
+        get_stt_settings_impl(&conn)
+            .map_err(|e| format!("Не удалось прочитать настройки диктовки: {e}"))
+    })
+    .await
+    .map_err(crate::i18n::error)
 }
 
 #[tauri::command]
@@ -145,28 +149,40 @@ pub async fn save_stt_settings(
     proxy: String,
     language: String,
 ) -> Result<(), String> {
-    let updated_at = chrono::Utc::now().timestamp_millis();
-    save_stt_settings_impl(&state, &base_url, &model, &proxy, &language, updated_at).await
+    (async {
+        let updated_at = chrono::Utc::now().timestamp_millis();
+        save_stt_settings_impl(&state, &base_url, &model, &proxy, &language, updated_at).await
+    })
+    .await
+    .map_err(crate::i18n::error)
 }
 
 #[tauri::command]
 pub async fn set_stt_key(state: tauri::State<'_, AppState>, key: String) -> Result<(), String> {
-    set_stt_key_impl(&state, &key).await
+    (async { set_stt_key_impl(&state, &key).await })
+        .await
+        .map_err(crate::i18n::error)
 }
 
 #[tauri::command]
 pub async fn delete_stt_key(state: tauri::State<'_, AppState>) -> Result<(), String> {
-    delete_stt_key_impl(&state).await
+    (async { delete_stt_key_impl(&state).await })
+        .await
+        .map_err(crate::i18n::error)
 }
 
 #[tauri::command]
 pub async fn has_stt_key() -> Result<bool, String> {
-    has_stt_key_impl()
+    (async { has_stt_key_impl() })
+        .await
+        .map_err(crate::i18n::error)
 }
 
 #[tauri::command]
 pub async fn test_stt_key(state: tauri::State<'_, AppState>, force: bool) -> Result<(), String> {
-    test_stt_key_impl(&state, force).await
+    (async { test_stt_key_impl(&state, force).await })
+        .await
+        .map_err(crate::i18n::error)
 }
 
 // ── Impl functions (unit-testable) ─────────────────────────────────────
@@ -558,7 +574,9 @@ pub(crate) fn stt_error_to_user_facing_ru(err: &SttError) -> String {
 /// user pin a specific device (the picker itself lands in PR5).
 #[tauri::command]
 pub async fn list_audio_input_devices() -> Result<Vec<String>, String> {
-    list_audio_input_devices_impl().map_err(|e| recorder_error_to_user_facing_ru(&e))
+    (async { list_audio_input_devices_impl().map_err(|e| recorder_error_to_user_facing_ru(&e)) })
+        .await
+        .map_err(crate::i18n::error)
 }
 
 /// Enumerate input-device names. Returns them in host order; an empty machine
@@ -580,6 +598,7 @@ pub(crate) fn list_audio_input_devices_impl() -> Result<Vec<String>, RecorderErr
 /// mirrors [`stt_error_to_user_facing_ru`]).
 pub(crate) fn recorder_error_to_user_facing_ru(err: &RecorderError) -> String {
     match err {
+        RecorderError::Streaming(message) => message.clone(),
         RecorderError::StartupTimeout => {
             "Микрофон не начал передавать звук. Проверьте устройство и попробуйте ещё раз.".into()
         }
@@ -609,12 +628,16 @@ pub(crate) fn recorder_error_to_user_facing_ru(err: &RecorderError) -> String {
 pub async fn get_dictation_settings(
     state: tauri::State<'_, AppState>,
 ) -> Result<DictationSettings, String> {
-    let conn = state
-        .db
-        .lock()
-        .map_err(|e| format!("Не удалось получить блокировку базы данных: {e}"))?;
-    get_dictation_settings_impl(&conn)
-        .map_err(|e| format!("Не удалось прочитать настройки диктовки: {e}"))
+    (async {
+        let conn = state
+            .db
+            .lock()
+            .map_err(|e| format!("Не удалось получить блокировку базы данных: {e}"))?;
+        get_dictation_settings_impl(&conn)
+            .map_err(|e| format!("Не удалось прочитать настройки диктовки: {e}"))
+    })
+    .await
+    .map_err(crate::i18n::error)
 }
 
 #[tauri::command]
@@ -623,12 +646,16 @@ pub async fn set_dictation_setting(
     name: String,
     value: String,
 ) -> Result<(), String> {
-    let updated_at = chrono::Utc::now().timestamp_millis();
-    let conn = state
-        .db
-        .lock()
-        .map_err(|e| format!("Не удалось получить блокировку базы данных: {e}"))?;
-    set_dictation_setting_impl(&conn, &name, &value, updated_at)
+    (async {
+        let updated_at = chrono::Utc::now().timestamp_millis();
+        let conn = state
+            .db
+            .lock()
+            .map_err(|e| format!("Не удалось получить блокировку базы данных: {e}"))?;
+        set_dictation_setting_impl(&conn, &name, &value, updated_at)
+    })
+    .await
+    .map_err(crate::i18n::error)
 }
 
 #[tauri::command]
@@ -636,33 +663,45 @@ pub async fn list_dictations(
     state: tauri::State<'_, AppState>,
     limit: Option<i64>,
 ) -> Result<Vec<Dictation>, String> {
-    let conn = state
-        .db
-        .lock()
-        .map_err(|e| format!("Не удалось получить блокировку базы данных: {e}"))?;
-    list_dictations_impl(&conn, limit)
-        .map_err(|e| format!("Не удалось прочитать историю диктовки: {e}"))
+    (async {
+        let conn = state
+            .db
+            .lock()
+            .map_err(|e| format!("Не удалось получить блокировку базы данных: {e}"))?;
+        list_dictations_impl(&conn, limit)
+            .map_err(|e| format!("Не удалось прочитать историю диктовки: {e}"))
+    })
+    .await
+    .map_err(crate::i18n::error)
 }
 
 #[tauri::command]
 pub async fn clear_dictation_history(state: tauri::State<'_, AppState>) -> Result<(), String> {
-    let conn = state
-        .db
-        .lock()
-        .map_err(|e| format!("Не удалось получить блокировку базы данных: {e}"))?;
-    repository::clear_dictations(&conn)
-        .map(|_| ())
-        .map_err(|e| format!("Не удалось очистить историю диктовки: {e}"))
+    (async {
+        let conn = state
+            .db
+            .lock()
+            .map_err(|e| format!("Не удалось получить блокировку базы данных: {e}"))?;
+        repository::clear_dictations(&conn)
+            .map(|_| ())
+            .map_err(|e| format!("Не удалось очистить историю диктовки: {e}"))
+    })
+    .await
+    .map_err(crate::i18n::error)
 }
 
 #[tauri::command]
 pub async fn get_recognitions_minutes(state: tauri::State<'_, AppState>) -> Result<u64, String> {
-    let conn = state
-        .db
-        .lock()
-        .map_err(|e| format!("Не удалось получить блокировку базы данных: {e}"))?;
-    get_recognitions_minutes_impl(&conn)
-        .map_err(|e| format!("Не удалось прочитать счётчик диктовки: {e}"))
+    (async {
+        let conn = state
+            .db
+            .lock()
+            .map_err(|e| format!("Не удалось получить блокировку базы данных: {e}"))?;
+        get_recognitions_minutes_impl(&conn)
+            .map_err(|e| format!("Не удалось прочитать счётчик диктовки: {e}"))
+    })
+    .await
+    .map_err(crate::i18n::error)
 }
 
 #[tauri::command]
@@ -671,20 +710,24 @@ pub async fn set_dictation_hotkey(
     state: tauri::State<'_, AppState>,
     hotkey: String,
 ) -> Result<(), String> {
-    let updated_at = chrono::Utc::now().timestamp_millis();
-    let old = {
-        let conn = state
-            .db
-            .lock()
-            .map_err(|e| format!("Не удалось получить блокировку базы данных: {e}"))?;
-        repository::get_setting(&conn, KEY_HOTKEY)
-            .map_err(|e| format!("Не удалось прочитать текущий хоткей: {e}"))?
-            .unwrap_or_else(|| DEFAULT_HOTKEY.to_string())
-        // Guard drops before the register/unregister below.
-    };
+    (async {
+        let updated_at = chrono::Utc::now().timestamp_millis();
+        let old = {
+            let conn = state
+                .db
+                .lock()
+                .map_err(|e| format!("Не удалось получить блокировку базы данных: {e}"))?;
+            repository::get_setting(&conn, KEY_HOTKEY)
+                .map_err(|e| format!("Не удалось прочитать текущий хоткей: {e}"))?
+                .unwrap_or_else(|| DEFAULT_HOTKEY.to_string())
+            // Guard drops before the register/unregister below.
+        };
 
-    let registrar = AppHotkeyRegistrar { app: &app };
-    set_dictation_hotkey_impl(&state, &registrar, &old, &hotkey, updated_at)
+        let registrar = AppHotkeyRegistrar { app: &app };
+        set_dictation_hotkey_impl(&state, &registrar, &old, &hotkey, updated_at)
+    })
+    .await
+    .map_err(crate::i18n::error)
 }
 
 /// List history rows newest-first, capped by `limit` (D5). Reads are **not**

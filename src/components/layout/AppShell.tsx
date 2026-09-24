@@ -1,9 +1,13 @@
+import { t } from "@/i18n";
+import { useI18n } from "@/contexts/PreferencesContext";
 import { NavLink, Outlet } from "react-router-dom";
 import { AudioLines, Library, Mic, Settings } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 import { Toaster } from "@/components/ui/sonner";
+import { LanguageSwitch } from "@/components/LanguageSwitch";
+import { usePreferences } from "@/contexts/PreferencesContext";
 
 interface NavItem {
   to: string;
@@ -11,11 +15,11 @@ interface NavItem {
   Icon: typeof Settings;
 }
 
-const NAV_ITEMS: readonly NavItem[] = [
-  { to: "/synthesize", label: "Озвучить", Icon: AudioLines },
-  { to: "/library", label: "Библиотека", Icon: Library },
-  { to: "/dictation", label: "Диктовка", Icon: Mic },
-  { to: "/settings", label: "Настройки", Icon: Settings },
+const navItems = (): readonly NavItem[] => [
+  { to: "/synthesize", label: t("Synthesize"), Icon: AudioLines },
+  { to: "/library", label: t("Library"), Icon: Library },
+  { to: "/dictation", label: t("Dictation"), Icon: Mic },
+  { to: "/settings", label: t("Settings"), Icon: Settings },
 ];
 
 /**
@@ -26,18 +30,19 @@ const NAV_ITEMS: readonly NavItem[] = [
  * in a single, app-wide stack.
  */
 export function AppShell() {
+  useI18n();
+  const { error } = usePreferences();
   return (
     <div className="bg-background text-foreground flex min-h-screen">
       <aside className="bg-sidebar text-sidebar-foreground border-sidebar-border flex w-60 shrink-0 flex-col border-r">
         <div className="px-6 py-5">
           <h1 className="text-xl font-semibold tracking-tight">Glagol</h1>
           <p className="text-muted-foreground mt-1 text-xs">
-            Озвучка длинных русских текстов
-          </p>
+            {t("Text to speech and dictation")}{" "}</p>
         </div>
         <Separator />
         <nav className="flex flex-1 flex-col gap-1 p-3">
-          {NAV_ITEMS.map(({ to, label, Icon }) => (
+          {navItems().map(({ to, label, Icon }) => (
             <NavLink
               key={to}
               to={to}
@@ -55,10 +60,12 @@ export function AppShell() {
             </NavLink>
           ))}
         </nav>
+        <div className="p-3"><LanguageSwitch /></div>
       </aside>
 
       <main className="flex-1 overflow-y-auto">
         <div className="mx-auto w-full max-w-2xl px-8 py-10">
+          {error && <p role="alert" className="mb-4 text-destructive">{error}</p>}
           <Outlet />
         </div>
       </main>

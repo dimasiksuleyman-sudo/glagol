@@ -1,7 +1,7 @@
-# Структура Глагола 0.4.0
+# Структура Глагола 0.5.0
 
 Глагол — Tauri 2 / Rust / React 19 / TypeScript приложение Windows x64 с
-независимыми диктовкой и озвучкой. Код MIT; отдельно скачиваемая Silero v5.5 —
+независимыми EN/RU интерфейсом, диктовкой и озвучкой. Код MIT; Silero v5.5 RU и v3 EN —
 CC BY-NC-SA 4.0 для некоммерческого использования. GigaAM и офисный STT-сервер
 не требуют Silero. Yandex SpeechKit v3 для коммерческой озвучки — будущий этап.
 
@@ -9,15 +9,17 @@ CC BY-NC-SA 4.0 для некоммерческого использования
 
 | Модуль | Ответственность |
 |---|---|
-| `src/main.tsx`, `App.tsx` | TtsProvider, маршруты и оболочка |
+| `src/main.tsx`, `App.tsx` | PreferencesProvider, TtsProvider, onboarding, маршруты и оболочка |
+| `src/i18n`, `contexts/PreferencesContext.tsx` | Типизированные EN/RU словари, fallback EN, Intl, live broadcast языка |
+| `components/Onboarding.tsx`, `DictationSetupCard.tsx`, `*LanguageSwitch.tsx` | Первый выбор языка, необязательные установки, независимые переключатели |
 | `pages/Synthesize.tsx` | Текст/файлы, голос, прогресс, отмена, экспорт |
-| `pages/Library.tsx`, `components/player` | Библиотека и плеер |
+| `pages/Library.tsx`, `components/AudioPlayer.tsx` | Библиотека и локализованный плеер |
 | `pages/Dictation.tsx` | Горячая клавиша, микрофон, история |
 | `components/settings/DictationSection.tsx` | Local/server/cloud STT, модели и ключи |
 | `components/settings/TtsSection.tsx` | Лицензия, скачивание/импорт, восстановление, удаление, голоса |
 | `contexts/TtsContext.tsx` | Только локальное состояние TTS; без сети/OAuth при старте |
 | `lib/tauri.ts`, `lib/tts.ts` | Типизированные IPC-команды |
-| `lib/voices.ts` | Пять голосов Silero и названия старых голосов библиотеки |
+| `lib/voices.ts` | Пять RU / четыре EN голоса Silero и прежние имена библиотеки |
 
 Аудио не передаётся через IPC: плеер читает файл через ограниченный asset protocol.
 
@@ -27,14 +29,19 @@ CC BY-NC-SA 4.0 для некоммерческого использования
 |---|---|
 | `lib.rs` | Tauri setup, состояние, команды, трей, hotkey, завершение |
 | `state.rs` | SQLite и диктовка; TTS имеет отдельное состояние |
+| `preferences.rs`, `commands/preferences.rs` | Миграция старых неявных настроек, UI/STT/TTS языки, голоса, onboarding |
+| `i18n` | Native messages на IPC/event границе; пользовательские аргументы сохраняются |
 | `commands/synthesize.rs` | Общий последовательный pipeline, временный WAV, транзакция |
 | `tts/mod.rs` | TtsBackend: provider, voices, limits, WAV result, cancellation |
 | `tts/silero/mod.rs` | Установка, consent, состояние и время жизни worker |
+| `tts/silero/models.rs` | RU/EN provider, отдельные consent/receipts и общие runtime/operation mutex |
 | `tts/silero/catalog.rs` | Закреплённые HTTPS URL, размеры и SHA-256 |
 | `tts/silero/runtime.rs`, `runtime-files.json` | Безопасная распаковка и проверка файлов |
 | `tts/silero/worker.rs`, `worker.py` | Скрытый CPU-процесс, bounded stdio JSON, офлайн синтез |
 | `commands/tts.rs` | Status/install/cancel/remove/preview; backend consent checks |
 | `stt/local` | Необязательные GigaAM/transcribe.cpp; downloader переиспользуется TTS |
+| `stt/moonshine` | EN каталог, staging, проверенные DLL, C ABI, скрытый режим того же EXE |
+| `dictation/stream_resample.rs` | Потоковый mono 16 kHz вне callback, сохранение границ и flush хвоста |
 | `commands/speech.rs` | Независимые профили local/server/cloud |
 | `stt/openai_compat.rs` | Совместимый HTTP STT-клиент |
 | `dictation` | Recorder, resampling, readiness, hotkey session, clipboard/paste |
@@ -57,14 +64,19 @@ CC BY-NC-SA 4.0 для некоммерческого использования
 Worker ограничен двумя CPU-потоками, таймаутом 90 секунд и выгрузкой после
 15 минут простоя; он завершается при выходе/падении родителя. HTTP-порт не открывается.
 
-Диктовка: hotkey → подготовка микрофона → сигнал записи/уровень → отпускание →
-локальное GigaAM или независимый server/cloud клиент → вставка/буфер → история,
-если пользователь её включил. Она не использует настройки и условия Silero.
+Диктовка: hotkey → подготовка → сигнал записи → отпускание → один финальный текст
+→ вставка/буфер/необязательная история. GigaAM/server/cloud сохраняют пакетный путь;
+EN во время записи идёт через bounded очередь к Moonshine child. Переполнение
+отменяет попытку без обрезанного текста. JSON ограничен 512 000 байт, timeout 90 с,
+parent handle завершает child при выходе/падении; unload после 15 минут простоя.
+До DLL проверяются все хеши; закреплённый ORT загружается абсолютным путём первым.
+STT независим от mutex/моделей/условий Silero.
 
 `%LOCALAPPDATA%\app.glagol.desktop\`:
 
 - `glagol.db`: documents, api_usage, app_settings, dictations. Миграция 5 добавляет
-  `documents.provider`; старые записи `salutespeech-legacy`, новые `silero`.
+  `documents.provider`; старые записи `salutespeech-legacy`, новые `silero`/`silero-en`.
+  Миграция 6 добавляет nullable speech_language; прежние записи остаются NULL.
 - `audio_cache`: готовые WAV; `previews` — временное предпрослушивание вне бэкапа.
 - `speech_models`: GigaAM и нативный STT-runtime.
 - `tts_models`: модель, архивы, runtime, локальное подтверждение условий.

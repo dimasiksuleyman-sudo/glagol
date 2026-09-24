@@ -1,3 +1,5 @@
+import { t } from "@/i18n";
+import { useI18n } from "@/contexts/PreferencesContext";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,31 +26,26 @@ interface ScannedPdfDialogProps {
  * complaints back to us instead of the failed service.
  */
 export function ScannedPdfDialog({ open, onOpenChange }: ScannedPdfDialogProps) {
+  useI18n();
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Похоже, это сканированный PDF</AlertDialogTitle>
+          <AlertDialogTitle>{t("This appears to be a scanned PDF")}</AlertDialogTitle>
           <AlertDialogDescription asChild>
             <div className="space-y-3 text-sm">
               <p>
-                Извлечь текст напрямую не получилось — PDF состоит из изображений
-                страниц, а не текстового содержимого.
-              </p>
+                {t("Text could not be extracted because this PDF contains page images rather than text.")}{" "}</p>
               <p>
-                Чтобы озвучить такой документ, его сначала нужно распознать (OCR —
-                оптическое распознавание символов). В интернете есть бесплатные
-                онлайн-сервисы для этого.
-              </p>
+                {t("To read this document aloud, first extract its text using OCR (optical character recognition). Free online OCR services are available.")}{" "}</p>
               <p>
-                После распознавания сохраните результат как <code>.txt</code> или{" "}
-                <code>.docx</code> и попробуйте снова.
-              </p>
+                {t("After OCR, save the result as")}{" "}<code>.txt</code> {t("or")}{" "}
+                <code>.docx</code> {t("and try again.")}{" "}</p>
             </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogAction>Понятно</AlertDialogAction>
+          <AlertDialogAction>{t("Got it")}</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

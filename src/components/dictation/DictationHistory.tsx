@@ -1,3 +1,5 @@
+import { t } from "@/i18n";
+import { useI18n } from "@/contexts/PreferencesContext";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -23,10 +25,11 @@ interface StatusBadgeProps {
 
 /** Map a row `status` to a compact Russian badge (D6). */
 function StatusBadge({ status }: StatusBadgeProps) {
+  useI18n();
   const map: Record<string, { label: string; className: string }> = {
-    pasted: { label: "Вставлено", className: "text-emerald-600 dark:text-emerald-400" },
-    clipboard: { label: "Скопировано", className: "text-muted-foreground" },
-    error: { label: "Ошибка", className: "text-destructive" },
+    pasted: { label: t("Inserted"), className: "text-emerald-600 dark:text-emerald-400" },
+    clipboard: { label: t("Copied"), className: "text-muted-foreground" },
+    error: { label: t("Error"), className: "text-destructive" },
   };
   const entry = map[status] ?? { label: status, className: "text-muted-foreground" };
   return <span className={cn("text-xs font-medium", entry.className)}>{entry.label}</span>;
@@ -57,6 +60,7 @@ export function DictationHistory({
   onClear,
   onCopy,
 }: DictationHistoryProps) {
+  useI18n();
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
   return (
@@ -64,12 +68,9 @@ export function DictationHistory({
       <div className="flex items-center justify-between gap-3">
         <div className="space-y-0.5">
           <label htmlFor="history-toggle" className="text-sm font-medium">
-            Сохранять историю
-          </label>
+            {t("Save history")}{" "}</label>
           <p className="text-muted-foreground text-xs">
-            По умолчанию выключено — тексты не касаются диска без необходимости. При
-            выключении накопленное остаётся видимым до нажатия «Очистить».
-          </p>
+            {t("Off by default, so transcripts are not saved unnecessarily. Turning this off keeps existing entries until you clear them.")}{" "}</p>
         </div>
         <Switch
           id="history-toggle"
@@ -82,8 +83,8 @@ export function DictationHistory({
       {entries.length === 0 ? (
         <p className="text-muted-foreground text-sm">
           {enabled
-            ? "История пуста — надиктуйте что-нибудь, и последние записи появятся здесь."
-            : "История выключена. Включите переключатель, чтобы сохранять до 10 последних расшифровок."}
+            ? t("History is empty. Start dictating to see your recent entries here.")
+            : t("History is off. Enable it to save up to 10 recent transcripts.")}
         </p>
       ) : (
         <>
@@ -120,8 +121,7 @@ export function DictationHistory({
                         onClick={() => onCopy(entry.text)}
                         disabled={entry.text.trim().length === 0}
                       >
-                        Копировать
-                      </Button>
+                        {t("Copy")}{" "}</Button>
                     </div>
                   )}
                 </li>
@@ -131,11 +131,9 @@ export function DictationHistory({
 
           <div className="flex items-center justify-between gap-3">
             <span className="text-muted-foreground text-xs">
-              {entries.length} {pluralizeEntries(entries.length)} (максимум 10)
-            </span>
+              {entries.length} {pluralizeEntries(entries.length)} {t("(up to 10)")}{" "}</span>
             <Button variant="destructive" size="sm" onClick={onClear} disabled={busy}>
-              Очистить историю
-            </Button>
+              {t("Clear history")}{" "}</Button>
           </div>
         </>
       )}

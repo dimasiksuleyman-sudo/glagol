@@ -4,13 +4,13 @@ use crate::{
     paths,
     state::AppState,
     text::chunker::chunk_text,
-    tts::{silero::Silero, TtsBackend},
+    tts::{silero::models::Models, TtsBackend},
 };
 use serde::Serialize;
 use std::{
     fs,
     path::Path,
-    sync::{atomic::Ordering, Arc, Mutex},
+    sync::{atomic::Ordering, Mutex},
     time::Instant,
 };
 use tauri::{ipc::Channel, Emitter};
@@ -27,80 +27,87 @@ pub enum ProgressEvent {
 pub async fn synthesize_document(
     app: tauri::AppHandle,
     state: tauri::State<'_, AppState>,
-    tts: tauri::State<'_, Arc<Silero>>,
+    models: tauri::State<'_, Models>,
+    provider: Option<String>,
     text: String,
     voice: String,
     on_progress: Channel<ProgressEvent>,
 ) -> Result<String, String> {
-    if text.trim().is_empty() {
-        return Err("Введите текст для озвучивания.".into());
-    }
-    if text.chars().count() > 500_000 {
-        return Err("Текст слишком большой: максимум 500 000 символов.".into());
-    }
-    if !crate::tts::silero::VOICES.contains(&voice.as_str()) {
-        return Err("Неизвестный голос.".into());
-    }
-    let _operation = tts
-        .operation
-        .try_lock()
-        .map_err(|_| "Другая операция озвучки ещё выполняется.".to_string())?;
-    let started = Instant::now();
-    let chars = text.chars().count();
-    let mut preparation_ms = 0;
-    let mut synthesis_ms = 0;
-    tts.require_consent()?;
-    tts.cancel.store(false, Ordering::Relaxed);
-    let _ = on_progress.send(ProgressEvent::Preparing);
-    let audio_root = paths::audio_cache_root(&app)?;
-    let result = async {
-        let preparation_started = Instant::now();
-        let preparation_result = tts.inner().prepare(&app).await;
-        preparation_ms = preparation_started.elapsed().as_millis();
-        preparation_result?;
+    (async {
+        let tts = models.select(provider.as_deref())?;
+        if text.trim().is_empty() {
+            return Err("Введите текст для озвучивания.".into());
+        }
+        if text.chars().count() > 500_000 {
+            return Err("Текст слишком большой: максимум 500 000 символов.".into());
+        }
+        if !tts.model.voices.contains(&voice.as_str()) {
+            return Err("Неизвестный голос.".into());
+        }
+        let _operation = tts
+            .operation
+            .try_lock()
+            .map_err(|_| "Другая операция озвучки ещё выполняется.".to_string())?;
+        let started = Instant::now();
+        let chars = text.chars().count();
+        let mut preparation_ms = 0;
+        let mut synthesis_ms = 0;
+        tts.require_consent()?;
+        tts.cancel.store(false, Ordering::Relaxed);
+        let _ = on_progress.send(ProgressEvent::Preparing);
+        let audio_root = paths::audio_cache_root(&app)?;
+        let result = async {
+            let preparation_started = Instant::now();
+            let preparation_result = tts.prepare(&app).await;
+            preparation_ms = preparation_started.elapsed().as_millis();
+            preparation_result?;
+            tts.stage(&app, "synthesizing", 0, 0);
 
-        let synthesis_started = Instant::now();
-        let synthesis_result = async {
-            let mut slot = tts.worker.lock().await;
-            let backend = slot.as_mut().ok_or("Движок не готов")?;
-            synthesize_impl(&state.db, &audio_root, &text, &voice, backend, |e| {
-                let _ = on_progress.send(e);
-            })
-            .await
+            let synthesis_started = Instant::now();
+            let synthesis_result = async {
+                let mut slot = tts.worker.lock().await;
+                let backend = slot.as_mut().ok_or("Движок не готов")?;
+                synthesize_impl(&state.db, &audio_root, &text, &voice, backend, |e| {
+                    let _ = on_progress.send(e);
+                })
+                .await
+            }
+            .await;
+            synthesis_ms = synthesis_started.elapsed().as_millis();
+            synthesis_result
         }
         .await;
-        synthesis_ms = synthesis_started.elapsed().as_millis();
-        synthesis_result
-    }
-    .await;
-    if result.is_err() {
-        tts.close_worker().await;
-        tts.invalidate_verification().await;
-    }
-    tts.finish(&app, &result.as_ref().map(|_| ()).map_err(Clone::clone));
-    match &result {
-        Ok(_) => tracing::info!(
-            chars,
-            preparation_ms,
-            synthesis_ms,
-            elapsed_ms = started.elapsed().as_millis(),
-            "local TTS document synthesis completed"
-        ),
-        Err(_) => tracing::warn!(
-            chars,
-            preparation_ms,
-            synthesis_ms,
-            elapsed_ms = started.elapsed().as_millis(),
-            "local TTS document synthesis failed"
-        ),
-    }
-    if let Ok(id) = &result {
-        let _ = app.emit(
-            "synthesis-completed",
-            serde_json::json!({"documentId": id, "charsAdded": 0}),
-        );
-    }
-    result
+        if result.is_err() {
+            tts.close_worker().await;
+            tts.invalidate_verification().await;
+        }
+        tts.finish(&app, &result.as_ref().map(|_| ()).map_err(Clone::clone));
+        match &result {
+            Ok(_) => tracing::info!(
+                chars,
+                preparation_ms,
+                synthesis_ms,
+                elapsed_ms = started.elapsed().as_millis(),
+                "local TTS document synthesis completed"
+            ),
+            Err(_) => tracing::warn!(
+                chars,
+                preparation_ms,
+                synthesis_ms,
+                elapsed_ms = started.elapsed().as_millis(),
+                "local TTS document synthesis failed"
+            ),
+        }
+        if let Ok(id) = &result {
+            let _ = app.emit(
+                "synthesis-completed",
+                serde_json::json!({"documentId": id, "charsAdded": 0}),
+            );
+        }
+        result
+    })
+    .await
+    .map_err(crate::i18n::error)
 }
 
 /// Backend seam allows offline tests and future providers without changing storage.
@@ -116,7 +123,11 @@ pub async fn synthesize_impl(
     if !caps.voices.contains(&voice) {
         return Err("Неизвестный голос.".into());
     }
-    let clean = crate::text::preprocessor::preprocess(text);
+    let clean = if backend.capabilities().provider == "silero-en" {
+        crate::text::preprocessor::preprocess_english(text)
+    } else {
+        crate::text::preprocessor::preprocess(text)
+    };
     let chunks = chunk_text(&clean, caps.max_input_chars);
     if chunks.is_empty() {
         return Err("Введите текст для озвучивания.".into());
@@ -177,6 +188,11 @@ pub async fn synthesize_impl(
             char_count: text.chars().count() as i64,
             voice: voice.into(),
             provider: caps.provider.into(),
+            speech_language: match caps.provider {
+                "silero" => Some("ru".into()),
+                "silero-en" => Some("en".into()),
+                _ => None,
+            },
             status: "ready".into(),
             error_message: None,
             created_at: chrono::Utc::now().timestamp_millis(),

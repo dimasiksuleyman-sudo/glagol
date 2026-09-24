@@ -1,11 +1,41 @@
-# Silero local TTS in Glagol 0.4.1
+# Silero local TTS in Glagol 0.5.0
 
 [Русский](local-tts-runtime.ru.md)
 
-Implemented in 0.4.1 source; a Windows NSIS installer is built locally.
-See the [migration plan](plans/silero-tts-migration.md).
-Yandex SpeechKit v3 for commercial TTS is a separate future stage. Dictation,
-including GigaAM and the office server, is independent of this work.
+The 0.5.0 source candidate adds English v3_en alongside Russian v5.5, using one
+existing Python 3.11.9 / PyTorch 2.7.1+cpu runtime. There is no Kokoro/G2P dependency.
+Dictation is independent. This is not a publication or installation record;
+see the [current workstream](workstreams/english-first/log.md).
+
+## English and shared files — 0.5.0
+
+[english-model.json](../scripts/silero/english-model.json) pins v3_en: 57,194,546 bytes,
+SHA-256 `02b71034d9f13bc4001195017bac9db1c6bb6115e03fea52983e8abcff13b665`.
+Official URL: `https://models.silero.ai/models/tts/en/v3_en.pt`. It timed out in this
+environment; the manifest records the exact mirror revision, matching LFS hash
+and `origin_verified: false`. No fallback mirror is silently used by the app.
+The pinned file was inspected before execution and ran against the existing runtime.
+
+First EN download: 306,540,824 bytes. Adding EN to a valid RU installation downloads
+only 57,194,546 bytes. Runtime inventory/receipts stay in the same `tts_models` root.
+Both models are CC BY-NC-SA 4.0 under the same pinned license, but acknowledgements
+and verification receipts are per model: RU keeps `acknowledgement.json` and
+`verification.json`; EN uses `acknowledgement-en.json` and `verification-en.json`.
+Removal deletes only the selected model/partial/metadata, retaining the shared runtime.
+A common operation mutex prevents runtime repair while either language synthesizes.
+
+EN provider ID is `silero-en`; RU retains `silero`. EN voices are `en_0`–`en_3`,
+default `en_0`. No gender/accent is inferred from IDs. English number/abbreviation
+normalization is separate from Russian stress/Latin handling. Both use the existing
+sequential temporary-WAV/library pipeline; new rows carry nullable `speech_language`
+from migration 6, while old rows retain NULL. Backup exclusions are unchanged.
+
+Native Windows tests exercised both model workers, four English voices, long text,
+cancel, crash recovery, WAV/library metadata and independent language preferences.
+Process tests separately exercise parent exit, bounded protocol and timeout handling.
+Commands and actual results, including NOT_RUN listening/UI/installation checks,
+belong to the [work log](workstreams/english-first/log.md). Historical measurements
+below are for RU 0.4.x, not English 0.5.0 performance promises.
 
 ## Verified on 2026-09-12
 
@@ -78,7 +108,7 @@ updates. Assembly preserves upstream license files.
 | num2words | 0.5.14 | LGPL-2.1 |
 | docopt | 0.6.2 | MIT |
 
-Silero TTS v5.5 is an optional component **for noncommercial use**, licensed
+Silero TTS v5.5 and v3_en are optional components **for noncommercial use**, licensed
 CC BY-NC-SA 4.0, by the Silero Team.
 [Upstream](https://github.com/snakers4/silero-models),
 [full license](third-party/Silero-LICENSE.txt).
@@ -102,7 +132,7 @@ before execution. Its model code remains in the separately downloaded package.
 Settings require explicit noncommercial-use acknowledgement tied to the model
 and license hash before installation/import; Rust checks it again before loading
 or synthesis. The installer shows an informational notice without opting in.
-Consent stays in `tts_models/acknowledgement.json` and is excluded from backups.
+Consent stays in the per-model files described above and is excluded from backups.
 Dictation, library playback/export and file import do not depend on consent.
 
 Artifacts download with progress, cancellation, resume and SHA-256 validation.
@@ -122,7 +152,7 @@ parent, on cancellation/error, or after 15 minutes idle.
 
 Text is chunked sequentially and WAV is written incrementally. A cancelled or
 failed job does not create a successful library row. Old WAV/voice metadata stays
-playable with provider `salutespeech-legacy`; new documents use `silero`. OAuth,
+playable with provider `salutespeech-legacy`; new documents use `silero` / `silero-en`. OAuth,
 SaluteSpeech API/TLS material and TTS quota UI are removed. Only the legacy TTS
 credential is deleted once; dictation profiles, keys and usage remain independent.
 

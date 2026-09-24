@@ -1,11 +1,13 @@
 {
   "name": "glagol",
   "private": true,
-  "version": "0.4.1",
+  "version": "0.5.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node scripts/check-version.mjs && tsc && vite build",
+    "build": "node scripts/check-version.mjs && node scripts/i18n-check.mjs && tsc && vite build",
+    "i18n:check": "node scripts/i18n-check.mjs",
+    "i18n:test": "node --test scripts/i18n-check.test.mjs",
     "preview": "vite preview",
     "tauri": "tauri",
     "context:refresh": "node scripts/context-status.mjs write",

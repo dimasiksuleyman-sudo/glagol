@@ -7,15 +7,18 @@ We aim to acknowledge within 72 hours, assess within seven days and address
 reports within the existing 90-day responsible disclosure window. Do not send
 API keys, private documents or microphone recordings in public reports.
 
-Current development line: 0.4.x. Historical releases may still use retired
+Current development line: 0.5.x (local candidate). Historical releases may still use retired
 providers; use the current code/release when testing fixes.
 
-- Glagol processes local documents and audio. Local Silero TTS and local GigaAM
+- Glagol processes local documents and audio. Local Silero TTS and GigaAM/Moonshine
   inference require no network after component installation. Office/cloud STT
   sends recordings to the explicitly configured endpoint under its own terms.
 - Python, CPU PyTorch, dependencies and Silero weights download only by choice
   from pinned HTTPS URLs with byte-count/SHA-256 checks. A `.pt` package contains
-  executable model code: only the pinned v5.5 file can be imported.
+  executable model code: only the pinned v5.5 RU / v3 EN files can be imported.
+- Moonshine STT runs in a hidden child mode of the same EXE, before Tauri setup.
+  Every model/DLL hash is checked before loading; pinned ORT is preloaded by absolute
+  path. A bounded audio queue fails loudly on overflow; only final text is inserted.
 - Archives extract into staging with path/link checks. Runtime files are compared
   with a compiled inventory before first process launch. No hub, pip or arbitrary
   script execution; no system Python search; no SAPI registration or HTTP listener.
@@ -34,7 +37,7 @@ providers; use the current code/release when testing fixes.
   rewritten as a new provider. Make backups before upgrading important libraries.
 
 Downloaded components retain their own licences: Glagol code is MIT; Silero
-v5.5 is CC BY-NC-SA 4.0 for noncommercial use. Licence acknowledgement is local
+v5.5 RU and v3 EN are CC BY-NC-SA 4.0 for noncommercial use. Licence acknowledgement is local
 and provider-specific; it does not restrict independent organizational dictation.
 Future Yandex SpeechKit v3 is not yet integrated.
 
@@ -49,14 +52,17 @@ remain part of the deployment's security boundary.
 Цель: подтвердить получение за 72 часа, оценить за семь дней и исправить в рамках
 90-дневного ответственного раскрытия. Не публикуйте ключи, личные документы и записи.
 
-Текущая ветка разработки — 0.4.x; в исторических выпусках могли использоваться
+Текущая ветка разработки — 0.5.x (локальный кандидат); в исторических выпусках могли использоваться
 удалённые провайдеры. Для проверки исправлений используйте актуальную версию.
 
-- Silero и GigaAM после загрузки работают локально без сети. При office/cloud STT
+- Silero, GigaAM и Moonshine после загрузки работают локально без сети. При office/cloud STT
   аудио уходит на явно выбранный пользователем сервер на условиях этого сервиса.
 - Python, CPU PyTorch, зависимости и веса скачиваются по выбору с закреплённых
   HTTPS-адресов. Размеры и SHA-256 проверяются. `.pt` содержит исполняемый код:
-  импортируется только точный закреплённый файл v5.5.
+  импортируются только точные закреплённые v5.5 RU / v3 EN.
+- Moonshine STT запускается скрытым дочерним режимом того же EXE до Tauri setup.
+  Хеши моделей/DLL проверяются до загрузки; закреплённый ORT загружается первым по
+  абсолютному пути. Переполнение bounded очереди даёт ошибку, вставляется только финал.
 - Распаковка в staging проверяет пути/ссылки; перед запуском файлы сравниваются с
   встроенной описью. Нет hub/pip, поиска системного Python, регистрации SAPI,
   произвольных скриптов или HTTP-порта для озвучки.
@@ -72,7 +78,7 @@ remain part of the deployment's security boundary.
   Бэкап содержит SQLite и WAV библиотеки, а не модели/runtime, ключи и подтверждение
   условий Silero. Старые данные сохраняют своего провайдера.
 
-Лицензия кода — MIT, модели Silero v5.5 — CC BY-NC-SA 4.0 для некоммерческого
+Лицензия кода — MIT, модели Silero v5.5 RU и v3 EN — CC BY-NC-SA 4.0 для некоммерческого
 использования. Локальное подтверждение относится только к Silero и не ограничивает
 независимую диктовку организаций. Yandex SpeechKit v3 пока не внедрён.
 
