@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "observed_at": "2026-09-24T23:26:24.923Z",
-  "active_workstream": "release-0.5.0",
+  "observed_at": "2026-09-24T23:46:49.625Z",
+  "active_workstream": null,
   "links": [
     "AGENTS.md",
     "CLAUDE.md",
@@ -31,7 +31,7 @@
       "id": "build",
       "label": "Локальная сборка",
       "status": "observed",
-      "summary": "Локальный NSIS 0.5.0: 9947426 байт (+1,73% к 0.4.1), SHA-256 6d9d567975779eb9e157063ac34c7a132a5f88deb3c5107cbd22164eecdda762. Автоматические гейты и native speech smoke PASS; установка/публикация не выполнялись, ручная QA E5 остаётся открытой.",
+      "summary": "NSIS 0.5.0: 9947426 байт (+1,73% к 0.4.1), SHA-256 6d9d567975779eb9e157063ac34c7a132a5f88deb3c5107cbd22164eecdda762. Локальные автоматические гейты и native speech smoke PASS. Установка, ручная QA и публикация учтены отдельными наблюдениями ниже.",
       "observed_at": "2026-09-24T22:41:57.739Z",
       "source": "docs/workstreams/english-first/qa.md"
     },
@@ -39,7 +39,7 @@
       "id": "installed",
       "label": "Установленная версия",
       "status": "observed",
-      "summary": "По новому разрешению пользователя основная 0.4.1 обновлена до 0.5.0: NSIS exit 0, FileVersion 0.5.0, запуск и schema 6 подтверждены. Бэкап проверен; 4 документа/4 WAV и прежние настройки сохранены. Ожидаются ручные UI/микрофон/прослушивание.",
+      "summary": "Основная 0.4.1 обновлена до 0.5.0 по разрешению пользователя: NSIS exit 0, FileVersion 0.5.0, запуск и schema 6 подтверждены. Бэкап проверен; 4 документа/4 WAV и прежние настройки сохранены. Последующая ручная проверка учтена отдельно.",
       "observed_at": "2026-09-24T22:48:17.479Z",
       "source": "docs/workstreams/english-first/live-qa.md"
     },
@@ -47,9 +47,9 @@
       "id": "published",
       "label": "Публикация",
       "status": "observed",
-      "summary": "Опубликован GitHub Release v0.4.1 (latest), тег 6bcb186. Публичные installer и SHA256SUMS скачаны и побайтово сверены; release notes, README, обе USER_GUIDE и CHANGELOG совпали с тегом.",
-      "observed_at": "2026-09-15T11:26:27.788Z",
-      "source": "docs/workstreams/release-0.4.1/log.md"
+      "summary": "GitHub Release v0.5.0 опубликован как latest; CI success. Публичные installer и SHA256SUMS скачаны и побайтово совпали с локальными. Тег, README, обе USER_GUIDE, CHANGELOG и release notes сверены. Установщик 9947426 байт, SHA-256 6d9d567975779eb9e157063ac34c7a132a5f88deb3c5107cbd22164eecdda762.",
+      "observed_at": "2026-09-24T23:46:49.625Z",
+      "source": "docs/workstreams/release-0.5.0/log.md"
     },
     {
       "id": "qa-environment",
@@ -130,6 +130,12 @@
       "id": "english-first-baseline",
       "sha": "68d507fe04273743932a17a1c5da87a28fb4ef4f",
       "scope": "local"
+    },
+    {
+      "id": "release-0-5-0",
+      "sha": "5f0ac620fe3c62891b06f2c5fe70bff42fdd9b0a",
+      "scope": "release",
+      "ref": "refs/tags/v0.5.0"
     }
   ]
 }
