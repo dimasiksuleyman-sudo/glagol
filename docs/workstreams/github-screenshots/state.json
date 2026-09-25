@@ -2,14 +2,10 @@
   "schema_version": 1,
   "id": "github-screenshots",
   "title": "Скриншоты GitHub для 0.5.0",
-  "status": "active",
-  "next": "S2",
+  "status": "done",
+  "next": null,
   "reason": null,
-  "claim": {
-    "owner": "Codex",
-    "at": "2026-09-25T14:49:10.800Z",
-    "branch": "main"
-  },
+  "claim": null,
   "links": [
     "docs/workstreams/github-screenshots/README.md",
     "docs/workstreams/github-screenshots/log.md"
@@ -62,14 +58,30 @@
     {
       "id": "S2",
       "title": "Заменить снимки пользовательскими PNG, опубликовать и проверить GitHub",
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [
         "S1"
       ],
       "required": [
         "publication"
       ],
-      "checks": []
+      "checks": [
+        {
+          "id": "publication",
+          "status": "PASS",
+          "method": "command",
+          "command": "git push origin main; node .scratch/screenshots-public-check.mjs",
+          "cwd": ".",
+          "at": "2026-09-25T14:50:50.077Z",
+          "environment": {
+            "os": "Windows",
+            "node": "24.19.0"
+          },
+          "exit_code": 0,
+          "output": "Public main matches HEAD; 10 files verified; four PNG originals byte-identical. Local documentation checks: 49/49 tests, 53 relative links and runbook integrity PASS.",
+          "evidence": "docs/workstreams/github-screenshots/log.md"
+        }
+      ]
     }
   ]
 }

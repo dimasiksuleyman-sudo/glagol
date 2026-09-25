@@ -38,3 +38,11 @@ Manual: просмотрены четыре пользовательских к�
 node .scratch/screenshots-check.mjs — exit 0, PASS: 53 local documentation links; four original PNG files. pnpm context:refresh / pnpm runbook:check — exit 0, OK (9 series). git diff --check — exit 0. Окружение Windows, Node 24.19.0, pnpm 12.4.1; cwd корень. Пользовательские материалы обновлены в обеих языковых версиях. Приложение, установщик и тег релиза не меняются; CI-сборка для docs-only commit будет пропущена через [skip ci], локальные проверки документации обязательны.
 
 pnpm runbook:test — exit 0, tests 49 / pass 49 / fail 0; новый запуск после замены PNG.
+
+## 2026-09-25T14:50:50.077Z — публикация проверена
+
+git commit и git push origin main — exit 0. node .scratch/screenshots-public-check.mjs — exit 0: публичный main совпадает с HEAD; 10 файлов проверены через raw.githubusercontent.com на точной ревизии, четыре PNG побайтово совпали с локальными оригиналами. Структурированная Git-ссылка scope=main сохранена в project.json.
+
+https://github.com/dimasiksuleyman-sudo/glagol
+
+README содержит три английских экрана и дополнительный русский; галерея, обе USER_GUIDE и CHANGELOG опубликованы. Серия закрыта, claim очищен, активной серии нет. Приложение и релиз 0.5.0 не пересобирались; CI намеренно пропущен для документационных commit, локальные обязательные гейты PASS. Итоговое состояние доставляется отдельным docs-only commit. Следующий шаг — использование и обратная связь.
