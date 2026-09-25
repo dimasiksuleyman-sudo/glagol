@@ -36,7 +36,8 @@ Existing WAVs need no installed TTS engine to play. Old document metadata is pre
 new synthesis stores its speech language. Restoring an older backup remains supported.
 Installation, live-microphone and listening checks of this candidate remain separate
 from automated tests; see the [work log](docs/workstreams/english-first/log.md).
-Older [0.4.0 screenshots](docs/screenshots/windows10-0.4.0/README.md) are historical.
+[Current 0.5.0 screenshots](docs/screenshots/0.5.0/README.md) show English synthesis, local
+dictation and the library, plus completed synthesis in the Russian interface. Older [0.4.0 screenshots](docs/screenshots/windows10-0.4.0/README.md) are historical.
 
 ## Optional Silero synthesis
 

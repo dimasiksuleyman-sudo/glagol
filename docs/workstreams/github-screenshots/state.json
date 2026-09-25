@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "id": "github-screenshots",
+  "title": "Скриншоты GitHub для 0.5.0",
+  "status": "active",
+  "next": "S2",
+  "reason": null,
+  "claim": {
+    "owner": "Codex",
+    "at": "2026-09-25T14:49:10.800Z",
+    "branch": "main"
+  },
+  "links": [
+    "docs/workstreams/github-screenshots/README.md",
+    "docs/workstreams/github-screenshots/log.md"
+  ],
+  "steps": [
+    {
+      "id": "S1",
+      "title": "Актуальные EN/RU скриншоты и документация",
+      "status": "done",
+      "depends_on": [],
+      "required": [
+        "visual",
+        "validation"
+      ],
+      "checks": [
+        {
+          "cwd": ".",
+          "at": "2026-09-25T14:19:24.844Z",
+          "environment": {
+            "os": "Windows",
+            "node": "24.19.0",
+            "pnpm": "12.4.1"
+          },
+          "evidence": "docs/workstreams/github-screenshots/log.md",
+          "id": "visual",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Visual review of four original Computer Use captures and bilingual captions",
+          "exit_code": null,
+          "output": "Four actual 0.5.0 frames; no personal history, documents or credentials; EN/RU captions match."
+        },
+        {
+          "cwd": ".",
+          "at": "2026-09-25T14:19:24.844Z",
+          "environment": {
+            "os": "Windows",
+            "node": "24.19.0",
+            "pnpm": "12.4.1"
+          },
+          "evidence": "docs/workstreams/github-screenshots/log.md",
+          "id": "validation",
+          "status": "PASS",
+          "method": "command",
+          "command": "pnpm runbook:test; node .scratch/screenshots-check.mjs; pnpm context:refresh; pnpm runbook:check; git diff --check",
+          "exit_code": 0,
+          "output": "49/49 tests; 50 local links; four JPEG signatures and hashes; runbook-check OK (9 series); diff check passed."
+        }
+      ]
+    },
+    {
+      "id": "S2",
+      "title": "Заменить снимки пользовательскими PNG, опубликовать и проверить GitHub",
+      "status": "in_progress",
+      "depends_on": [
+        "S1"
+      ],
+      "required": [
+        "publication"
+      ],
+      "checks": []
+    }
+  ]
+}

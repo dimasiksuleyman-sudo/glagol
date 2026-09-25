@@ -11,6 +11,25 @@ Offline English and Russian dictation and text-to-speech for Windows 10/11 x64.
 
 ## English
 
+### See Glagol
+
+**Turn text into a recording.** English interface and English speech, with a
+demonstration text ready to synthesize.
+
+![Glagol 0.5.0: English text-to-speech with voice selection](docs/screenshots/0.5.0/synthesize-en.png)
+
+**Dictate offline in English.** Select Moonshine Small Streaming; downloaded
+models stay on your computer.
+
+![Glagol 0.5.0: local English dictation with Moonshine Small Streaming](docs/screenshots/0.5.0/dictation-en.png)
+
+**Keep recordings in your library.** Resume playback, adjust the speed and export
+audio as WAV.
+
+![Glagol 0.5.0: English library with a demonstration recording and audio player](docs/screenshots/0.5.0/library-en.png)
+
+[View all 0.5.0 screenshots — synthesis, dictation and library, including Russian](docs/screenshots/0.5.0/README.md).
+
 ### Languages and speech
 
 Choose **English / Русский** on first launch, including the first upgrade to 0.5.0.
@@ -82,6 +101,20 @@ not a listening-quality result. Direct Silero-origin delivery was unavailable fr
 the development machine; importing pinned files was exercised separately.
 
 ## Русский
+
+### Как выглядит Глагол
+
+**Превратите текст в запись.** Русский интерфейс и русская озвучка:
+демонстрационная запись сохранена в библиотеку и доступна для экспорта.
+
+![Глагол 0.5.0: русская озвучка текста с выбором голоса](docs/screenshots/0.5.0/synthesize-ru.png)
+
+**Диктуйте на английском без интернета.** Выберите Moonshine Small Streaming;
+скачанные модели остаются на компьютере. **Храните записи в библиотеке:**
+продолжайте прослушивание, меняйте скорость и экспортируйте WAV.
+Английские экраны диктовки и библиотеки показаны выше.
+
+[Все скриншоты 0.5.0 — озвучка, диктовка и библиотека, включая русский интерфейс](docs/screenshots/0.5.0/README.md).
 
 ### Языки и речь
 

@@ -5,7 +5,17 @@
 
 Начало работы: [AGENTS](../AGENTS.md) → этот обзор → состояние и журнал серии.
 
-Активная серия не выбрана. Новая задача определяется пользователем.
+Выбранная серия: **Скриншоты GitHub для 0.5.0**.
+
+**NEXT: S2 — Заменить снимки пользовательскими PNG, опубликовать и проверить GitHub** (in_progress).
+
+[Решения](workstreams/github-screenshots/README.md) · [Состояние](workstreams/github-screenshots/state.json) · [Журнал](workstreams/github-screenshots/log.md)
+
+Выполняет: Codex; ветка main; с 2026-09-25T14:49:10.800Z.
+
+Последний завершённый шаг серии: **S1 — Актуальные EN/RU скриншоты и документация**.
+
+Проверка 2026-09-25T14:19:24.844Z: Four actual 0.5.0 frames; no personal history, documents or credentials; EN/RU captions match. ([evidence](../docs/workstreams/github-screenshots/log.md)).
 
 ## Доставка и наблюдения
 
@@ -46,5 +56,7 @@
 - [docs/workstreams/english-first/log.md](../docs/workstreams/english-first/log.md)
 - [docs/workstreams/release-0.5.0/README.md](../docs/workstreams/release-0.5.0/README.md)
 - [docs/workstreams/release-0.5.0/log.md](../docs/workstreams/release-0.5.0/log.md)
+- [docs/workstreams/github-screenshots/README.md](../docs/workstreams/github-screenshots/README.md)
+- [docs/workstreams/github-screenshots/log.md](../docs/workstreams/github-screenshots/log.md)
 
 PASS в старом журнале — результат той даты, не новая проверка. Сборка, установка и публикация учитываются отдельно.

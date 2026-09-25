@@ -11,6 +11,10 @@ the per-session master logs under [`docs/day-logs/`](docs/day-logs/).
 
 ## [Unreleased]
 
+### Documentation
+
+- Added original Glagol 0.5.0 PNG screenshots: English synthesis, dictation and library in the README, plus Russian synthesis; both guides link to the bilingual gallery. / Добавлены оригинальные PNG Глагола 0.5.0: английские экраны озвучки, диктовки и библиотеки в README, а также русская озвучка; оба руководства ссылаются на двуязычную галерею.
+
 ## [v0.5.0] — 2026-09-24
 
 [Release notes, validation and limits / проверка и ограничения](docs/releases/v0.5.0.md).

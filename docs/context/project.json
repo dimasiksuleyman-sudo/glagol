@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "observed_at": "2026-09-24T23:46:49.625Z",
-  "active_workstream": null,
+  "active_workstream": "github-screenshots",
   "links": [
     "AGENTS.md",
     "CLAUDE.md",
@@ -24,7 +24,9 @@
     "docs/workstreams/english-first/README.md",
     "docs/workstreams/english-first/log.md",
     "docs/workstreams/release-0.5.0/README.md",
-    "docs/workstreams/release-0.5.0/log.md"
+    "docs/workstreams/release-0.5.0/log.md",
+    "docs/workstreams/github-screenshots/README.md",
+    "docs/workstreams/github-screenshots/log.md"
   ],
   "observations": [
     {

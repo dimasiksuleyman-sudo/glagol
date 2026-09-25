@@ -1,0 +1,30 @@
+[
+  {
+    "file": "dictation-en.png",
+    "width": 992,
+    "height": 900,
+    "bytes": 120680,
+    "sha256": "0bf8afc68f5d83c682fd00f9f9faf420059ad9119eda2c919efde82335d75f39"
+  },
+  {
+    "file": "library-en.png",
+    "width": 987,
+    "height": 890,
+    "bytes": 52085,
+    "sha256": "a420d1b853ba38ee30f9d72cbf518c1da0e89dbeeda32c91ba98cdb6f5d87bb4"
+  },
+  {
+    "file": "synthesize-en.png",
+    "width": 985,
+    "height": 777,
+    "bytes": 75693,
+    "sha256": "2125f0e26398c86cd4f1a304db766dcb1c5d08ab47e178bb3e2cee36d2e4a984"
+  },
+  {
+    "file": "synthesize-ru.png",
+    "width": 986,
+    "height": 896,
+    "bytes": 94799,
+    "sha256": "c50f965d198811893ecc5a61fa5ce93c16b7c818e935b1cbb6ae2298ccf84522"
+  }
+]
