@@ -7,13 +7,15 @@
 
 Выбранная серия: **Выпуск Glagol 0.5.1**.
 
-**NEXT: P2 — NSIS на Windows, размер/SHA-256 и ручная проверка обновления** (pending).
+**NEXT: P3 — Release notes, PR и merge в main, тег v0.5.1, GitHub Release и сверка asset** (in_progress).
 
 [Решения](workstreams/release-0.5.1/README.md) · [Состояние](workstreams/release-0.5.1/state.json) · [Журнал](workstreams/release-0.5.1/log.md)
 
-Последний завершённый шаг серии: **P1 — Версия 0.5.1, CHANGELOG и автоматические гейты**.
+Выполняет: claude; ветка claude/pensive-wright-8jxin9; с 2026-10-07T12:38:33.000Z.
 
-Проверка 2026-10-07T12:24:03.000Z: Glagol 0.5.1: package, Tauri and Cargo versions match. ([evidence](../docs/workstreams/release-0.5.1/log.md)).
+Последний завершённый шаг серии: **P2 — NSIS на Windows, размер/SHA-256 и ручная проверка обновления**.
+
+Проверка 2026-10-07T12:38:33.000Z: 9948410 bytes, SHA-256 01791f02ed250797d611d5ac723282f6d5e58e33f03d48c337f056f35b85a922 ([evidence](../docs/workstreams/release-0.5.1/log.md)).
 
 ## Доставка и наблюдения
 
