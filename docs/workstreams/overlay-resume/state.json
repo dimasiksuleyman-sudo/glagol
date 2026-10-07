@@ -2,8 +2,8 @@
   "schema_version": 1,
   "id": "overlay-resume",
   "title": "Таблетка диктовки после сна",
-  "status": "active",
-  "next": "R2",
+  "status": "done",
+  "next": null,
   "reason": null,
   "claim": null,
   "links": [
@@ -60,14 +60,31 @@
     {
       "id": "R2",
       "title": "Ручная проверка сна/пробуждения на Windows-ноутбуке",
-      "status": "pending",
+      "status": "done",
       "depends_on": [
         "R1"
       ],
       "required": [
         "manual-resume"
       ],
-      "checks": []
+      "checks": [
+        {
+          "id": "manual-resume",
+          "status": "PASS",
+          "method": "manual",
+          "command": "pnpm tauri dev on Windows laptop; dictate, close lid ~13 min, reopen, dictate again",
+          "cwd": ".",
+          "at": "2026-10-07T12:17:12.000Z",
+          "environment": {
+            "os": "Windows",
+            "pnpm": "12.4.1",
+            "mode": "tauri dev"
+          },
+          "exit_code": null,
+          "output": "Log shows resume detected and overlay rebuilt; pill visible and text pasted after wake (reported by user).",
+          "evidence": "docs/workstreams/overlay-resume/log.md"
+        }
+      ]
     }
   ]
 }

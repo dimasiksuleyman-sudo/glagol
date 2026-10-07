@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "observed_at": "2026-09-24T23:46:49.625Z",
-  "active_workstream": "overlay-resume",
+  "active_workstream": null,
   "links": [
     "AGENTS.md",
     "CLAUDE.md",

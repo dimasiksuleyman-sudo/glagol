@@ -5,15 +5,7 @@
 
 Начало работы: [AGENTS](../AGENTS.md) → этот обзор → состояние и журнал серии.
 
-Выбранная серия: **Таблетка диктовки после сна**.
-
-**NEXT: R2 — Ручная проверка сна/пробуждения на Windows-ноутбуке** (pending).
-
-[Решения](workstreams/overlay-resume/README.md) · [Состояние](workstreams/overlay-resume/state.json) · [Журнал](workstreams/overlay-resume/log.md)
-
-Последний завершённый шаг серии: **R1 — Пересоздание overlay после выхода из сна и автоматические проверки**.
-
-Проверка 2026-10-07T09:48:02.000Z: test result: ok. 343 passed; 0 failed; 6 ignored ([evidence](../docs/workstreams/overlay-resume/log.md)).
+Активная серия не выбрана. Новая задача определяется пользователем.
 
 ## Доставка и наблюдения
 

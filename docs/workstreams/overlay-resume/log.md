@@ -34,3 +34,19 @@ src/main.tsx (метка overlay-N), CHANGELOG Fixed. Руководства н�
 
 Не проверено: сам сценарий сна/пробуждения на Windows и NSIS-сборка — недоступны
 в этой среде; это шаг R2 (manual на ноутбуке пользователя).
+
+## 2026-10-07T12:17:12.000Z — R2 ручная проверка на ноутбуке пользователя
+
+Manual, сообщено пользователем; Windows-ноутбук, C:\Projects\glagol, ветка
+claude/pensive-wright-8jxin9 на 9034824 (aba3cba — исправление), pnpm 12.4.1,
+`pnpm install --frozen-lockfile` — Already up to date; установленный Глагол
+закрыт (Get-Process glagol пусто), запуск `pnpm tauri dev`.
+
+1. До сна: диктовка GigaAM, таблетка видна, текст вставлен (outcome=Pasted 12:02).
+2. Крышка закрыта ~13 мин. Лог: 12:15:39.031Z «system resume detected; overlay
+   will be rebuilt», 12:15:42.254Z «overlay window rebuilt after resume».
+3. После пробуждения: таблетка видна, текст вставлен — PASS.
+
+Границы: проверен dev-режим, не установленный NSIS-билд; один цикл сна;
+сон короче ~13 с не распознаётся (порог 3 + 10 с). Релиз не выполнялся.
+Серия закрыта; активной серии нет.
