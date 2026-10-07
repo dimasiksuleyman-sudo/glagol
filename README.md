@@ -5,9 +5,9 @@ Offline English and Russian dictation and text-to-speech for Windows 10/11 x64.
 
 [English guide](USER_GUIDE.en.md) · [Руководство](USER_GUIDE.ru.md) · [MIT application](LICENSE) · [Security](SECURITY.md)
 
-**Download Glagol 0.5.0 / Скачать Глагол 0.5.0:**
-[Windows x64 installer](https://github.com/dimasiksuleyman-sudo/glagol/releases/download/v0.5.0/Glagol_0.5.0_x64-setup.exe)
-([release notes and SHA-256](docs/releases/v0.5.0.md), 9,947,426 bytes).
+**Download Glagol 0.5.1 / Скачать Глагол 0.5.1:**
+[Windows x64 installer](https://github.com/dimasiksuleyman-sudo/glagol/releases/download/v0.5.1/Glagol_0.5.1_x64-setup.exe)
+([release notes and SHA-256](docs/releases/v0.5.1.md), 9,948,410 bytes).
 
 ## English
 
@@ -177,7 +177,7 @@ OS-ключи и согласие Silero. При смене интерфейса
 
 ### Разработка и проверка
 
-Текущая версия — **0.5.0**. Установщик по ссылке сверху — 9 947 426 байт.
+Текущая версия — **0.5.1**. Установщик по ссылке сверху — 9 948 410 байт.
 Стек: Tauri 2, Rust,
 React 19, TypeScript, SQLite. `pnpm install --frozen-lockfile`, `pnpm tauri build`.
 [Архитектура](PROJECT_STRUCTURE.md), [вклад](CONTRIBUTING.md),
