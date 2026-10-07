@@ -2,14 +2,10 @@
   "schema_version": 1,
   "id": "release-0.5.1",
   "title": "Выпуск Glagol 0.5.1",
-  "status": "active",
-  "next": "P3",
+  "status": "done",
+  "next": null,
   "reason": null,
-  "claim": {
-    "owner": "claude",
-    "at": "2026-10-07T12:38:33.000Z",
-    "branch": "claude/pensive-wright-8jxin9"
-  },
+  "claim": null,
   "links": [
     "docs/workstreams/release-0.5.1/README.md",
     "docs/workstreams/release-0.5.1/log.md"
@@ -126,14 +122,29 @@
     {
       "id": "P3",
       "title": "Release notes, PR и merge в main, тег v0.5.1, GitHub Release и сверка asset",
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [
         "P2"
       ],
       "required": [
         "published"
       ],
-      "checks": []
+      "checks": [
+        {
+          "id": "published",
+          "status": "PASS",
+          "method": "command",
+          "command": "curl -sSfL release assets v0.5.1 && sha256sum -c SHA256SUMS.txt",
+          "cwd": ".",
+          "at": "2026-10-07T20:33:51.000Z",
+          "environment": {
+            "os": "Linux container"
+          },
+          "exit_code": 0,
+          "output": "Glagol_0.5.1_x64-setup.exe: OK (9948410 bytes; tag v0.5.1 -> 1b3ed4e)",
+          "evidence": "docs/workstreams/release-0.5.1/log.md"
+        }
+      ]
     }
   ]
 }

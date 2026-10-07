@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "observed_at": "2026-09-24T23:46:49.625Z",
-  "active_workstream": "release-0.5.1",
+  "observed_at": "2026-10-07T20:33:51.000Z",
+  "active_workstream": null,
   "links": [
     "AGENTS.md",
     "CLAUDE.md",
@@ -44,18 +44,18 @@
     {
       "id": "installed",
       "label": "Установленная версия",
-      "status": "observed",
-      "summary": "Основная 0.4.1 обновлена до 0.5.0 по разрешению пользователя: NSIS exit 0, FileVersion 0.5.0, запуск и schema 6 подтверждены. Бэкап проверен; 4 документа/4 WAV и прежние настройки сохранены. Последующая ручная проверка учтена отдельно.",
-      "observed_at": "2026-09-24T22:48:17.479Z",
-      "source": "docs/workstreams/english-first/live-qa.md"
+      "status": "reported",
+      "summary": "Пользователь установил 0.5.1 поверх 0.5.0 на ноутбуке после бэкапа: версия 0.5.1, таблетка видна, текст вставлен. Позже таблетка пропала снова (GL-006).",
+      "observed_at": "2026-10-07T20:33:51.000Z",
+      "source": "docs/workstreams/release-0.5.1/log.md"
     },
     {
       "id": "published",
       "label": "Публикация",
       "status": "observed",
-      "summary": "GitHub Release v0.5.0 опубликован как latest; CI success. Публичные installer и SHA256SUMS скачаны и побайтово совпали с локальными. Тег, README, обе USER_GUIDE, CHANGELOG и release notes сверены. Установщик 9947426 байт, SHA-256 6d9d567975779eb9e157063ac34c7a132a5f88deb3c5107cbd22164eecdda762.",
-      "observed_at": "2026-09-24T23:46:49.625Z",
-      "source": "docs/workstreams/release-0.5.0/log.md"
+      "summary": "GitHub Release v0.5.1 опубликован как latest; CI PR success, merge 1b3ed4e. Публичный установщик 9948410 байт скачан, SHA-256 01791f02ed250797d611d5ac723282f6d5e58e33f03d48c337f056f35b85a922 совпал с SHA256SUMS и локальной сборкой. После публикации сообщено о повторном исчезновении таблетки (GL-006).",
+      "observed_at": "2026-10-07T20:33:51.000Z",
+      "source": "docs/workstreams/release-0.5.1/log.md"
     },
     {
       "id": "qa-environment",
@@ -147,6 +147,12 @@
       "id": "github-screenshots-publication",
       "sha": "c6983619962f5efd20c54421d4bd6fa57e51baaa",
       "scope": "main"
+    },
+    {
+      "id": "release-0-5-1",
+      "sha": "1b3ed4ed1183d1c09c76c2baf5ab05fbe67a9db2",
+      "scope": "release",
+      "ref": "refs/tags/v0.5.1"
     }
   ]
 }
