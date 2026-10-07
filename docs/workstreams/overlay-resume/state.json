@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "id": "overlay-resume",
+  "title": "Таблетка диктовки после сна",
+  "status": "active",
+  "next": "R2",
+  "reason": null,
+  "claim": null,
+  "links": [
+    "docs/workstreams/overlay-resume/README.md",
+    "docs/workstreams/overlay-resume/log.md"
+  ],
+  "steps": [
+    {
+      "id": "R1",
+      "title": "Пересоздание overlay после выхода из сна и автоматические проверки",
+      "status": "done",
+      "depends_on": [],
+      "required": [
+        "rust",
+        "frontend"
+      ],
+      "checks": [
+        {
+          "id": "rust",
+          "status": "PASS",
+          "method": "command",
+          "command": "cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test",
+          "cwd": "src-tauri",
+          "at": "2026-10-07T09:48:02.000Z",
+          "environment": {
+            "os": "Linux container",
+            "rustc": "1.97.0",
+            "node": "v22.22.0",
+            "pnpm": "10.28.0"
+          },
+          "exit_code": 0,
+          "output": "test result: ok. 343 passed; 0 failed; 6 ignored",
+          "evidence": "docs/workstreams/overlay-resume/log.md"
+        },
+        {
+          "id": "frontend",
+          "status": "PASS",
+          "method": "command",
+          "command": "pnpm exec tsc --noEmit && pnpm build",
+          "cwd": ".",
+          "at": "2026-10-07T09:48:02.000Z",
+          "environment": {
+            "os": "Linux container",
+            "rustc": "1.97.0",
+            "node": "v22.22.0",
+            "pnpm": "10.28.0"
+          },
+          "exit_code": 0,
+          "output": "✓ built",
+          "evidence": "docs/workstreams/overlay-resume/log.md"
+        }
+      ]
+    },
+    {
+      "id": "R2",
+      "title": "Ручная проверка сна/пробуждения на Windows-ноутбуке",
+      "status": "pending",
+      "depends_on": [
+        "R1"
+      ],
+      "required": [
+        "manual-resume"
+      ],
+      "checks": []
+    }
+  ]
+}
