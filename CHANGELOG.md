@@ -11,6 +11,10 @@ the per-session master logs under [`docs/day-logs/`](docs/day-logs/).
 
 ## [Unreleased]
 
+### Fixed
+
+- The dictation indicator no longer disappears after the computer wakes from sleep (for example, after closing a laptop lid); a restart is no longer needed to bring it back. / Индикатор диктовки больше не пропадает после выхода компьютера из сна (например, после закрытия крышки ноутбука); перезапуск для его возврата больше не нужен.
+
 ### Documentation
 
 - Added original Glagol 0.5.0 PNG screenshots: English synthesis, dictation and library in the README, plus Russian synthesis; both guides link to the bilingual gallery. / Добавлены оригинальные PNG Глагола 0.5.0: английские экраны озвучки, диктовки и библиотеки в README, а также русская озвучка; оба руководства ссылаются на двуязычную галерею.

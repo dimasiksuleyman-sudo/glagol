@@ -1,4 +1,4 @@
-use tauri::{Emitter, Manager, WebviewUrl, WebviewWindowBuilder, WindowEvent};
+use tauri::{Emitter, Manager, WindowEvent};
 use tauri_plugin_global_shortcut::GlobalShortcutExt;
 
 // Optional local TTS; separate from dictation.
@@ -189,31 +189,10 @@ pub fn run() {
 
             // ── Dictation surface (Sprint 6 PR3) ──────────────────────────
             //
-            // Create the overlay window once, hidden (D5): building a WebView
-            // costs hundreds of ms, which would be a stall at the exact moment
-            // the user starts speaking. From here it is only show/hide +
-            // reposition. `transparent` + always-on-top + `skipTaskbar` +
-            // `focused(false)` so the pill floats over the target app without
-            // stealing its keyboard focus.
-            WebviewWindowBuilder::new(
-                app,
-                dictation::session::OVERLAY_LABEL,
-                WebviewUrl::App("index.html".into()),
-            )
-            .title("Glagol overlay")
-            .inner_size(
-                dictation::session::OVERLAY_WIDTH,
-                dictation::session::OVERLAY_HEIGHT,
-            )
-            .transparent(true)
-            .decorations(false)
-            .always_on_top(true)
-            .skip_taskbar(true)
-            .focused(false)
-            .resizable(false)
-            .shadow(false)
-            .visible(false)
-            .build()?;
+            // Create the overlay window once, hidden (D5), and rebuild it after
+            // the system resumes from sleep (WebView2 can stop rendering it).
+            dictation::session::build_overlay(app.handle(), dictation::session::OVERLAY_LABEL)?;
+            dictation::session::spawn_resume_watch(app.handle().clone());
 
             // System tray with the idle icon + «Показать / Выход» menu (D11).
             dictation::session::build_tray(app.handle())?;
