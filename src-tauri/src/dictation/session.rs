@@ -5,7 +5,7 @@
 //! cannot be exercised by the headless pipeline tests: the `Ctrl+Shift+Space`
 //! push-to-talk handler, the tray icon (idle ⇄ recording) and its menu, the
 //! close-to-tray behaviour with its one-time notice, and the overlay window's
-//! position/visibility. The pure decision points it *can* test in isolation —
+//! position/visibility and its rebuild after the system resumes from sleep. The pure decision points it *can* test in isolation —
 //! whether a missing API key is fatal, and the one-time tray-notice flag — are
 //! extracted as free functions with unit tests at the bottom.
 //!
@@ -20,12 +20,15 @@
 //! The pipeline's wall-clock watchdog (D10) is the second line if a `Released`
 //! is ever lost.
 
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::{Duration, SystemTime};
 
 use rusqlite::Connection;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::TrayIconBuilder;
-use tauri::{AppHandle, Manager, PhysicalPosition};
+use tauri::{
+    AppHandle, Manager, PhysicalPosition, WebviewUrl, WebviewWindow, WebviewWindowBuilder,
+};
 use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
 use tauri_plugin_global_shortcut::{Code, Modifiers, Shortcut, ShortcutState};
 use tokio::sync::oneshot;
@@ -42,8 +45,21 @@ use crate::state::AppState;
 use crate::stt::validation;
 use crate::stt::SttBackend;
 
-/// Label of the always-present overlay window (created hidden at startup, D5).
+/// Label of the overlay window created hidden at startup (D5). A window rebuilt
+/// after sleep is labelled `overlay-N` (see [`overlay_label`]); the capability
+/// and `main.tsx` accept both forms.
 pub const OVERLAY_LABEL: &str = "overlay";
+
+/// How many times the overlay window was rebuilt. `0` is the startup window.
+static OVERLAY_GENERATION: AtomicU64 = AtomicU64::new(0);
+
+/// Interval of the sleep/resume watcher thread.
+const RESUME_POLL: Duration = Duration::from_secs(3);
+
+/// Wall-clock advance over one [`RESUME_POLL`] beyond which the system is taken
+/// to have been asleep. Threads are frozen during sleep, so after resume the
+/// wall clock is far ahead of the interval the watcher actually slept.
+const RESUME_JUMP_MARGIN: Duration = Duration::from_secs(10);
 
 /// Tray icon id — used to look the tray up by `app.tray_by_id` for the
 /// idle ⇄ recording icon swap (D11).
@@ -397,7 +413,7 @@ fn record_dictation_history(
 /// A missing overlay window or a failed monitor query is logged and skipped —
 /// the pill simply shows wherever it last was rather than crashing dictation.
 fn position_overlay(app: &AppHandle) {
-    let Some(window) = app.get_webview_window(OVERLAY_LABEL) else {
+    let Some(window) = current_overlay(app) else {
         tracing::warn!("overlay window missing — cannot position");
         return;
     };
@@ -433,9 +449,121 @@ fn position_overlay(app: &AppHandle) {
 
 /// Show the overlay window (created hidden at startup, D5).
 fn show_overlay(app: &AppHandle) {
-    if let Some(window) = app.get_webview_window(OVERLAY_LABEL) {
+    if let Some(window) = current_overlay(app) {
         let _ = window.show();
     }
+}
+
+/// Label of the overlay window for a rebuild `generation`: `overlay` for the
+/// startup window, `overlay-N` afterwards. A fresh label is needed because a
+/// destroyed window releases its label only asynchronously.
+pub fn overlay_label(generation: u64) -> String {
+    if generation == 0 {
+        OVERLAY_LABEL.to_string()
+    } else {
+        format!("{OVERLAY_LABEL}-{generation}")
+    }
+}
+
+/// The overlay window currently in use, if it exists.
+fn current_overlay(app: &AppHandle) -> Option<WebviewWindow> {
+    app.get_webview_window(&overlay_label(OVERLAY_GENERATION.load(Ordering::SeqCst)))
+}
+
+/// Build a hidden overlay window (D5): building a WebView costs hundreds of ms,
+/// which would be a stall at the exact moment the user starts speaking, so it
+/// is built ahead of time and later only shown/hidden and repositioned.
+/// `transparent` + always-on-top + `skipTaskbar` + `focused(false)` so the pill
+/// floats over the target app without stealing its keyboard focus.
+pub fn build_overlay(app: &AppHandle, label: &str) -> tauri::Result<WebviewWindow> {
+    WebviewWindowBuilder::new(app, label, WebviewUrl::App("index.html".into()))
+        .title("Glagol overlay")
+        .inner_size(OVERLAY_WIDTH, OVERLAY_HEIGHT)
+        .transparent(true)
+        .decorations(false)
+        .always_on_top(true)
+        .skip_taskbar(true)
+        .focused(false)
+        .resizable(false)
+        .shadow(false)
+        .visible(false)
+        .build()
+}
+
+/// Whether a wall-clock advance of `wall_elapsed` over one `poll` interval
+/// means the system was asleep. A clock moved backwards (`None`) is not sleep.
+fn resumed_from_sleep(poll: Duration, wall_elapsed: Option<Duration>) -> bool {
+    wall_elapsed.is_some_and(|elapsed| elapsed > poll + RESUME_JUMP_MARGIN)
+}
+
+/// Watch for the system resuming from sleep and rebuild the overlay window.
+///
+/// After sleep the hidden transparent WebView2 of the overlay can lose its
+/// rendering: dictation keeps working, but the pill stays invisible until the
+/// app restarts. A new window fixes it the same way. The rebuild waits one more
+/// poll so the graphics stack settles, and never runs during a dictation
+/// session. A false positive (the clock was set forward) only rebuilds the
+/// hidden window.
+pub fn spawn_resume_watch(app: AppHandle) {
+    let spawned = std::thread::Builder::new()
+        .name("overlay-resume-watch".into())
+        .spawn(move || {
+            let mut last = SystemTime::now();
+            let mut stale = false;
+            loop {
+                std::thread::sleep(RESUME_POLL);
+                let now = SystemTime::now();
+                let resumed = resumed_from_sleep(RESUME_POLL, now.duration_since(last).ok());
+                last = now;
+                if resumed {
+                    tracing::info!("system resume detected; overlay will be rebuilt");
+                    stale = true;
+                } else if stale && dictation_idle(&app) {
+                    stale = false;
+                    let handle = app.clone();
+                    if let Err(e) = app.run_on_main_thread(move || rebuild_overlay(&handle)) {
+                        tracing::warn!("failed to schedule overlay rebuild: {e}");
+                    }
+                }
+            }
+        });
+    if let Err(e) = spawned {
+        tracing::warn!("failed to start overlay resume watcher: {e}");
+    }
+}
+
+/// Whether no dictation session is in progress.
+fn dictation_idle(app: &AppHandle) -> bool {
+    matches!(
+        *app.state::<AppState>()
+            .dictation
+            .lock()
+            .expect("dictation phase mutex poisoned"),
+        DictationPhase::Idle
+    )
+}
+
+/// Replace the overlay window with a freshly built one. The new window is
+/// built before the old one is destroyed, so a failed build keeps the old
+/// window and dictation never loses its overlay entirely.
+fn rebuild_overlay(app: &AppHandle) {
+    if !dictation_idle(app) {
+        tracing::debug!("overlay rebuild skipped: dictation in progress");
+        return;
+    }
+    let old = current_overlay(app);
+    let next = OVERLAY_GENERATION.load(Ordering::SeqCst).wrapping_add(1);
+    if let Err(e) = build_overlay(app, &overlay_label(next)) {
+        tracing::warn!("failed to rebuild overlay window: {e}");
+        return;
+    }
+    OVERLAY_GENERATION.store(next, Ordering::SeqCst);
+    if let Some(old) = old {
+        if let Err(e) = old.destroy() {
+            tracing::warn!("failed to destroy previous overlay window: {e}");
+        }
+    }
+    tracing::info!("overlay window rebuilt after resume");
 }
 
 // ── Tray ────────────────────────────────────────────────────────────────
@@ -708,5 +836,28 @@ mod tests {
         // Idempotent: marking again keeps it shown.
         mark_tray_notice_shown(&conn, 1_700_000_010_000).unwrap();
         assert!(!tray_notice_pending(&conn).unwrap());
+    }
+
+    #[test]
+    fn overlay_label_keeps_startup_name_then_numbers_rebuilds() {
+        assert_eq!(overlay_label(0), "overlay");
+        assert_eq!(overlay_label(1), "overlay-1");
+        assert_eq!(overlay_label(42), "overlay-42");
+    }
+
+    #[test]
+    fn resume_detected_only_on_large_wall_clock_jump() {
+        let poll = Duration::from_secs(3);
+        // Normal tick and scheduler jitter: not sleep.
+        assert!(!resumed_from_sleep(poll, Some(poll)));
+        assert!(!resumed_from_sleep(poll, Some(poll + RESUME_JUMP_MARGIN)));
+        // Clock moved backwards: not sleep.
+        assert!(!resumed_from_sleep(poll, None));
+        // Lid closed for a while: the wall clock jumped ahead.
+        assert!(resumed_from_sleep(
+            poll,
+            Some(poll + RESUME_JUMP_MARGIN + Duration::from_secs(1))
+        ));
+        assert!(resumed_from_sleep(poll, Some(Duration::from_secs(3600))));
     }
 }

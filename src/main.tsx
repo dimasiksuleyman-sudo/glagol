@@ -14,7 +14,9 @@ import "./index.css";
 // (Sprint 6 PR3, D5). Branch on the window label so the tiny always-on-top
 // pill never mounts the Router / AppShell / credentials machinery — it is a
 // separate, self-contained view.
-const isOverlay = getCurrentWindow().label === "overlay";
+// After sleep the backend rebuilds the overlay as `overlay-N`.
+const windowLabel = getCurrentWindow().label;
+const isOverlay = windowLabel === "overlay" || windowLabel.startsWith("overlay-");
 const root = ReactDOM.createRoot(document.getElementById("root") as HTMLElement);
 
 if (isOverlay) {

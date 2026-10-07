@@ -1,13 +1,13 @@
-# Glagol user guide — 0.5.0
+# Glagol user guide — 0.5.1
 
 [Русский](USER_GUIDE.ru.md) · [README](README.md)
 
 Glagol reads English and Russian documents aloud and turns dictation into text.
-This guide describes [Glagol 0.5.0](docs/releases/v0.5.0.md).
+This guide describes [Glagol 0.5.1](docs/releases/v0.5.1.md).
 
 ## Installation
 
-Windows 10/11 x64 is required. Run the locally built `Glagol_0.5.0_x64-setup.exe`.
+Windows 10/11 x64 is required. Run the locally built `Glagol_0.5.1_x64-setup.exe`.
 The installer offers English and Russian, starts with Windows' language and uses
 English as fallback. The unsigned installer may trigger SmartScreen: check the
 artifact's source and SHA-256 before choosing More info → Run anyway. Installation
@@ -121,6 +121,9 @@ changing endpoints does not send the old key to the new service. Local Moonshine
 audio internally while you hold the hotkey; GigaAM/server profiles keep their batch path.
 Large GigaAM recordings are split at quiet boundaries; punctuation and rare terms may suffer.
 Dictation and synthesis can run independently.
+After the computer wakes from sleep, Glagol rebuilds the hidden indicator window within
+a few seconds. Sleep shorter than about 13 seconds is not detected; if the indicator
+ever stays invisible, restart Glagol from the tray.
 
 ## Windows limitations
 

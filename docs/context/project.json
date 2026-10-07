@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "observed_at": "2026-09-24T23:46:49.625Z",
-  "active_workstream": null,
+  "active_workstream": "release-0.5.1",
   "links": [
     "AGENTS.md",
     "CLAUDE.md",
@@ -26,7 +26,11 @@
     "docs/workstreams/release-0.5.0/README.md",
     "docs/workstreams/release-0.5.0/log.md",
     "docs/workstreams/github-screenshots/README.md",
-    "docs/workstreams/github-screenshots/log.md"
+    "docs/workstreams/github-screenshots/log.md",
+    "docs/workstreams/overlay-resume/README.md",
+    "docs/workstreams/overlay-resume/log.md",
+    "docs/workstreams/release-0.5.1/README.md",
+    "docs/workstreams/release-0.5.1/log.md"
   ],
   "observations": [
     {

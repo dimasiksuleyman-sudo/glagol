@@ -11,6 +11,14 @@ the per-session master logs under [`docs/day-logs/`](docs/day-logs/).
 
 ## [Unreleased]
 
+## [v0.5.1] — 2026-10-07
+
+[Release notes, validation and limits / проверка и ограничения](docs/releases/v0.5.1.md).
+
+### Fixed
+
+- The dictation indicator no longer disappears after the computer wakes from sleep (for example, after closing a laptop lid); a restart is no longer needed to bring it back. / Индикатор диктовки больше не пропадает после выхода компьютера из сна (например, после закрытия крышки ноутбука); перезапуск для его возврата больше не нужен.
+
 ### Documentation
 
 - Added original Glagol 0.5.0 PNG screenshots: English synthesis, dictation and library in the README, plus Russian synthesis; both guides link to the bilingual gallery. / Добавлены оригинальные PNG Глагола 0.5.0: английские экраны озвучки, диктовки и библиотеки в README, а также русская озвучка; оба руководства ссылаются на двуязычную галерею.
@@ -256,7 +264,8 @@ the per-session master logs under [`docs/day-logs/`](docs/day-logs/).
   visible progress bar so the user can see «Озвучиваем фрагмент 5 из 12».
 - **System Save As dialog** for choosing where the resulting WAV goes.
 
-[Unreleased]: https://github.com/dimasiksuleyman-sudo/glagol/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/dimasiksuleyman-sudo/glagol/compare/v0.5.1...HEAD
+[v0.5.1]: https://github.com/dimasiksuleyman-sudo/glagol/releases/tag/v0.5.1
 [v0.5.0]: https://github.com/dimasiksuleyman-sudo/glagol/releases/tag/v0.5.0
 [v0.4.1]: https://github.com/dimasiksuleyman-sudo/glagol/releases/tag/v0.4.1
 [v0.4.0]: https://github.com/dimasiksuleyman-sudo/glagol/releases/tag/v0.4.0
