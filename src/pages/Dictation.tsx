@@ -340,7 +340,7 @@ export function Dictation() {
               <p className="text-muted-foreground text-xs">
                 {t("Configure the recognition provider and key in")}{" "}
                 <Link to="/settings" className="underline underline-offset-2">
-                  {t("Settings")}{" "}</Link>{" "}
+                  {t("Settings (inline link)")}{" "}</Link>{" "}
                 {t("→ Dictation (STT).")}{" "}</p>
             </CardContent>
           </Card>

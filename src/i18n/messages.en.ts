@@ -157,6 +157,7 @@ export const messages = {
   "Statistics": "Statistics",
   "Total dictated:": "Total dictated:",
   "Configure the recognition provider and key in": "Configure the recognition provider and key in",
+  "Settings (inline link)": "Settings",
   "→ Dictation (STT).": "→ Dictation (STT).",
   "Could not delete: {p0}": "Could not delete: {p0}",
   "Could not rename: {p0}": "Could not rename: {p0}",

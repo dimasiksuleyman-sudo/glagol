@@ -11,6 +11,10 @@ the per-session master logs under [`docs/day-logs/`](docs/day-logs/).
 
 ## [Unreleased]
 
+### Fixed
+
+- The Russian interface no longer shows the Settings item in the sidebar and the Settings page title in quotation marks. / В русском интерфейсе пункт «Настройки» в боковом меню и заголовок страницы настроек больше не взяты в кавычки.
+
 ## [v0.5.1] — 2026-10-07
 
 [Release notes, validation and limits / проверка и ограничения](docs/releases/v0.5.1.md).
