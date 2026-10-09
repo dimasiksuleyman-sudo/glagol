@@ -12,8 +12,9 @@
 | GL-003 | Tooling observation / open | pnpm 12.4.1 пытался переустановить зависимости, получал отказ; использованы существующие Node entrypoints | [Integration](../day-logs/day-2026-09-12-silero-integration-master-log.md) | Отдельная задача воспроизводимости инструментов; успешный стандартный build без неожиданной переустановки |
 | GL-004 | Build observation / open | Pdfium download в build.rs был недоступен; использован PDFIUM_LIBRARY_PATH к существующей DLL | [Integration](../day-logs/day-2026-09-12-silero-integration-master-log.md) | Проверить чистую сборку с получением закреплённой DLL; до этого фиксировать override |
 | GL-005 | QA gap / open | Crash, response timeout и parent-death worker реализованы, но отдельно не fault-injected | [Integration](../day-logs/day-2026-09-12-silero-integration-master-log.md) | Изолированные сценарии с наблюдаемым завершением worker; не считать обычную отмену их заменой |
+| GL-006 | Defect / open | 0.5.1 установлена: таблетка диктовки снова пропала, текст вставляется; причина unknown, сон с крышкой уже обрабатывается | [Release 0.5.1](../workstreams/release-0.5.1/log.md) | Лог Глагола и события питания Windows в момент исчезновения; исправление с ручной проверкой этого сценария |
 
 Якоря GL-001: installer/hooks.nsh, TtsSection, DictationSection и runtime worker;
 GL-002: stt/local downloader + tts/silero/catalog; GL-003: package manager/build;
-GL-004: src-tauri/build.rs; GL-005: tts/silero worker. Это места проверки, а не
+GL-004: src-tauri/build.rs; GL-005: tts/silero worker; GL-006: dictation/session overlay. Это места проверки, а не
 установленные причины всех наблюдений. Исторические замеры относятся к 12 сентября.

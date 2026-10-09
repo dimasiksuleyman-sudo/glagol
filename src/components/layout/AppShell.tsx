@@ -1,13 +1,18 @@
 import { t } from "@/i18n";
 import { useI18n } from "@/contexts/PreferencesContext";
 import { NavLink, Outlet } from "react-router-dom";
-import { AudioLines, Library, Mic, Settings } from "lucide-react";
+import { AudioLines, ExternalLink, Library, Mic, Settings } from "lucide-react";
+import { openUrl } from "@tauri-apps/plugin-opener";
+import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 import { Toaster } from "@/components/ui/sonner";
 import { LanguageSwitch } from "@/components/LanguageSwitch";
 import { usePreferences } from "@/contexts/PreferencesContext";
+
+/** The author's GitHub profile, opened in the default browser. */
+const AUTHOR_GITHUB_URL = "https://github.com/dimasiksuleyman-sudo";
 
 interface NavItem {
   to: string;
@@ -60,6 +65,19 @@ export function AppShell() {
             </NavLink>
           ))}
         </nav>
+        <div className="px-3">
+          <button
+            type="button"
+            title={t("Author's GitHub profile")}
+            onClick={() => {
+              openUrl(AUTHOR_GITHUB_URL).catch(() => toast.error(t("Could not open the link")));
+            }}
+            className="text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors"
+          >
+            <ExternalLink className="h-4 w-4" aria-hidden />
+            <span>GitHub</span>
+          </button>
+        </div>
         <div className="p-3"><LanguageSwitch /></div>
       </aside>
 

@@ -1,19 +1,23 @@
 {
   "schema_version": 1,
-  "id": "release-0.5.1",
-  "title": "Выпуск Glagol 0.5.1",
-  "status": "done",
-  "next": null,
+  "id": "release-0.5.2",
+  "title": "Выпуск Glagol 0.5.2",
+  "status": "active",
+  "next": "P3",
   "reason": null,
-  "claim": null,
+  "claim": {
+    "owner": "claude",
+    "at": "2026-10-09T07:15:19.000Z",
+    "branch": "claude/pensive-wright-8jxin9"
+  },
   "links": [
-    "docs/workstreams/release-0.5.1/README.md",
-    "docs/workstreams/release-0.5.1/log.md"
+    "docs/workstreams/release-0.5.2/README.md",
+    "docs/workstreams/release-0.5.2/log.md"
   ],
   "steps": [
     {
       "id": "P1",
-      "title": "Версия 0.5.1, CHANGELOG и автоматические гейты",
+      "title": "Версия 0.5.2, CHANGELOG и автоматические гейты",
       "status": "done",
       "depends_on": [],
       "required": [
@@ -28,7 +32,7 @@
           "method": "command",
           "command": "node scripts/check-version.mjs",
           "cwd": ".",
-          "at": "2026-10-07T12:24:03.000Z",
+          "at": "2026-10-09T06:54:03.000Z",
           "environment": {
             "os": "Linux container",
             "rustc": "1.97.0",
@@ -36,8 +40,8 @@
             "pnpm": "10.28.0"
           },
           "exit_code": 0,
-          "output": "Glagol 0.5.1: package, Tauri and Cargo versions match.",
-          "evidence": "docs/workstreams/release-0.5.1/log.md"
+          "output": "Glagol 0.5.2: package, Tauri and Cargo versions match.",
+          "evidence": "docs/workstreams/release-0.5.2/log.md"
         },
         {
           "id": "rust",
@@ -45,7 +49,7 @@
           "method": "command",
           "command": "cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test",
           "cwd": "src-tauri",
-          "at": "2026-10-07T12:24:03.000Z",
+          "at": "2026-10-09T06:54:03.000Z",
           "environment": {
             "os": "Linux container",
             "rustc": "1.97.0",
@@ -54,7 +58,7 @@
           },
           "exit_code": 0,
           "output": "test result: ok. 343 passed; 0 failed; 6 ignored",
-          "evidence": "docs/workstreams/release-0.5.1/log.md"
+          "evidence": "docs/workstreams/release-0.5.2/log.md"
         },
         {
           "id": "frontend",
@@ -62,7 +66,7 @@
           "method": "command",
           "command": "pnpm build",
           "cwd": ".",
-          "at": "2026-10-07T12:24:03.000Z",
+          "at": "2026-10-09T06:54:03.000Z",
           "environment": {
             "os": "Linux container",
             "rustc": "1.97.0",
@@ -71,7 +75,7 @@
           },
           "exit_code": 0,
           "output": "✓ built",
-          "evidence": "docs/workstreams/release-0.5.1/log.md"
+          "evidence": "docs/workstreams/release-0.5.2/log.md"
         }
       ]
     },
@@ -91,60 +95,45 @@
           "id": "nsis",
           "status": "PASS",
           "method": "manual",
-          "command": "pnpm tauri build; Get-Item and Get-FileHash on Glagol_0.5.1_x64-setup.exe (user-run)",
+          "command": "pnpm tauri build; Get-Item and Get-FileHash on Glagol_0.5.2_x64-setup.exe (user-run)",
           "cwd": ".",
-          "at": "2026-10-07T12:38:33.000Z",
+          "at": "2026-10-09T07:15:19.000Z",
           "environment": {
             "os": "Windows",
             "pnpm": "12.4.1"
           },
           "exit_code": null,
-          "output": "9948410 bytes, SHA-256 01791f02ed250797d611d5ac723282f6d5e58e33f03d48c337f056f35b85a922",
-          "evidence": "docs/workstreams/release-0.5.1/log.md"
+          "output": "9943738 bytes, SHA-256 e99d29b9aff915b0d0540caad3273e860799fabe562451024af98b907a88bccb",
+          "evidence": "docs/workstreams/release-0.5.2/log.md"
         },
         {
           "id": "upgrade",
           "status": "PASS",
           "method": "manual",
-          "command": "Backup, quit from tray, install over 0.5.0, launch, dictate",
+          "command": "Install over previous version; VersionInfo of running glagol.exe",
           "cwd": ".",
-          "at": "2026-10-07T12:38:33.000Z",
+          "at": "2026-10-09T07:15:19.000Z",
           "environment": {
             "os": "Windows",
             "pnpm": "12.4.1"
           },
           "exit_code": null,
-          "output": "Installed version 0.5.1; pill visible, text inserted (reported by user).",
-          "evidence": "docs/workstreams/release-0.5.1/log.md"
+          "output": "FileVersion 0.5.2, ProductVersion 0.5.2 (reported by user)",
+          "evidence": "docs/workstreams/release-0.5.2/log.md"
         }
       ]
     },
     {
       "id": "P3",
-      "title": "Release notes, PR и merge в main, тег v0.5.1, GitHub Release и сверка asset",
-      "status": "done",
+      "title": "Release notes, PR и merge в main, тег v0.5.2, GitHub Release и сверка asset",
+      "status": "in_progress",
       "depends_on": [
         "P2"
       ],
       "required": [
         "published"
       ],
-      "checks": [
-        {
-          "id": "published",
-          "status": "PASS",
-          "method": "command",
-          "command": "curl -sSfL release assets v0.5.1 && sha256sum -c SHA256SUMS.txt",
-          "cwd": ".",
-          "at": "2026-10-07T20:33:51.000Z",
-          "environment": {
-            "os": "Linux container"
-          },
-          "exit_code": 0,
-          "output": "Glagol_0.5.1_x64-setup.exe: OK (9948410 bytes; tag v0.5.1 -> 1b3ed4e)",
-          "evidence": "docs/workstreams/release-0.5.1/log.md"
-        }
-      ]
+      "checks": []
     }
   ]
 }

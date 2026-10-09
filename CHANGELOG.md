@@ -11,6 +11,18 @@ the per-session master logs under [`docs/day-logs/`](docs/day-logs/).
 
 ## [Unreleased]
 
+## [v0.5.2] — 2026-10-09
+
+[Release notes, validation and limits / проверка и ограничения](docs/releases/v0.5.2.md).
+
+### Added
+
+- A GitHub link at the bottom of the sidebar opens the author's profile in the default browser. / Ссылка GitHub внизу бокового меню открывает профиль автора в браузере по умолчанию.
+
+### Fixed
+
+- The Russian interface no longer shows the Settings item in the sidebar and the Settings page title in quotation marks. / В русском интерфейсе пункт «Настройки» в боковом меню и заголовок страницы настроек больше не взяты в кавычки.
+
 ## [v0.5.1] — 2026-10-07
 
 [Release notes, validation and limits / проверка и ограничения](docs/releases/v0.5.1.md).
@@ -264,7 +276,8 @@ the per-session master logs under [`docs/day-logs/`](docs/day-logs/).
   visible progress bar so the user can see «Озвучиваем фрагмент 5 из 12».
 - **System Save As dialog** for choosing where the resulting WAV goes.
 
-[Unreleased]: https://github.com/dimasiksuleyman-sudo/glagol/compare/v0.5.1...HEAD
+[Unreleased]: https://github.com/dimasiksuleyman-sudo/glagol/compare/v0.5.2...HEAD
+[v0.5.2]: https://github.com/dimasiksuleyman-sudo/glagol/releases/tag/v0.5.2
 [v0.5.1]: https://github.com/dimasiksuleyman-sudo/glagol/releases/tag/v0.5.1
 [v0.5.0]: https://github.com/dimasiksuleyman-sudo/glagol/releases/tag/v0.5.0
 [v0.4.1]: https://github.com/dimasiksuleyman-sudo/glagol/releases/tag/v0.4.1

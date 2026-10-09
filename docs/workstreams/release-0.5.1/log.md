@@ -37,3 +37,24 @@ Manual (сообщено пользователем): бэкап, «Выход»
 
 Документация: docs/releases/v0.5.1.md (EN/RU), README (ссылка, размер, версия),
 обе USER_GUIDE и USER_GUIDE.md (версия, ограничение короткого сна).
+
+## 2026-10-07T20:33:51.000Z — P3 PR, merge, публикация и сверка
+
+PR https://github.com/dimasiksuleyman-sudo/glagol/pull/46 — CI «Quality gates (Windows)»
+success (12:39–12:56 UTC, run 37622522313), mergeable clean, review threads 0.
+Merge commit (метод merge) 1b3ed4ed1183d1c09c76c2baf5ab05fbe67a9db2 в main;
+aba3cba достижим из origin/main.
+
+Release создан пользователем через веб-интерфейс:
+https://github.com/dimasiksuleyman-sudo/glagol/releases/tag/v0.5.1 —
+published 2026-10-07T13:10:18Z, draft=false, prerelease=false, тег v0.5.1 →
+1b3ed4e (git rev-parse v0.5.1^{commit}). Assets: Glagol_0.5.1_x64-setup.exe
+9948410 байт, digest sha256:01791f02…5b85a922; SHA256SUMS.txt 93 байта.
+Скачаны curl из контейнера: exit 0 оба; `sha256sum -c SHA256SUMS.txt` —
+«Glagol_0.5.1_x64-setup.exe: OK»; хеш совпадает с локальной сборкой P2.
+
+После публикации пользователь сообщил: таблетка снова пропала на установленной
+0.5.1, диктовка продолжает работать. Причина unknown; диагностика (лог Глагола,
+события сна Windows) ожидается — находка GL-006. Исправление overlay-resume
+закрывает проверенный сценарий сна с крышкой, но не все случаи.
+Серия закрыта; активной серии нет.
