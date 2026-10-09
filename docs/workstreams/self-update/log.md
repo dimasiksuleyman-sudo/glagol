@@ -71,3 +71,19 @@ Manual (сообщено пользователем): установка пов�
 база настроек, напоминание уже показано в dev (месячная пауза).
 Документация: docs/releases/v0.6.0.md, README, обе USER_GUIDE, USER_GUIDE.md.
 Далее PR, merge, Release v0.6.0 с установщиком, latest.json и SHA256SUMS.txt.
+
+## 2026-10-09T09:12:55.000Z — U2 PR, merge, публикация и сверка
+
+PR https://github.com/dimasiksuleyman-sudo/glagol/pull/48 — CI «Quality gates (Windows)»
+success (08:57–09:07 UTC, run 37908143267), review threads 0. Merge commit
+0dc78220a2eded7ec196bbd1749c71d025dc521c в main.
+
+Release https://github.com/dimasiksuleyman-sudo/glagol/releases/tag/v0.6.0 — создан
+пользователем, published 2026-10-09T09:11:41Z, draft=false, prerelease=false;
+v0.6.0^{commit} = 0dc7822. Assets: Glagol_0.6.0_x64-setup.exe 10262171 байт
+(digest sha256:77ae4ec0…37bb2a38), latest.json 1304 байта, SHA256SUMS.txt 93 байта.
+Скачаны curl, exit 0; `sha256sum -c` — OK. Адрес программы
+releases/latest/download/latest.json отдаёт тот же файл (cmp), version 0.6.0, обе
+цели → установщик v0.6.0. Подпись проверена независимо: `minisign -V` с pubkey из
+tauri.conf.json — «Signature and comment signature verified», exit 0.
+Остаётся U3: выпуск 0.6.1 и обновление из установленной 0.6.0.
