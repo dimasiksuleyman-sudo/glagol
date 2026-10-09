@@ -19,15 +19,16 @@ export function UpdateReminderToast({ onCheck, onEnable, onLater }: UpdateRemind
       <p className="text-muted-foreground mt-1 text-sm">
         {t("Check for a new version now, or let Glagol check automatically at startup.")}
       </p>
-      <div className="mt-3 flex flex-wrap justify-end gap-2">
-        <Button variant="ghost" size="sm" onClick={onLater}>
-          {t("Later")}
+      {/* Left-aligned, primary first — the same order as buttons in the app. */}
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Button size="sm" onClick={onCheck}>
+          {t("Check now")}
         </Button>
         <Button variant="outline" size="sm" onClick={onEnable}>
           {t("Enable auto-check")}
         </Button>
-        <Button size="sm" onClick={onCheck}>
-          {t("Check now")}
+        <Button variant="ghost" size="sm" onClick={onLater}>
+          {t("Later")}
         </Button>
       </div>
     </div>
