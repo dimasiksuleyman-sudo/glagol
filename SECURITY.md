@@ -7,7 +7,7 @@ We aim to acknowledge within 72 hours, assess within seven days and address
 reports within the existing 90-day responsible disclosure window. Do not send
 API keys, private documents or microphone recordings in public reports.
 
-Current development line: 0.5.x (local candidate). Historical releases may still use retired
+Current development line: 0.6.x. Historical releases may still use retired
 providers; use the current code/release when testing fixes.
 
 - Glagol processes local documents and audio. Local Silero TTS and GigaAM/Moonshine
@@ -56,7 +56,7 @@ remain part of the deployment's security boundary.
 Цель: подтвердить получение за 72 часа, оценить за семь дней и исправить в рамках
 90-дневного ответственного раскрытия. Не публикуйте ключи, личные документы и записи.
 
-Текущая ветка разработки — 0.5.x (локальный кандидат); в исторических выпусках могли использоваться
+Текущая ветка разработки — 0.6.x; в исторических выпусках могли использоваться
 удалённые провайдеры. Для проверки исправлений используйте актуальную версию.
 
 - Silero, GigaAM и Moonshine после загрузки работают локально без сети. При office/cloud STT

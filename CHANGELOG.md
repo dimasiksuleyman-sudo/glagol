@@ -11,6 +11,10 @@ the per-session master logs under [`docs/day-logs/`](docs/day-logs/).
 
 ## [Unreleased]
 
+## [v0.6.0] — 2026-10-09
+
+[Release notes, validation and limits / проверка и ограничения](docs/releases/v0.6.0.md).
+
 ### Added
 
 - In-app updates: Settings → Updates shows the current version, checks GitHub for a newer release on request and installs a signed update after confirmation; documents, settings, keys and speech components are kept. An optional automatic check after startup is off by default. / Обновление из программы: «Настройки» → «Обновления» показывает текущую версию, по запросу проверяет новую версию на GitHub и после подтверждения устанавливает подписанное обновление; документы, настройки, ключи и речевые компоненты сохраняются. Необязательная автопроверка после запуска по умолчанию выключена.
@@ -281,7 +285,8 @@ the per-session master logs under [`docs/day-logs/`](docs/day-logs/).
   visible progress bar so the user can see «Озвучиваем фрагмент 5 из 12».
 - **System Save As dialog** for choosing where the resulting WAV goes.
 
-[Unreleased]: https://github.com/dimasiksuleyman-sudo/glagol/compare/v0.5.2...HEAD
+[Unreleased]: https://github.com/dimasiksuleyman-sudo/glagol/compare/v0.6.0...HEAD
+[v0.6.0]: https://github.com/dimasiksuleyman-sudo/glagol/releases/tag/v0.6.0
 [v0.5.2]: https://github.com/dimasiksuleyman-sudo/glagol/releases/tag/v0.5.2
 [v0.5.1]: https://github.com/dimasiksuleyman-sudo/glagol/releases/tag/v0.5.1
 [v0.5.0]: https://github.com/dimasiksuleyman-sudo/glagol/releases/tag/v0.5.0
