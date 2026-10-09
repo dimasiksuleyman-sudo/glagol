@@ -3,9 +3,13 @@
   "id": "release-0.5.2",
   "title": "Выпуск Glagol 0.5.2",
   "status": "active",
-  "next": "P2",
+  "next": "P3",
   "reason": null,
-  "claim": null,
+  "claim": {
+    "owner": "claude",
+    "at": "2026-10-09T07:15:19.000Z",
+    "branch": "claude/pensive-wright-8jxin9"
+  },
   "links": [
     "docs/workstreams/release-0.5.2/README.md",
     "docs/workstreams/release-0.5.2/log.md"
@@ -78,7 +82,7 @@
     {
       "id": "P2",
       "title": "NSIS на Windows, размер/SHA-256 и ручная проверка обновления",
-      "status": "pending",
+      "status": "done",
       "depends_on": [
         "P1"
       ],
@@ -86,12 +90,43 @@
         "nsis",
         "upgrade"
       ],
-      "checks": []
+      "checks": [
+        {
+          "id": "nsis",
+          "status": "PASS",
+          "method": "manual",
+          "command": "pnpm tauri build; Get-Item and Get-FileHash on Glagol_0.5.2_x64-setup.exe (user-run)",
+          "cwd": ".",
+          "at": "2026-10-09T07:15:19.000Z",
+          "environment": {
+            "os": "Windows",
+            "pnpm": "12.4.1"
+          },
+          "exit_code": null,
+          "output": "9943738 bytes, SHA-256 e99d29b9aff915b0d0540caad3273e860799fabe562451024af98b907a88bccb",
+          "evidence": "docs/workstreams/release-0.5.2/log.md"
+        },
+        {
+          "id": "upgrade",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Install over previous version; VersionInfo of running glagol.exe",
+          "cwd": ".",
+          "at": "2026-10-09T07:15:19.000Z",
+          "environment": {
+            "os": "Windows",
+            "pnpm": "12.4.1"
+          },
+          "exit_code": null,
+          "output": "FileVersion 0.5.2, ProductVersion 0.5.2 (reported by user)",
+          "evidence": "docs/workstreams/release-0.5.2/log.md"
+        }
+      ]
     },
     {
       "id": "P3",
       "title": "Release notes, PR и merge в main, тег v0.5.2, GitHub Release и сверка asset",
-      "status": "pending",
+      "status": "in_progress",
       "depends_on": [
         "P2"
       ],
