@@ -179,6 +179,7 @@ export const messages = {
   "Check for a new version now, or let Glagol check automatically at startup.": "Check for a new version now, or let Glagol check automatically at startup.",
   "Check now": "Check now",
   "Enable auto-check": "Enable auto-check",
+  "Later": "Later",
   "Automatic update check is on.": "Automatic update check is on.",
   "→ Dictation (STT).": "→ Dictation (STT).",
   "Could not delete: {p0}": "Could not delete: {p0}",

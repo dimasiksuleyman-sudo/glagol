@@ -111,6 +111,10 @@ pub fn get_update_settings(
             read_millis(&conn, KEY_LAST_CHECK_AT)?,
             chrono::Utc::now().timestamp_millis(),
         );
+        // Development builds only: GLAGOL_FORCE_UPDATE_REMINDER=1 shows the
+        // reminder on every start for manual UI checks.
+        #[cfg(debug_assertions)]
+        let due = due || std::env::var_os("GLAGOL_FORCE_UPDATE_REMINDER").is_some();
         (auto_check, due)
     };
     Ok(UpdateSettings {

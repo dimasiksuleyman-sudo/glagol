@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 import { Toaster } from "@/components/ui/sonner";
 import { LanguageSwitch } from "@/components/LanguageSwitch";
+import { UpdateReminderToast } from "@/components/UpdateReminderToast";
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { getUpdateSettings } from "@/lib/tauri";
 import { changeAutoCheck, runStartupUpdateCheck, runUpdateCheck } from "@/lib/updates";
@@ -54,26 +55,29 @@ export function AppShell() {
       if (result?.kind === "update") {
         showUpdate(result.update.version);
       } else if (result?.kind === "reminder") {
-        toast(t("Keep Glagol up to date"), {
-          description: t("Check for a new version now, or let Glagol check automatically at startup."),
-          duration: 20000,
-          action: {
-            label: t("Check now"),
-            onClick: () => {
-              runUpdateCheck()
-                .then((update) => (update ? showUpdate(update.version) : toast.success(t("You have the latest version."))))
-                .catch((e) => toast.error(String(e)));
-            },
-          },
-          cancel: {
-            label: t("Enable auto-check"),
-            onClick: () => {
-              changeAutoCheck(true)
-                .then(() => toast.success(t("Automatic update check is on.")))
-                .catch((e) => toast.error(String(e)));
-            },
-          },
-        });
+        toast.custom(
+          (id) => (
+            <UpdateReminderToast
+              onLater={() => toast.dismiss(id)}
+              onEnable={() => {
+                toast.dismiss(id);
+                changeAutoCheck(true)
+                  .then(() => toast.success(t("Automatic update check is on.")))
+                  .catch((e) => toast.error(String(e)));
+              }}
+              onCheck={() => {
+                toast.dismiss(id);
+                runUpdateCheck()
+                  .then((update) =>
+                    update ? showUpdate(update.version) : toast.success(t("You have the latest version.")),
+                  )
+                  .catch((e) => toast.error(String(e)));
+              }}
+            />
+          ),
+          // Stays until the user answers: it appears at most once a month.
+          { duration: Infinity },
+        );
       }
     });
   }, [navigate]);
