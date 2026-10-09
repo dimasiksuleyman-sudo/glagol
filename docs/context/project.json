@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "observed_at": "2026-10-09T07:27:37.000Z",
+  "observed_at": "2026-10-09T09:12:55.000Z",
   "active_workstream": "self-update",
   "links": [
     "AGENTS.md",
@@ -49,17 +49,17 @@
       "id": "installed",
       "label": "Установленная версия",
       "status": "reported",
-      "summary": "На ноутбуке пользователя установлена 0.5.2 (FileVersion/ProductVersion 0.5.2); несколько дней работы: таблетка не пропадала, подпись и ссылка GitHub верны, диктовка работает.",
-      "observed_at": "2026-10-09T07:27:37.000Z",
-      "source": "docs/workstreams/release-0.5.2/log.md"
+      "summary": "На ноутбуке пользователя установлена 0.6.0 поверх 0.5.2 (подписанная локальная сборка того же SHA-256); версия, раздел «Обновления» и диктовка работают.",
+      "observed_at": "2026-10-09T09:12:55.000Z",
+      "source": "docs/workstreams/self-update/log.md"
     },
     {
       "id": "published",
       "label": "Публикация",
       "status": "observed",
-      "summary": "GitHub Release v0.5.2 опубликован как latest; CI PR success, merge 95d5643. Публичный установщик 9943738 байт скачан, SHA-256 e99d29b9aff915b0d0540caad3273e860799fabe562451024af98b907a88bccb совпал с SHA256SUMS и локальной сборкой.",
-      "observed_at": "2026-10-09T07:27:37.000Z",
-      "source": "docs/workstreams/release-0.5.2/log.md"
+      "summary": "GitHub Release v0.6.0 опубликован как latest; CI PR success, merge 0dc7822. Установщик 10262171 байт, SHA-256 77ae4ec09fae11fa87989c02b9f588f62fe03fdc14c7cee5b981909837bb2a38 совпал с SHA256SUMS; latest.json доступен по адресу программы; подпись обновления проверена minisign встроенным ключом.",
+      "observed_at": "2026-10-09T09:12:55.000Z",
+      "source": "docs/workstreams/self-update/log.md"
     },
     {
       "id": "qa-environment",
@@ -163,6 +163,12 @@
       "sha": "95d5643e0a86c00dd28b5b485a2b651696b8cd2a",
       "scope": "release",
       "ref": "refs/tags/v0.5.2"
+    },
+    {
+      "id": "release-0-6-0",
+      "sha": "0dc78220a2eded7ec196bbd1749c71d025dc521c",
+      "scope": "release",
+      "ref": "refs/tags/v0.6.0"
     }
   ]
 }

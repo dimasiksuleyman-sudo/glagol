@@ -181,6 +181,7 @@ export const messages: {[K in keyof typeof en]: string} = {
   "Check now": "Проверить сейчас",
   "Enable auto-check": "Включить автопроверку",
   "Later": "Позже",
+  "What's new": "Что нового",
   "Automatic update check is on.": "Автоматическая проверка обновлений включена.",
   "→ Dictation (STT).": "→ «Диктовка (STT)».",
   "Could not delete: {p0}": "Не удалось удалить: {p0}",

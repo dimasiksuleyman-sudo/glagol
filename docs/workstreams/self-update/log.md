@@ -71,3 +71,46 @@ Manual (сообщено пользователем): установка пов�
 база настроек, напоминание уже показано в dev (месячная пауза).
 Документация: docs/releases/v0.6.0.md, README, обе USER_GUIDE, USER_GUIDE.md.
 Далее PR, merge, Release v0.6.0 с установщиком, latest.json и SHA256SUMS.txt.
+
+## 2026-10-09T09:12:55.000Z — U2 PR, merge, публикация и сверка
+
+PR https://github.com/dimasiksuleyman-sudo/glagol/pull/48 — CI «Quality gates (Windows)»
+success (08:57–09:07 UTC, run 37908143267), review threads 0. Merge commit
+0dc78220a2eded7ec196bbd1749c71d025dc521c в main.
+
+Release https://github.com/dimasiksuleyman-sudo/glagol/releases/tag/v0.6.0 — создан
+пользователем, published 2026-10-09T09:11:41Z, draft=false, prerelease=false;
+v0.6.0^{commit} = 0dc7822. Assets: Glagol_0.6.0_x64-setup.exe 10262171 байт
+(digest sha256:77ae4ec0…37bb2a38), latest.json 1304 байта, SHA256SUMS.txt 93 байта.
+Скачаны curl, exit 0; `sha256sum -c` — OK. Адрес программы
+releases/latest/download/latest.json отдаёт тот же файл (cmp), version 0.6.0, обе
+цели → установщик v0.6.0. Подпись проверена независимо: `minisign -V` с pubkey из
+tauri.conf.json — «Signature and comment signature verified», exit 0.
+Остаётся U3: выпуск 0.6.1 и обновление из установленной 0.6.0.
+
+## 2026-10-09T09:25:33.000Z — U3 подготовка 0.6.1
+
+Manual (сообщено пользователем, десктоп с установленной 0.6.0): «Проверить
+обновления» и кнопка тоста дают «У вас последняя версия» — проверка через
+реальный GitHub latest.json; автопроверка включена пользователем.
+0.6.1 по согласованию: блок «Что нового» (notes из подписанного latest.json, как
+текст) в окне подтверждения; ранбук windows-build ссылается на release:assets.
+Версия 0.6.1. Автоматика: i18n 257 keys, pnpm build, cargo fmt/clippy/test
+exit 0. Далее подписанная сборка, PR, Release; критерий U3 — установленная 0.6.0
+находит и ставит 0.6.1 из программы.
+
+## 2026-10-09T09:34:59.000Z — U3 подписанная сборка 0.6.1
+
+Первая попытка: git pull снова остановился на CRLF в Cargo.toml (рабочая копия
+до .gitattributes), остальные команды блока выполнились на d75c108 и собрали
+0.6.0 (d582eeb4…), перезаписав локальные Glagol_0.6.0_x64-setup.exe, latest.json
+и SHA256SUMS.txt. Опубликованный v0.6.0 (77ae4ec0…) не затронут; локальные файлы
+0.6.0 не использовать. Причина в инструкции: pull и сборка одним блоком; далее
+pull отдельным шагом с проверкой.
+
+git restore + pull до 1f680ee, чисто. Сборка с ключом в процессе: «Finished 1 bundle»
+Glagol_0.6.1_x64-setup.exe и «Finished 1 updater signature»; ключ удалён.
+release:assets: 82c127f467a22eadd17be8ac87601c8f547df1afaa792470c4cda9405ae2c618,
+10263535 байт. После сборки `git status -sb` чистый — .gitattributes устранил
+CRLF-изменения Cargo.toml. Документация: docs/releases/v0.6.1.md, README, обе
+USER_GUIDE, USER_GUIDE.md.

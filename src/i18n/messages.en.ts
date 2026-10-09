@@ -180,6 +180,7 @@ export const messages = {
   "Check now": "Check now",
   "Enable auto-check": "Enable auto-check",
   "Later": "Later",
+  "What's new": "What's new",
   "Automatic update check is on.": "Automatic update check is on.",
   "→ Dictation (STT).": "→ Dictation (STT).",
   "Could not delete: {p0}": "Could not delete: {p0}",
