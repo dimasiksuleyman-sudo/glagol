@@ -53,3 +53,21 @@ Manual (пользователь, `pnpm tauri dev`, Windows): «Glagol v0.6.0» 
 Автоматика (Linux-контейнер, rustc 1.97.0, Node v22.22.0, pnpm 10.28.0): cargo fmt/clippy
 (dev и release) exit 0; cargo test 346 passed, 0 failed, 6 ignored; i18n 256 keys PASS;
 pnpm build exit 0; release-assets tests 3 pass. Следующий шаг U2 — подписанная NSIS.
+
+## 2026-10-09T08:56:36.000Z — U2 подписанная сборка и ручная установка 0.6.0
+
+Пользователь на Windows, ветка на d75c108: ключ и пароль заданы только в процессе
+PowerShell и удалены после сборки. `pnpm tauri build --config
+src-tauri/tauri.release.conf.json` — «Glagol 0.6.0: … versions match», «Finished 1
+bundle», «Finished 1 updater signature» (Glagol_0.6.0_x64-setup.exe.sig).
+`pnpm release:assets --notes "Glagol 0.6.0: in-app updates"` — latest.json и
+SHA256SUMS.txt записаны. Установщик 10262171 байт, LastWriteTimeUtc 2026-10-09 08:47:43,
+SHA-256 77ae4ec09fae11fa87989c02b9f588f62fe03fdc14c7cee5b981909837bb2a38.
+latest.json: version 0.6.0, обе цели windows-x86_64-nsis/windows-x86_64 → URL v0.6.0;
+подпись: trusted comment file:Glagol_0.6.0_x64-setup.exe, ID ключа совпадает с pubkey.
+
+Manual (сообщено пользователем): установка поверх 0.5.2; «Glagol v0.6.0», раздел
+«Обновления», диктовка работают. Напоминание не показано — ожидаемо: общая с dev
+база настроек, напоминание уже показано в dev (месячная пауза).
+Документация: docs/releases/v0.6.0.md, README, обе USER_GUIDE, USER_GUIDE.md.
+Далее PR, merge, Release v0.6.0 с установщиком, latest.json и SHA256SUMS.txt.

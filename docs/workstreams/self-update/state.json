@@ -72,7 +72,23 @@
         "nsis",
         "published"
       ],
-      "checks": []
+      "checks": [
+        {
+          "id": "nsis",
+          "status": "PASS",
+          "method": "manual",
+          "command": "pnpm tauri build --config src-tauri/tauri.release.conf.json; pnpm release:assets (user-run)",
+          "cwd": ".",
+          "at": "2026-10-09T08:56:36.000Z",
+          "environment": {
+            "os": "Windows",
+            "pnpm": "12.4.1"
+          },
+          "exit_code": null,
+          "output": "10262171 bytes, SHA-256 77ae4ec09fae11fa87989c02b9f588f62fe03fdc14c7cee5b981909837bb2a38, updater signature created",
+          "evidence": "docs/workstreams/self-update/log.md"
+        }
+      ]
     },
     {
       "id": "U3",
