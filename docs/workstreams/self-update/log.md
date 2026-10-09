@@ -34,3 +34,22 @@ SHA256SUMS.txt; 3 теста, мутация (удаление ключа window
 release-assets tests 3 pass; cargo fmt/clippy exit 0; cargo test 345 passed,
 0 failed, 6 ignored; runbook-check OK (13 series). Не проверено: реальная проверка,
 загрузка и установка обновления — нужен ключ и Windows (U2/U3).
+
+## 2026-10-09T08:43:12.000Z — U1 завершён
+
+Добавлено после первого checkpoint: открытый ключ minisign 82D55017631804B2 (8f7c4e1),
+версия 0.6.0 (593f423), .gitattributes LF для Cargo.toml/Cargo.lock (1de1d7f затёр
+правило лицензии Silero, восстановлено в ca43f83 — итог только добавления),
+ежемесячное напоминание при выключенной автопроверке (fae9f73), тост с текстом на
+всю ширину и кнопками строкой ниже, «Позже», без автоскрытия, debug-переменная
+GLAGOL_FORCE_UPDATE_REMINDER (2696189), кнопки слева, основная первой (2a029e7).
+
+Manual (пользователь, `pnpm tauri dev`, Windows): «Glagol v0.6.0» в боковом меню;
+раздел «Обновления» с версией, переключателем (выключен) и кнопкой; проверка до
+публикации latest.json даёт ожидаемую ошибку; напоминание при первом запуске,
+повторный запуск без него; «Включить автопроверку» из тоста включает переключатель;
+вид тоста подтверждён скриншотом.
+
+Автоматика (Linux-контейнер, rustc 1.97.0, Node v22.22.0, pnpm 10.28.0): cargo fmt/clippy
+(dev и release) exit 0; cargo test 346 passed, 0 failed, 6 ignored; i18n 256 keys PASS;
+pnpm build exit 0; release-assets tests 3 pass. Следующий шаг U2 — подписанная NSIS.

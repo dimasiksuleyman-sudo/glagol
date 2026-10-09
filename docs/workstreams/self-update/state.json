@@ -3,11 +3,11 @@
   "id": "self-update",
   "title": "Самообновление и версия программы (0.6.0)",
   "status": "active",
-  "next": "U1",
+  "next": "U2",
   "reason": null,
   "claim": {
     "owner": "claude",
-    "at": "2026-10-09T07:28:25.000Z",
+    "at": "2026-10-09T08:43:12.000Z",
     "branch": "claude/pensive-wright-8jxin9"
   },
   "links": [
@@ -18,18 +18,53 @@
     {
       "id": "U1",
       "title": "Плагин, команды, UI версии и обновлений, документация; автоматические гейты",
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [],
       "required": [
         "rust",
         "frontend"
       ],
-      "checks": []
+      "checks": [
+        {
+          "id": "rust",
+          "status": "PASS",
+          "method": "command",
+          "command": "cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test",
+          "cwd": "src-tauri",
+          "at": "2026-10-09T08:43:12.000Z",
+          "environment": {
+            "os": "Linux container",
+            "rustc": "1.97.0",
+            "node": "v22.22.0",
+            "pnpm": "10.28.0"
+          },
+          "exit_code": 0,
+          "output": "test result: ok. 346 passed; 0 failed; 6 ignored",
+          "evidence": "docs/workstreams/self-update/log.md"
+        },
+        {
+          "id": "frontend",
+          "status": "PASS",
+          "method": "command",
+          "command": "pnpm build && node --test scripts/release-assets.test.mjs",
+          "cwd": ".",
+          "at": "2026-10-09T08:43:12.000Z",
+          "environment": {
+            "os": "Linux container",
+            "rustc": "1.97.0",
+            "node": "v22.22.0",
+            "pnpm": "10.28.0"
+          },
+          "exit_code": 0,
+          "output": "✓ built; release-assets 3 pass",
+          "evidence": "docs/workstreams/self-update/log.md"
+        }
+      ]
     },
     {
       "id": "U2",
       "title": "Подписанная сборка 0.6.0, ручная установка и публикация с latest.json",
-      "status": "pending",
+      "status": "in_progress",
       "depends_on": [
         "U1"
       ],
