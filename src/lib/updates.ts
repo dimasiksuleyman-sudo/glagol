@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { checkForUpdate, getUpdateSettings, type UpdateInfo } from "@/lib/tauri";
+import { checkForUpdate, getUpdateSettings, markUpdateReminderShown, setUpdateAutoCheck, type UpdateInfo } from "@/lib/tauri";
 
 /**
  * The update found by the latest check, shared by the startup check in the
@@ -25,19 +25,48 @@ export function useAvailableUpdate(): UpdateInfo | null {
   return useSyncExternalStore(subscribe, () => available);
 }
 
-let startupCheckDone = false;
+/** Auto-check flag shared by the startup reminder and the Settings switch. */
+let autoCheck: boolean | null = null;
+
+export function useAutoCheck(): boolean | null {
+  return useSyncExternalStore(subscribe, () => autoCheck);
+}
+
+export async function changeAutoCheck(enabled: boolean): Promise<void> {
+  await setUpdateAutoCheck(enabled);
+  autoCheck = enabled;
+  listeners.forEach((listener) => listener());
+}
+
+export type StartupResult =
+  | { kind: "update"; update: UpdateInfo }
+  | { kind: "reminder" }
+  | null;
+
+let startupDone = false;
 
 /**
- * The one automatic check per app run, only when the user enabled it.
- * Failures stay silent: the user did not ask for this check explicitly.
+ * Once per app run: with auto-check on, check silently (failures stay
+ * silent — the user did not press anything); with it off, report a due
+ * monthly reminder and start its 30-day pause right away.
  */
-export async function runStartupUpdateCheck(): Promise<UpdateInfo | null> {
-  if (startupCheckDone) return null;
-  startupCheckDone = true;
+export async function runStartupUpdateCheck(): Promise<StartupResult> {
+  if (startupDone) return null;
+  startupDone = true;
   try {
     const settings = await getUpdateSettings();
-    return settings.autoCheck ? await runUpdateCheck() : null;
+    autoCheck = settings.autoCheck;
+    listeners.forEach((listener) => listener());
+    if (settings.autoCheck) {
+      const update = await runUpdateCheck();
+      return update ? { kind: "update", update } : null;
+    }
+    if (settings.reminderDue) {
+      await markUpdateReminderShown();
+      return { kind: "reminder" };
+    }
   } catch {
-    return null;
+    // Network or settings errors never interrupt startup.
   }
+  return null;
 }

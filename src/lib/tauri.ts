@@ -533,7 +533,7 @@ export async function getRecognitionsMinutes(): Promise<number> {
 
 // ── Version and in-app updates (0.6.0) ─────────────────────────────────
 
-export interface UpdateSettings { currentVersion: string; autoCheck: boolean }
+export interface UpdateSettings { currentVersion: string; autoCheck: boolean; reminderDue: boolean }
 export interface UpdateInfo { version: string; currentVersion: string; notes: string | null; date: string | null }
 /** Mirrors `UpdateProgress` in `src-tauri/src/commands/updates.rs`. */
 export type UpdateProgress =
@@ -542,6 +542,8 @@ export type UpdateProgress =
 
 export const getUpdateSettings = () => invoke<UpdateSettings>("get_update_settings");
 export const setUpdateAutoCheck = (enabled: boolean) => invoke<void>("set_update_auto_check", { enabled });
+/** Start the 30-day pause before the next startup reminder. */
+export const markUpdateReminderShown = () => invoke<void>("mark_update_reminder_shown");
 /** `null` means the installed version is the latest. */
 export const checkForUpdate = () => invoke<UpdateInfo | null>("check_for_update");
 /** Downloads, verifies and installs the update found by the last check; on success the app exits. */

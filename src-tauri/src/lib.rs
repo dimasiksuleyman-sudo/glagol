@@ -234,6 +234,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::updates::get_update_settings,
             commands::updates::set_update_auto_check,
+            commands::updates::mark_update_reminder_shown,
             commands::updates::check_for_update,
             commands::updates::install_update,
             commands::preferences::get_preferences,

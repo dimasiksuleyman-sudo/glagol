@@ -29,7 +29,9 @@ language. Switch interface language in the shell or Settings without restarting.
 From 0.6.0 the current version is shown in the sidebar and in Settings → Updates.
 Check for updates asks GitHub whether a newer version exists. Check automatically at
 startup is off by default; when on, Glagol checks once after it starts and shows a
-notification about a new version. Install update, after confirmation, downloads the
+notification about a new version. While it is off, a reminder with Check now and
+Enable auto-check buttons appears at startup at most once a month; a manual check
+postpones it. Install update, after confirmation, downloads the
 installer, verifies its digital signature, closes Glagol, installs the new version and
 starts it again; documents, settings, keys and speech components are kept. Installation
 does not start during dictation or a speech operation. A file with an invalid signature

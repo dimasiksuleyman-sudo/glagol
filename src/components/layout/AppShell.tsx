@@ -12,7 +12,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { LanguageSwitch } from "@/components/LanguageSwitch";
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { getUpdateSettings } from "@/lib/tauri";
-import { runStartupUpdateCheck } from "@/lib/updates";
+import { changeAutoCheck, runStartupUpdateCheck, runUpdateCheck } from "@/lib/updates";
 
 /** The author's GitHub profile, opened in the default browser. */
 const AUTHOR_GITHUB_URL = "https://github.com/dimasiksuleyman-sudo";
@@ -45,11 +45,34 @@ export function AppShell() {
 
   useEffect(() => {
     getUpdateSettings().then((settings) => setVersion(settings.currentVersion)).catch(() => {});
-    void runStartupUpdateCheck().then((update) => {
-      if (update) {
-        toast(t("Version {version} is available.", { version: update.version }), {
-          action: { label: t("Show"), onClick: () => navigate("/settings") },
-          duration: 15000,
+    const showUpdate = (version: string) =>
+      toast(t("Version {version} is available.", { version }), {
+        action: { label: t("Show"), onClick: () => navigate("/settings") },
+        duration: 15000,
+      });
+    void runStartupUpdateCheck().then((result) => {
+      if (result?.kind === "update") {
+        showUpdate(result.update.version);
+      } else if (result?.kind === "reminder") {
+        toast(t("Keep Glagol up to date"), {
+          description: t("Check for a new version now, or let Glagol check automatically at startup."),
+          duration: 20000,
+          action: {
+            label: t("Check now"),
+            onClick: () => {
+              runUpdateCheck()
+                .then((update) => (update ? showUpdate(update.version) : toast.success(t("You have the latest version."))))
+                .catch((e) => toast.error(String(e)));
+            },
+          },
+          cancel: {
+            label: t("Enable auto-check"),
+            onClick: () => {
+              changeAutoCheck(true)
+                .then(() => toast.success(t("Automatic update check is on.")))
+                .catch((e) => toast.error(String(e)));
+            },
+          },
         });
       }
     });

@@ -21,11 +21,10 @@ import { Switch } from "@/components/ui/switch";
 import {
   getUpdateSettings,
   installUpdate,
-  setUpdateAutoCheck,
   type UpdateProgress,
   type UpdateSettings,
 } from "@/lib/tauri";
-import { runUpdateCheck, useAvailableUpdate } from "@/lib/updates";
+import { changeAutoCheck, runUpdateCheck, useAutoCheck, useAvailableUpdate } from "@/lib/updates";
 
 const mb = (bytes: number) => (bytes / 1e6).toLocaleString(currentLocale(), { maximumFractionDigits: 1 });
 
@@ -39,6 +38,7 @@ export function UpdatesSection() {
   const [progress, setProgress] = useState<UpdateProgress | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const update = useAvailableUpdate();
+  const sharedAutoCheck = useAutoCheck();
 
   useEffect(() => {
     getUpdateSettings().then(setSettings).catch((e) => toast.error(String(e)));
@@ -58,8 +58,7 @@ export function UpdatesSection() {
 
   async function handleToggle(enabled: boolean) {
     try {
-      await setUpdateAutoCheck(enabled);
-      setSettings((current) => (current ? { ...current, autoCheck: enabled } : current));
+      await changeAutoCheck(enabled);
     } catch (e) {
       toast.error(String(e));
     }
@@ -101,7 +100,7 @@ export function UpdatesSection() {
           </div>
           <Switch
             id="update-auto-check"
-            checked={settings?.autoCheck ?? false}
+            checked={sharedAutoCheck ?? settings?.autoCheck ?? false}
             onCheckedChange={handleToggle}
             disabled={!settings || busy === "installing"}
           />

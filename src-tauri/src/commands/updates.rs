@@ -20,6 +20,13 @@ use crate::state::AppState;
 
 /// `app_settings` key for the automatic update check. Absent means off.
 pub const KEY_AUTO_CHECK: &str = "update_auto_check";
+/// Unix ms of the last update reminder shown at startup.
+pub const KEY_REMINDER_AT: &str = "update_reminder_at";
+/// Unix ms of the last successful update check, manual or automatic.
+pub const KEY_LAST_CHECK_AT: &str = "update_last_check_at";
+
+/// Minimum interval between startup reminders about updates.
+pub const REMINDER_INTERVAL_MS: i64 = 30 * 24 * 60 * 60 * 1000;
 
 /// The update found by the last successful check, waiting for installation.
 #[derive(Default)]
@@ -31,6 +38,8 @@ pub struct PendingUpdate(pub Mutex<Option<Update>>);
 pub struct UpdateSettings {
     pub current_version: String,
     pub auto_check: bool,
+    /// Whether the startup reminder (enable auto-check or check now) is due.
+    pub reminder_due: bool,
 }
 
 /// An available update as shown to the user.
@@ -56,21 +65,66 @@ pub fn parse_auto_check(value: Option<&str>) -> bool {
     value == Some("true")
 }
 
-/// Read the version and the auto-check flag.
+/// Whether to remind the user about updates at startup: only while the
+/// automatic check is off, and at most once per [`REMINDER_INTERVAL_MS`] since
+/// the last reminder or the last successful check. Never shown before → due.
+pub fn reminder_due(
+    auto_check: bool,
+    reminder_at: Option<i64>,
+    last_check_at: Option<i64>,
+    now: i64,
+) -> bool {
+    if auto_check {
+        return false;
+    }
+    match reminder_at.max(last_check_at) {
+        None => true,
+        Some(last) => now.saturating_sub(last) >= REMINDER_INTERVAL_MS,
+    }
+}
+
+fn read_millis(conn: &rusqlite::Connection, setting_name: &str) -> Result<Option<i64>, String> {
+    let value = repository::get_setting(conn, setting_name).map_err(|e| e.to_string())?;
+    Ok(value.and_then(|v| v.parse().ok()))
+}
+
+fn write_now(conn: &rusqlite::Connection, setting_name: &str) -> Result<(), String> {
+    let now = chrono::Utc::now().timestamp_millis();
+    repository::set_setting(conn, setting_name, &now.to_string(), now)
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
+/// Read the version, the auto-check flag and whether the reminder is due.
 #[tauri::command]
 pub fn get_update_settings(
     app: tauri::AppHandle,
     state: tauri::State<'_, AppState>,
 ) -> Result<UpdateSettings, String> {
-    let auto_check = {
+    let (auto_check, reminder_due) = {
         let conn = state.db.lock().map_err(|e| e.to_string())?;
         let value = repository::get_setting(&conn, KEY_AUTO_CHECK).map_err(|e| e.to_string())?;
-        parse_auto_check(value.as_deref())
+        let auto_check = parse_auto_check(value.as_deref());
+        let due = reminder_due(
+            auto_check,
+            read_millis(&conn, KEY_REMINDER_AT)?,
+            read_millis(&conn, KEY_LAST_CHECK_AT)?,
+            chrono::Utc::now().timestamp_millis(),
+        );
+        (auto_check, due)
     };
     Ok(UpdateSettings {
         current_version: app.package_info().version.to_string(),
         auto_check,
+        reminder_due,
     })
+}
+
+/// Record that the startup reminder was shown, so the next one waits a month.
+#[tauri::command]
+pub fn mark_update_reminder_shown(state: tauri::State<'_, AppState>) -> Result<(), String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    write_now(&conn, KEY_REMINDER_AT)
 }
 
 /// Persist the auto-check flag.
@@ -95,6 +149,7 @@ pub fn set_update_auto_check(
 #[tauri::command]
 pub async fn check_for_update(
     app: tauri::AppHandle,
+    state: tauri::State<'_, AppState>,
     pending: tauri::State<'_, PendingUpdate>,
 ) -> Result<Option<UpdateInfo>, String> {
     let updater = app.updater().map_err(|e| {
@@ -115,6 +170,10 @@ pub async fn check_for_update(
         tracing::info!(version = %info.version, "update available");
     }
     *pending.0.lock().map_err(|e| e.to_string())? = update;
+    {
+        let conn = state.db.lock().map_err(|e| e.to_string())?;
+        write_now(&conn, KEY_LAST_CHECK_AT)?;
+    }
     Ok(info)
 }
 
@@ -209,6 +268,29 @@ mod tests {
         assert!(!parse_auto_check(Some("false")));
         assert!(!parse_auto_check(Some("1")));
         assert!(parse_auto_check(Some("true")));
+    }
+
+    #[test]
+    fn reminder_is_monthly_and_only_while_auto_check_is_off() {
+        let day = 24 * 60 * 60 * 1000;
+        let now = 100 * day;
+        // First run with the feature: remind once.
+        assert!(reminder_due(false, None, None, now));
+        // Auto-check on: never remind.
+        assert!(!reminder_due(true, None, None, now));
+        // Reminded 29 days ago: wait; 30 days ago: due.
+        assert!(!reminder_due(false, Some(now - 29 * day), None, now));
+        assert!(reminder_due(false, Some(now - 30 * day), None, now));
+        // A recent manual check postpones the reminder.
+        assert!(!reminder_due(
+            false,
+            Some(now - 40 * day),
+            Some(now - day),
+            now
+        ));
+        assert!(!reminder_due(false, None, Some(now - day), now));
+        // Clock moved backwards: no reminder storm.
+        assert!(!reminder_due(false, Some(now + day), None, now));
     }
 
     #[test]
