@@ -11,6 +11,10 @@ the per-session master logs under [`docs/day-logs/`](docs/day-logs/).
 
 ## [Unreleased]
 
+### Added
+
+- A GitHub link at the bottom of the sidebar opens the author's profile in the default browser. / Ссылка GitHub внизу бокового меню открывает профиль автора в браузере по умолчанию.
+
 ### Fixed
 
 - The Russian interface no longer shows the Settings item in the sidebar and the Settings page title in quotation marks. / В русском интерфейсе пункт «Настройки» в боковом меню и заголовок страницы настроек больше не взяты в кавычки.

@@ -158,6 +158,8 @@ export const messages = {
   "Total dictated:": "Total dictated:",
   "Configure the recognition provider and key in": "Configure the recognition provider and key in",
   "Settings (inline link)": "Settings",
+  "Author's GitHub profile": "Author's GitHub profile",
+  "Could not open the link": "Could not open the link",
   "→ Dictation (STT).": "→ Dictation (STT).",
   "Could not delete: {p0}": "Could not delete: {p0}",
   "Could not rename: {p0}": "Could not rename: {p0}",

@@ -4,6 +4,7 @@
 
 Glagol reads English and Russian documents aloud and turns dictation into text.
 This guide describes [Glagol 0.5.1](docs/releases/v0.5.1.md).
+The GitHub link at the bottom of the sidebar opens the author's profile in your browser.
 
 ## Installation
 

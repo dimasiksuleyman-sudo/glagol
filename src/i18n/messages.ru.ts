@@ -159,6 +159,8 @@ export const messages: {[K in keyof typeof en]: string} = {
   "Total dictated:": "Надиктовано всего:",
   "Configure the recognition provider and key in": "Провайдер распознавания и ключ настраиваются в разделе",
   "Settings (inline link)": "«Настройки»",
+  "Author's GitHub profile": "Профиль автора на GitHub",
+  "Could not open the link": "Не удалось открыть ссылку",
   "→ Dictation (STT).": "→ «Диктовка (STT)».",
   "Could not delete: {p0}": "Не удалось удалить: {p0}",
   "Could not rename: {p0}": "Не удалось переименовать: {p0}",
