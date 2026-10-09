@@ -111,6 +111,9 @@ pub fn run() {
             dictation::session::show_main_window(app);
         }))
         .plugin(tauri_plugin_opener::init())
+        // In-app updates (0.6.0): used from Rust commands only, no webview permissions.
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .manage(commands::updates::PendingUpdate::default())
         .plugin(tauri_plugin_dialog::init())
         // Global push-to-talk hotkey (Sprint 6 PR3). One handler dispatches the
         // single registered shortcut's Pressed/Released to the dictation session
@@ -229,6 +232,10 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            commands::updates::get_update_settings,
+            commands::updates::set_update_auto_check,
+            commands::updates::check_for_update,
+            commands::updates::install_update,
             commands::preferences::get_preferences,
             commands::preferences::set_ui_language,
             commands::preferences::migrate_legacy_voice,

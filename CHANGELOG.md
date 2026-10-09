@@ -11,6 +11,11 @@ the per-session master logs under [`docs/day-logs/`](docs/day-logs/).
 
 ## [Unreleased]
 
+### Added
+
+- In-app updates: Settings → Updates shows the current version, checks GitHub for a newer release on request and installs a signed update after confirmation; documents, settings, keys and speech components are kept. An optional automatic check after startup is off by default. / Обновление из программы: «Настройки» → «Обновления» показывает текущую версию, по запросу проверяет новую версию на GitHub и после подтверждения устанавливает подписанное обновление; документы, настройки, ключи и речевые компоненты сохраняются. Необязательная автопроверка после запуска по умолчанию выключена.
+- The current version is shown in the sidebar. / Текущая версия показана в боковом меню.
+
 ## [v0.5.2] — 2026-10-09
 
 [Release notes, validation and limits / проверка и ограничения](docs/releases/v0.5.2.md).

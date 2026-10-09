@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "observed_at": "2026-10-09T07:27:37.000Z",
-  "active_workstream": null,
+  "active_workstream": "self-update",
   "links": [
     "AGENTS.md",
     "CLAUDE.md",
@@ -32,7 +32,9 @@
     "docs/workstreams/release-0.5.1/README.md",
     "docs/workstreams/release-0.5.1/log.md",
     "docs/workstreams/release-0.5.2/README.md",
-    "docs/workstreams/release-0.5.2/log.md"
+    "docs/workstreams/release-0.5.2/log.md",
+    "docs/workstreams/self-update/README.md",
+    "docs/workstreams/self-update/log.md"
   ],
   "observations": [
     {

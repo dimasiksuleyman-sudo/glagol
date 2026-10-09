@@ -26,6 +26,15 @@ language. Switch interface language in the shell or Settings without restarting.
 
 ## Updating an existing installation
 
+From 0.6.0 the current version is shown in the sidebar and in Settings → Updates.
+Check for updates asks GitHub whether a newer version exists. Check automatically at
+startup is off by default; when on, Glagol checks once after it starts and shows a
+notification about a new version. Install update, after confirmation, downloads the
+installer, verifies its digital signature, closes Glagol, installs the new version and
+starts it again; documents, settings, keys and speech components are kept. Installation
+does not start during dictation or a speech operation. A file with an invalid signature
+is never installed. Versions before 0.6.0 update manually as described below.
+
 Back up your library, exit through the tray, run the new installer and retain the
 existing directory (choose “Do not uninstall” on the existing-installation page).
 The first upgrade from 0.4.1 also asks for interface language. Existing local/server/cloud

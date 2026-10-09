@@ -14,3 +14,4 @@ pub mod speech;
 pub mod storage;
 pub mod synthesize;
 pub mod tts;
+pub mod updates;

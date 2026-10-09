@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "id": "self-update",
+  "title": "Самообновление и версия программы (0.6.0)",
+  "status": "active",
+  "next": "U1",
+  "reason": null,
+  "claim": {
+    "owner": "claude",
+    "at": "2026-10-09T07:28:25.000Z",
+    "branch": "claude/pensive-wright-8jxin9"
+  },
+  "links": [
+    "docs/workstreams/self-update/README.md",
+    "docs/workstreams/self-update/log.md"
+  ],
+  "steps": [
+    {
+      "id": "U1",
+      "title": "Плагин, команды, UI версии и обновлений, документация; автоматические гейты",
+      "status": "in_progress",
+      "depends_on": [],
+      "required": [
+        "rust",
+        "frontend"
+      ],
+      "checks": []
+    },
+    {
+      "id": "U2",
+      "title": "Подписанная сборка 0.6.0, ручная установка и публикация с latest.json",
+      "status": "pending",
+      "depends_on": [
+        "U1"
+      ],
+      "required": [
+        "nsis",
+        "published"
+      ],
+      "checks": []
+    },
+    {
+      "id": "U3",
+      "title": "Выпуск 0.6.1 и обновление из 0.6.0 внутри программы",
+      "status": "pending",
+      "depends_on": [
+        "U2"
+      ],
+      "required": [
+        "manual-update"
+      ],
+      "checks": []
+    }
+  ]
+}

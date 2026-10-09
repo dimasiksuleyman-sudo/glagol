@@ -5,7 +5,15 @@
 
 Начало работы: [AGENTS](../AGENTS.md) → этот обзор → состояние и журнал серии.
 
-Активная серия не выбрана. Новая задача определяется пользователем.
+Выбранная серия: **Самообновление и версия программы (0.6.0)**.
+
+**NEXT: U1 — Плагин, команды, UI версии и обновлений, документация; автоматические гейты** (in_progress).
+
+[Решения](workstreams/self-update/README.md) · [Состояние](workstreams/self-update/state.json) · [Журнал](workstreams/self-update/log.md)
+
+Выполняет: claude; ветка claude/pensive-wright-8jxin9; с 2026-10-09T07:28:25.000Z.
+
+В этой серии ещё нет завершённых шагов. Предыдущие результаты — в связанных журналах.
 
 ## Доставка и наблюдения
 
@@ -54,5 +62,7 @@
 - [docs/workstreams/release-0.5.1/log.md](../docs/workstreams/release-0.5.1/log.md)
 - [docs/workstreams/release-0.5.2/README.md](../docs/workstreams/release-0.5.2/README.md)
 - [docs/workstreams/release-0.5.2/log.md](../docs/workstreams/release-0.5.2/log.md)
+- [docs/workstreams/self-update/README.md](../docs/workstreams/self-update/README.md)
+- [docs/workstreams/self-update/log.md](../docs/workstreams/self-update/log.md)
 
 PASS в старом журнале — результат той даты, не новая проверка. Сборка, установка и публикация учитываются отдельно.

@@ -63,5 +63,16 @@
         "installerHooks": "installer/hooks.nsh"
       }
     }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "PENDING_UPDATER_PUBLIC_KEY",
+      "endpoints": [
+        "https://github.com/dimasiksuleyman-sudo/glagol/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }
