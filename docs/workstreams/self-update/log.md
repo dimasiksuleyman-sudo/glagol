@@ -98,3 +98,19 @@ Manual (сообщено пользователем, десктоп с уста�
 Версия 0.6.1. Автоматика: i18n 257 keys, pnpm build, cargo fmt/clippy/test
 exit 0. Далее подписанная сборка, PR, Release; критерий U3 — установленная 0.6.0
 находит и ставит 0.6.1 из программы.
+
+## 2026-10-09T09:34:59.000Z — U3 подписанная сборка 0.6.1
+
+Первая попытка: git pull снова остановился на CRLF в Cargo.toml (рабочая копия
+до .gitattributes), остальные команды блока выполнились на d75c108 и собрали
+0.6.0 (d582eeb4…), перезаписав локальные Glagol_0.6.0_x64-setup.exe, latest.json
+и SHA256SUMS.txt. Опубликованный v0.6.0 (77ae4ec0…) не затронут; локальные файлы
+0.6.0 не использовать. Причина в инструкции: pull и сборка одним блоком; далее
+pull отдельным шагом с проверкой.
+
+git restore + pull до 1f680ee, чисто. Сборка с ключом в процессе: «Finished 1 bundle»
+Glagol_0.6.1_x64-setup.exe и «Finished 1 updater signature»; ключ удалён.
+release:assets: 82c127f467a22eadd17be8ac87601c8f547df1afaa792470c4cda9405ae2c618,
+10263535 байт. После сборки `git status -sb` чистый — .gitattributes устранил
+CRLF-изменения Cargo.toml. Документация: docs/releases/v0.6.1.md, README, обе
+USER_GUIDE, USER_GUIDE.md.
