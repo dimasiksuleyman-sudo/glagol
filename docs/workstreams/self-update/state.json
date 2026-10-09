@@ -2,14 +2,10 @@
   "schema_version": 1,
   "id": "self-update",
   "title": "Самообновление и версия программы (0.6.0)",
-  "status": "active",
-  "next": "U3",
+  "status": "done",
+  "next": null,
   "reason": null,
-  "claim": {
-    "owner": "claude",
-    "at": "2026-10-09T09:12:55.000Z",
-    "branch": "claude/pensive-wright-8jxin9"
-  },
+  "claim": null,
   "links": [
     "docs/workstreams/self-update/README.md",
     "docs/workstreams/self-update/log.md"
@@ -107,14 +103,30 @@
     {
       "id": "U3",
       "title": "Выпуск 0.6.1 и обновление из 0.6.0 внутри программы",
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [
         "U2"
       ],
       "required": [
         "manual-update"
       ],
-      "checks": []
+      "checks": [
+        {
+          "id": "manual-update",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Installed 0.6.0 on laptop (manual check) and desktop (auto-check) updates to published 0.6.1 from Settings → Updates",
+          "cwd": ".",
+          "at": "2026-10-09T09:48:15.000Z",
+          "environment": {
+            "os": "Windows",
+            "machines": "laptop, desktop"
+          },
+          "exit_code": null,
+          "output": "Both machines updated to 0.6.1 from inside the app (reported by user).",
+          "evidence": "docs/workstreams/self-update/log.md"
+        }
+      ]
     }
   ]
 }

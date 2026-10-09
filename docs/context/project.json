@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "observed_at": "2026-10-09T09:12:55.000Z",
-  "active_workstream": "self-update",
+  "observed_at": "2026-10-09T09:48:15.000Z",
+  "active_workstream": null,
   "links": [
     "AGENTS.md",
     "CLAUDE.md",
@@ -49,16 +49,16 @@
       "id": "installed",
       "label": "Установленная версия",
       "status": "reported",
-      "summary": "На ноутбуке пользователя установлена 0.6.0 поверх 0.5.2 (подписанная локальная сборка того же SHA-256); версия, раздел «Обновления» и диктовка работают.",
-      "observed_at": "2026-10-09T09:12:55.000Z",
+      "summary": "Ноутбук и десктоп пользователя обновились с 0.6.0 до 0.6.1 из программы (ручная проверка и автопроверка соответственно).",
+      "observed_at": "2026-10-09T09:48:15.000Z",
       "source": "docs/workstreams/self-update/log.md"
     },
     {
       "id": "published",
       "label": "Публикация",
       "status": "observed",
-      "summary": "GitHub Release v0.6.0 опубликован как latest; CI PR success, merge 0dc7822. Установщик 10262171 байт, SHA-256 77ae4ec09fae11fa87989c02b9f588f62fe03fdc14c7cee5b981909837bb2a38 совпал с SHA256SUMS; latest.json доступен по адресу программы; подпись обновления проверена minisign встроенным ключом.",
-      "observed_at": "2026-10-09T09:12:55.000Z",
+      "summary": "GitHub Release v0.6.1 опубликован как latest; CI PR success, merge 8c59250. Установщик 10263535 байт, SHA-256 82c127f467a22eadd17be8ac87601c8f547df1afaa792470c4cda9405ae2c618 совпал с SHA256SUMS; latest.json по адресу программы — 0.6.1; подпись проверена minisign встроенным ключом.",
+      "observed_at": "2026-10-09T09:48:15.000Z",
       "source": "docs/workstreams/self-update/log.md"
     },
     {
@@ -169,6 +169,12 @@
       "sha": "0dc78220a2eded7ec196bbd1749c71d025dc521c",
       "scope": "release",
       "ref": "refs/tags/v0.6.0"
+    },
+    {
+      "id": "release-0-6-1",
+      "sha": "8c592506dcf9e7c15b13186bbc5460742068af4e",
+      "scope": "release",
+      "ref": "refs/tags/v0.6.1"
     }
   ]
 }

@@ -114,3 +114,21 @@ release:assets: 82c127f467a22eadd17be8ac87601c8f547df1afaa792470c4cda9405ae2c618
 10263535 байт. После сборки `git status -sb` чистый — .gitattributes устранил
 CRLF-изменения Cargo.toml. Документация: docs/releases/v0.6.1.md, README, обе
 USER_GUIDE, USER_GUIDE.md.
+
+## 2026-10-09T09:48:15.000Z — U3 публикация 0.6.1 и обновление из программы
+
+PR https://github.com/dimasiksuleyman-sudo/glagol/pull/49 — CI «Quality gates (Windows)»
+success (09:35–09:41 UTC, run 37912232941), review threads 0; merge commit
+8c592506dcf9e7c15b13186bbc5460742068af4e. Release v0.6.1 создан пользователем;
+v0.6.1^{commit} = 8c59250. Проверка из контейнера: assets скачаны curl exit 0;
+`sha256sum -c` — «Glagol_0.6.1_x64-setup.exe: OK» (10263535 байт, 82c127f4…5ae2c618);
+releases/latest/download/latest.json идентичен asset (cmp), version 0.6.1, notes
+заданы; `minisign -V` со встроенным pubkey — «Signature and comment signature
+verified», exit 0.
+
+Manual (сообщено пользователем): установленная 0.6.0 обновилась до 0.6.1 из
+программы на двух машинах — ноутбук (ручная проверка в «Обновлениях») и десктоп
+(автопроверка при запуске). Детали каждого шага (прогресс, перезапуск) пользователь
+не перечислял; результат — «Обновилось на двух машинах». Блок «Что нового» будет
+виден со следующего обновления после 0.6.1 — не проверен.
+Серия закрыта; активной серии нет. GL-006 остаётся открытой.
