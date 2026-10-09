@@ -1,14 +1,14 @@
-# Glagol user guide — 0.6.0
+# Glagol user guide — 0.6.1
 
 [Русский](USER_GUIDE.ru.md) · [README](README.md)
 
 Glagol reads English and Russian documents aloud and turns dictation into text.
-This guide describes [Glagol 0.6.0](docs/releases/v0.6.0.md).
+This guide describes [Glagol 0.6.1](docs/releases/v0.6.1.md).
 The GitHub link at the bottom of the sidebar opens the author's profile in your browser.
 
 ## Installation
 
-Windows 10/11 x64 is required. Run the locally built `Glagol_0.6.0_x64-setup.exe`.
+Windows 10/11 x64 is required. Run the locally built `Glagol_0.6.1_x64-setup.exe`.
 The installer offers English and Russian, starts with Windows' language and uses
 English as fallback. The unsigned installer may trigger SmartScreen: check the
 artifact's source and SHA-256 before choosing More info → Run anyway. Installation
