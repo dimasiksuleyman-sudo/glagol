@@ -37,3 +37,20 @@ FileVersion/ProductVersion 0.5.2. Подпись и ссылка провере�
 README, обе USER_GUIDE и USER_GUIDE.md. Решение пользователя: самообновление
 (tauri-plugin-updater, переключатель автопроверки, показ версии) — отдельная
 серия для 0.6.0 после этого релиза.
+
+## 2026-10-09T07:27:37.000Z — P3 PR, merge, публикация и сверка
+
+Manual (сообщено пользователем после нескольких дней работы установленной 0.5.2):
+таблетка не пропадала, «Настройки» без кавычек, ссылка GitHub ведёт на профиль,
+диктовка работает. Несколько дней без сбоя не закрывают GL-006 (причина unknown).
+
+PR https://github.com/dimasiksuleyman-sudo/glagol/pull/47 — CI «Quality gates (Windows)»
+success (07:15–07:22 UTC, run 37898002931), review threads 0. Merge commit
+95d5643e0a86c00dd28b5b485a2b651696b8cd2a в main.
+
+Release https://github.com/dimasiksuleyman-sudo/glagol/releases/tag/v0.5.2 — создан
+пользователем, published 2026-10-09T07:26:35Z, draft=false, prerelease=false;
+v0.5.2^{commit} = 95d5643. Assets: Glagol_0.5.2_x64-setup.exe 9943738 байт,
+digest sha256:e99d29b9…07a88bccb; SHA256SUMS.txt 93 байта. Скачаны curl, exit 0;
+`sha256sum -c SHA256SUMS.txt` — «Glagol_0.5.2_x64-setup.exe: OK».
+Серия закрыта; следующая работа — самообновление для 0.6.0.

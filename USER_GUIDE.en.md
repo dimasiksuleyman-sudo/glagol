@@ -1,14 +1,14 @@
-# Glagol user guide — 0.5.2
+# Glagol user guide — 0.6.0
 
 [Русский](USER_GUIDE.ru.md) · [README](README.md)
 
 Glagol reads English and Russian documents aloud and turns dictation into text.
-This guide describes [Glagol 0.5.2](docs/releases/v0.5.2.md).
+This guide describes [Glagol 0.6.0](docs/releases/v0.6.0.md).
 The GitHub link at the bottom of the sidebar opens the author's profile in your browser.
 
 ## Installation
 
-Windows 10/11 x64 is required. Run the locally built `Glagol_0.5.2_x64-setup.exe`.
+Windows 10/11 x64 is required. Run the locally built `Glagol_0.6.0_x64-setup.exe`.
 The installer offers English and Russian, starts with Windows' language and uses
 English as fallback. The unsigned installer may trigger SmartScreen: check the
 artifact's source and SHA-256 before choosing More info → Run anyway. Installation
@@ -25,6 +25,17 @@ dictation starts in local mode. Changing the interface later changes neither spe
 language. Switch interface language in the shell or Settings without restarting.
 
 ## Updating an existing installation
+
+From 0.6.0 the current version is shown in the sidebar and in Settings → Updates.
+Check for updates asks GitHub whether a newer version exists. Check automatically at
+startup is off by default; when on, Glagol checks once after it starts and shows a
+notification about a new version. While it is off, a reminder with Check now and
+Enable auto-check buttons appears at startup at most once a month; a manual check
+postpones it. Install update, after confirmation, downloads the
+installer, verifies its digital signature, closes Glagol, installs the new version and
+starts it again; documents, settings, keys and speech components are kept. Installation
+does not start during dictation or a speech operation. A file with an invalid signature
+is never installed. Versions before 0.6.0 update manually as described below.
 
 Back up your library, exit through the tray, run the new installer and retain the
 existing directory (choose “Do not uninstall” on the existing-installation page).

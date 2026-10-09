@@ -1,6 +1,7 @@
 import { t } from "@/i18n";
 import { useI18n } from "@/contexts/PreferencesContext";
-import { NavLink, Outlet } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { AudioLines, ExternalLink, Library, Mic, Settings } from "lucide-react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { toast } from "sonner";
@@ -9,7 +10,10 @@ import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 import { Toaster } from "@/components/ui/sonner";
 import { LanguageSwitch } from "@/components/LanguageSwitch";
+import { UpdateReminderToast } from "@/components/UpdateReminderToast";
 import { usePreferences } from "@/contexts/PreferencesContext";
+import { getUpdateSettings } from "@/lib/tauri";
+import { changeAutoCheck, runStartupUpdateCheck, runUpdateCheck } from "@/lib/updates";
 
 /** The author's GitHub profile, opened in the default browser. */
 const AUTHOR_GITHUB_URL = "https://github.com/dimasiksuleyman-sudo";
@@ -37,11 +41,58 @@ const navItems = (): readonly NavItem[] => [
 export function AppShell() {
   useI18n();
   const { error } = usePreferences();
+  const navigate = useNavigate();
+  const [version, setVersion] = useState<string | null>(null);
+
+  useEffect(() => {
+    getUpdateSettings().then((settings) => setVersion(settings.currentVersion)).catch(() => {});
+    const showUpdate = (version: string) =>
+      toast(t("Version {version} is available.", { version }), {
+        action: { label: t("Show"), onClick: () => navigate("/settings") },
+        duration: 15000,
+      });
+    void runStartupUpdateCheck().then((result) => {
+      if (result?.kind === "update") {
+        showUpdate(result.update.version);
+      } else if (result?.kind === "reminder") {
+        toast.custom(
+          (id) => (
+            <UpdateReminderToast
+              onLater={() => toast.dismiss(id)}
+              onEnable={() => {
+                toast.dismiss(id);
+                changeAutoCheck(true)
+                  .then(() => toast.success(t("Automatic update check is on.")))
+                  .catch((e) => toast.error(String(e)));
+              }}
+              onCheck={() => {
+                toast.dismiss(id);
+                runUpdateCheck()
+                  .then((update) =>
+                    update ? showUpdate(update.version) : toast.success(t("You have the latest version.")),
+                  )
+                  .catch((e) => toast.error(String(e)));
+              }}
+            />
+          ),
+          // Stays until the user answers: it appears at most once a month.
+          { duration: Infinity },
+        );
+      }
+    });
+  }, [navigate]);
   return (
     <div className="bg-background text-foreground flex min-h-screen">
       <aside className="bg-sidebar text-sidebar-foreground border-sidebar-border flex w-60 shrink-0 flex-col border-r">
         <div className="px-6 py-5">
-          <h1 className="text-xl font-semibold tracking-tight">Glagol</h1>
+          <h1 className="text-xl font-semibold tracking-tight">
+            Glagol
+            {version && (
+              <span className="text-muted-foreground ml-2 text-xs font-normal">
+                v{version}
+              </span>
+            )}
+          </h1>
           <p className="text-muted-foreground mt-1 text-xs">
             {t("Text to speech and dictation")}{" "}</p>
         </div>

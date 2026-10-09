@@ -1,7 +1,7 @@
 {
   "name": "glagol",
   "private": true,
-  "version": "0.5.2",
+  "version": "0.6.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -12,7 +12,9 @@
     "tauri": "tauri",
     "context:refresh": "node scripts/context-status.mjs write",
     "runbook:check": "node scripts/runbook-check.mjs",
-    "runbook:test": "node --test scripts/runbook-check.test.mjs"
+    "runbook:test": "node --test scripts/runbook-check.test.mjs",
+    "release:assets": "node scripts/release-assets.mjs",
+    "release:test": "node --test scripts/release-assets.test.mjs"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.2.9",

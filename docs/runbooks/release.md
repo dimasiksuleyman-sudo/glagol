@@ -16,6 +16,29 @@
 4. Выполнить [Silero QA](tts-smoke.md) и [диктовку](dictation-smoke.md)
    в объёме изменённых сценариев. Не закрывать ручную QA по unit-тестам.
 
+## Подпись обновлений (с 0.6.0)
+
+Установленные копии принимают обновление только с подписью ключа, открытая часть
+которого записана в `src-tauri/tauri.conf.json` (`plugins.updater.pubkey`). Закрытый
+ключ и пароль хранит сопровождающий вне репозитория (с резервной копией); при потере
+ключа установленные версии больше не обновятся автоматически. CI собирает без подписи.
+Ключ задаётся только в текущем процессе PowerShell и удаляется после сборки:
+
+```powershell
+$env:TAURI_SIGNING_PRIVATE_KEY = Get-Content "$env:USERPROFILE\.tauri\glagol-updater.key" -Raw
+$secure = Read-Host -AsSecureString "Updater key password"
+$env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = [Net.NetworkCredential]::new('', $secure).Password
+pnpm tauri build --config src-tauri/tauri.release.conf.json
+Remove-Item Env:TAURI_SIGNING_PRIVATE_KEY, Env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD
+pnpm release:assets --notes "Glagol <version>"
+```
+
+Рядом с установщиком появятся `.exe.sig`, `latest.json` и `SHA256SUMS.txt`. К Release
+прикрепить установщик, `latest.json` и `SHA256SUMS.txt`; Release должен быть отмечен
+latest, потому что программы читают `releases/latest/download/latest.json`. После
+публикации скачать `latest.json` по этому адресу и сверить версию и URL установщика.
+Проверка самообновления — установленная предыдущая версия находит и ставит новую.
+
 ## Чистая установка и обновление
 
 Использовать согласованную тестовую среду/профиль. Перед обновлением реальной

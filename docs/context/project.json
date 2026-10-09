@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "observed_at": "2026-10-07T20:33:51.000Z",
-  "active_workstream": "release-0.5.2",
+  "observed_at": "2026-10-09T07:27:37.000Z",
+  "active_workstream": "self-update",
   "links": [
     "AGENTS.md",
     "CLAUDE.md",
@@ -32,7 +32,9 @@
     "docs/workstreams/release-0.5.1/README.md",
     "docs/workstreams/release-0.5.1/log.md",
     "docs/workstreams/release-0.5.2/README.md",
-    "docs/workstreams/release-0.5.2/log.md"
+    "docs/workstreams/release-0.5.2/log.md",
+    "docs/workstreams/self-update/README.md",
+    "docs/workstreams/self-update/log.md"
   ],
   "observations": [
     {
@@ -47,17 +49,17 @@
       "id": "installed",
       "label": "Установленная версия",
       "status": "reported",
-      "summary": "Пользователь установил 0.5.1 поверх 0.5.0 на ноутбуке после бэкапа: версия 0.5.1, таблетка видна, текст вставлен. Позже таблетка пропала снова (GL-006).",
-      "observed_at": "2026-10-07T20:33:51.000Z",
-      "source": "docs/workstreams/release-0.5.1/log.md"
+      "summary": "На ноутбуке пользователя установлена 0.5.2 (FileVersion/ProductVersion 0.5.2); несколько дней работы: таблетка не пропадала, подпись и ссылка GitHub верны, диктовка работает.",
+      "observed_at": "2026-10-09T07:27:37.000Z",
+      "source": "docs/workstreams/release-0.5.2/log.md"
     },
     {
       "id": "published",
       "label": "Публикация",
       "status": "observed",
-      "summary": "GitHub Release v0.5.1 опубликован как latest; CI PR success, merge 1b3ed4e. Публичный установщик 9948410 байт скачан, SHA-256 01791f02ed250797d611d5ac723282f6d5e58e33f03d48c337f056f35b85a922 совпал с SHA256SUMS и локальной сборкой. После публикации сообщено о повторном исчезновении таблетки (GL-006).",
-      "observed_at": "2026-10-07T20:33:51.000Z",
-      "source": "docs/workstreams/release-0.5.1/log.md"
+      "summary": "GitHub Release v0.5.2 опубликован как latest; CI PR success, merge 95d5643. Публичный установщик 9943738 байт скачан, SHA-256 e99d29b9aff915b0d0540caad3273e860799fabe562451024af98b907a88bccb совпал с SHA256SUMS и локальной сборкой.",
+      "observed_at": "2026-10-09T07:27:37.000Z",
+      "source": "docs/workstreams/release-0.5.2/log.md"
     },
     {
       "id": "qa-environment",
@@ -155,6 +157,12 @@
       "sha": "1b3ed4ed1183d1c09c76c2baf5ab05fbe67a9db2",
       "scope": "release",
       "ref": "refs/tags/v0.5.1"
+    },
+    {
+      "id": "release-0-5-2",
+      "sha": "95d5643e0a86c00dd28b5b485a2b651696b8cd2a",
+      "scope": "release",
+      "ref": "refs/tags/v0.5.2"
     }
   ]
 }

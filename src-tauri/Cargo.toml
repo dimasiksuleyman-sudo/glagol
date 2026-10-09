@@ -1,6 +1,6 @@
 [package]
 name = "glagol"
-version = "0.5.2"
+version = "0.6.0"
 description = "English and Russian dictation and optional offline speech synthesis"
 authors = ["Glagol Contributors"]
 edition = "2021"
@@ -46,6 +46,13 @@ tauri-plugin-dialog = "2"
 # `windows-sys` FFI, so a hard pin makes any transitive-neighbour conflict loud
 # instead of a silent patch bump.
 tauri-plugin-global-shortcut = "=2.3.2"
+# In-app updates (0.6.0). The app fetches `latest.json` from the GitHub Release,
+# verifies the minisign signature against the public key in tauri.conf.json and
+# runs the NSIS installer. `rustls-tls` only: verified TLS like the rest of the
+# network code; no `zip` (NSIS updates are plain .exe) and no system proxy.
+# Exact `=`-pin: 2.12.0 is the newest release on `tauri ^2.10`; 2.13.x requires
+# tauri 2.12 and pulls a second `windows` (0.62) into the graph (D1-B class).
+tauri-plugin-updater = { version = "=2.12.0", default-features = false, features = ["rustls-tls"] }
 
 # Serialization
 serde = { version = "1", features = ["derive"] }

@@ -17,6 +17,7 @@ CC BY-NC-SA 4.0 для некоммерческого использования
 | `pages/Dictation.tsx` | Горячая клавиша, микрофон, история |
 | `components/settings/DictationSection.tsx` | Local/server/cloud STT, модели и ключи |
 | `components/settings/TtsSection.tsx` | Лицензия, скачивание/импорт, восстановление, удаление, голоса |
+| `components/settings/UpdatesSection.tsx`, `lib/updates.ts` | Версия, ручная проверка, автопроверка при запуске, установка подписанного обновления |
 | `contexts/TtsContext.tsx` | Только локальное состояние TTS; без сети/OAuth при старте |
 | `lib/tauri.ts`, `lib/tts.ts` | Типизированные IPC-команды |
 | `lib/voices.ts` | Пять RU / четыре EN голоса Silero и прежние имена библиотеки |
@@ -39,6 +40,7 @@ CC BY-NC-SA 4.0 для некоммерческого использования
 | `tts/silero/runtime.rs`, `runtime-files.json` | Безопасная распаковка и проверка файлов |
 | `tts/silero/worker.rs`, `worker.py` | Скрытый CPU-процесс, bounded stdio JSON, офлайн синтез |
 | `commands/tts.rs` | Status/install/cancel/remove/preview; backend consent checks |
+| `commands/updates.rs` | Версия, флаг автопроверки, проверка `latest.json`, скачивание с прогрессом и установка через tauri-plugin-updater |
 | `stt/local` | Необязательные GigaAM/transcribe.cpp; downloader переиспользуется TTS |
 | `stt/moonshine` | EN каталог, staging, проверенные DLL, C ABI, скрытый режим того же EXE |
 | `dictation/stream_resample.rs` | Потоковый mono 16 kHz вне callback, сохранение границ и flush хвоста |

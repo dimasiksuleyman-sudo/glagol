@@ -7,7 +7,7 @@ We aim to acknowledge within 72 hours, assess within seven days and address
 reports within the existing 90-day responsible disclosure window. Do not send
 API keys, private documents or microphone recordings in public reports.
 
-Current development line: 0.5.x (local candidate). Historical releases may still use retired
+Current development line: 0.6.x. Historical releases may still use retired
 providers; use the current code/release when testing fixes.
 
 - Glagol processes local documents and audio. Local Silero TTS and GigaAM/Moonshine
@@ -28,6 +28,10 @@ providers; use the current code/release when testing fixes.
 - Logs contain operational metadata, not document text, audio, transcripts or keys.
   Optional dictation history is off by default and stored locally when enabled.
 - STT credentials use OS keyring slots separate from server/cloud profiles.
+- Update checks contact GitHub only on an explicit button press or, when the user
+  enables it, once after startup (off by default). Installers are accepted only with a
+  valid minisign signature for the public key embedded in the app; the private key
+  stays with the maintainer and never enters the repository or CI.
   The retired TTS key is narrowly deleted without reading it; failures retry at
   startup without blocking the app. Salute OAuth and custom root CA are removed.
 - Webview CSP permits app/IPC/asset traffic; audio scope is limited to the cache.
@@ -52,7 +56,7 @@ remain part of the deployment's security boundary.
 Цель: подтвердить получение за 72 часа, оценить за семь дней и исправить в рамках
 90-дневного ответственного раскрытия. Не публикуйте ключи, личные документы и записи.
 
-Текущая ветка разработки — 0.5.x (локальный кандидат); в исторических выпусках могли использоваться
+Текущая ветка разработки — 0.6.x; в исторических выпусках могли использоваться
 удалённые провайдеры. Для проверки исправлений используйте актуальную версию.
 
 - Silero, GigaAM и Moonshine после загрузки работают локально без сети. При office/cloud STT
@@ -71,6 +75,10 @@ remain part of the deployment's security boundary.
   процессом. Это не полноценная песочница операционной системы.
 - В логах нет текста, аудио, распознанной речи и ключей. История диктовок локальна,
   необязательна и по умолчанию выключена.
+- Проверка обновлений обращается к GitHub только по кнопке или, если пользователь
+  включил автопроверку, один раз после запуска (по умолчанию выключено). Установщик
+  принимается только с верной подписью minisign для встроенного открытого ключа;
+  закрытый ключ хранится у сопровождающего и не попадает в репозиторий и CI.
 - STT-ключи находятся в OS keyring и разделены по профилям. Старый TTS-ключ
   удаляется адресно без чтения; ошибка не блокирует запуск. OAuth и корневой
   сертификат SaluteSpeech больше не используются.
