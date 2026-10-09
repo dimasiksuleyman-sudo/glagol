@@ -1,2 +1,5 @@
-# License acknowledgement uses the exact upstream text hash across platforms.
-docs/third-party/Silero-LICENSE.txt text eol=lf
+# Tauri CLI rewrites these manifests with LF during `tauri build`. Pinning LF on
+# checkout keeps Windows working copies clean (no CRLF-only "modifications"
+# that block `git pull`).
+src-tauri/Cargo.toml text eol=lf
+src-tauri/Cargo.lock text eol=lf
