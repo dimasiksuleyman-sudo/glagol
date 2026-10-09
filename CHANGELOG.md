@@ -11,6 +11,10 @@ the per-session master logs under [`docs/day-logs/`](docs/day-logs/).
 
 ## [Unreleased]
 
+### Added
+
+- The update confirmation shows what is new in the offered version. / Окно подтверждения обновления показывает, что нового в предлагаемой версии.
+
 ## [v0.6.0] — 2026-10-09
 
 [Release notes, validation and limits / проверка и ограничения](docs/releases/v0.6.0.md).

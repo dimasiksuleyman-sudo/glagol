@@ -151,6 +151,15 @@ export function UpdatesSection() {
               {t("Glagol will download the update, verify its signature, close and install it, then start again. Your documents, settings, keys and speech components are kept.")}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {update?.notes?.trim() && (
+            <div className="space-y-1">
+              <p className="text-sm font-medium">{t("What's new")}</p>
+              {/* Plain text from the signed release manifest; rendered as text, never as HTML. */}
+              <p className="text-muted-foreground max-h-48 overflow-y-auto text-sm whitespace-pre-line">
+                {update.notes.trim()}
+              </p>
+            </div>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel>{t("Cancel")}</AlertDialogCancel>
             <AlertDialogAction onClick={handleInstall}>{t("Install")}</AlertDialogAction>

@@ -96,6 +96,10 @@ Get-Item -LiteralPath $installerPath | Select-Object FullName,Length,LastWriteTi
 Get-FileHash -LiteralPath $installerPath -Algorithm SHA256
 ```
 
+Для подписанного релиза (с 0.6.0) SHA-256 и `latest.json` готовит `pnpm release:assets`
+— см. [выпуск](release.md#подпись-обновлений-с-060); `Get-FileHash` остаётся для
+неподписанных локальных сборок.
+
 Записать SHA-256, размер, версию, Git baseline и изменения проверенного дерева.
 Старая сборка с тем же именем не доказывает успех нового запуска: сопоставить
 время/вывод сборки. Артефакт и его хеш — не Git commit.
