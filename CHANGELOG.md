@@ -11,6 +11,10 @@ the per-session master logs under [`docs/day-logs/`](docs/day-logs/).
 
 ## [Unreleased]
 
+## [v0.6.1] — 2026-10-09
+
+[Release notes, validation and limits / проверка и ограничения](docs/releases/v0.6.1.md).
+
 ### Added
 
 - The update confirmation shows what is new in the offered version. / Окно подтверждения обновления показывает, что нового в предлагаемой версии.
@@ -290,7 +294,8 @@ the per-session master logs under [`docs/day-logs/`](docs/day-logs/).
   visible progress bar so the user can see «Озвучиваем фрагмент 5 из 12».
 - **System Save As dialog** for choosing where the resulting WAV goes.
 
-[Unreleased]: https://github.com/dimasiksuleyman-sudo/glagol/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/dimasiksuleyman-sudo/glagol/compare/v0.6.1...HEAD
+[v0.6.1]: https://github.com/dimasiksuleyman-sudo/glagol/releases/tag/v0.6.1
 [v0.6.0]: https://github.com/dimasiksuleyman-sudo/glagol/releases/tag/v0.6.0
 [v0.5.2]: https://github.com/dimasiksuleyman-sudo/glagol/releases/tag/v0.5.2
 [v0.5.1]: https://github.com/dimasiksuleyman-sudo/glagol/releases/tag/v0.5.1
