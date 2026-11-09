@@ -561,3 +561,9 @@ export const getDiagnosticsSettings = () => invoke<DiagnosticsSettings>("get_dia
 /** Applies immediately; the log never contains speech, recognized text or keys. */
 export const setDetailedLogging = (enabled: boolean) => invoke<DiagnosticsSettings>("set_detailed_logging", { enabled });
 export const openLogFolder = () => invoke<void>("open_log_folder");
+
+/** Mirrors `OverlayEvent` in `src-tauri/src/dictation/session.rs` (GL-006 diagnostics). */
+export type OverlayEvent = "mounted" | "state_received" | "frame_painted" | "frame_missing" | "hidden" | "script_error";
+/** Best-effort: the overlay must never fail because a diagnostic report did. */
+export const reportOverlayEvent = (event: OverlayEvent, state?: DictationState["kind"], delayMs?: number) =>
+  invoke<void>("report_overlay_event", { event, state: state ?? null, delayMs: delayMs === undefined ? null : Math.round(delayMs) }).catch(() => undefined);

@@ -171,7 +171,8 @@ never attach private speech, documents or credentials.
 
 Logs: Settings → Diagnostics → Open log folder (`%LOCALAPPDATA%\app.glagol.desktop\logs`,
 one file per day, kept for 7 days). The log always records the processor, model load
-time and the time of each recognition stage. If dictation is slow, turn on Detailed log,
+time and the time of each recognition stage, and how the dictation indicator was shown:
+on which monitor, where, and whether it painted. If dictation is slow or the indicator disappears, turn on Detailed log,
 dictate the same phrase several times, close Glagol through the tray and attach that
 day's file. The log contains no speech, recognized text, documents or keys. You can
 turn the switch off afterwards.

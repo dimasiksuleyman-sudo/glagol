@@ -58,11 +58,59 @@
       ]
     },
     {
-      "id": "S2",
-      "title": "Сборка и журналы одной и той же диктовки на ПК и ноутбуке",
-      "status": "pending",
+      "id": "S1b",
+      "title": "Диагностика пропадающего индикатора диктовки (GL-006); автоматические гейты",
+      "status": "done",
       "depends_on": [
         "S1"
+      ],
+      "required": [
+        "rust",
+        "frontend"
+      ],
+      "checks": [
+        {
+          "id": "rust",
+          "status": "PASS",
+          "method": "command",
+          "command": "cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test",
+          "cwd": "src-tauri",
+          "at": "2026-11-09T08:16:33.000Z",
+          "environment": {
+            "os": "Linux container",
+            "rustc": "1.97.0",
+            "node": "v22.23.4",
+            "pnpm": "10.28.0"
+          },
+          "exit_code": 0,
+          "output": "test result: ok. 351 passed; 0 failed; 6 ignored",
+          "evidence": "docs/workstreams/dictation-speed/log.md"
+        },
+        {
+          "id": "frontend",
+          "status": "PASS",
+          "method": "command",
+          "command": "pnpm build",
+          "cwd": ".",
+          "at": "2026-11-09T08:16:33.000Z",
+          "environment": {
+            "os": "Linux container",
+            "rustc": "1.97.0",
+            "node": "v22.23.4",
+            "pnpm": "10.28.0"
+          },
+          "exit_code": 0,
+          "output": "I18N PASS: 264 keys; ✓ built",
+          "evidence": "docs/workstreams/dictation-speed/log.md"
+        }
+      ]
+    },
+    {
+      "id": "S2",
+      "title": "Сборка на ПК до выпуска: журналы одной и той же диктовки на ПК и ноутбуке, случаи пропажи индикатора",
+      "status": "pending",
+      "depends_on": [
+        "S1b"
       ],
       "required": [
         "logs"

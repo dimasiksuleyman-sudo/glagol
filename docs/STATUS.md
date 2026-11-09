@@ -7,13 +7,13 @@
 
 Выбранная серия: **Скорость диктовки и отключение озвучки (0.6.2)**.
 
-**NEXT: S2 — Сборка и журналы одной и той же диктовки на ПК и ноутбуке** (pending).
+**NEXT: S2 — Сборка на ПК до выпуска: журналы одной и той же диктовки на ПК и ноутбуке, случаи пропажи индикатора** (pending).
 
 [Решения](workstreams/dictation-speed/README.md) · [Состояние](workstreams/dictation-speed/state.json) · [Журнал](workstreams/dictation-speed/log.md)
 
-Последний завершённый шаг серии: **S1 — Диагностический журнал, «Подробный журнал», папка журналов, переключатель озвучки; автоматические гейты**.
+Последний завершённый шаг серии: **S1b — Диагностика пропадающего индикатора диктовки (GL-006); автоматические гейты**.
 
-Проверка 2026-11-09T07:45:39.000Z: test result: ok. 350 passed; 0 failed; 6 ignored ([evidence](../docs/workstreams/dictation-speed/log.md)).
+Проверка 2026-11-09T08:16:33.000Z: test result: ok. 351 passed; 0 failed; 6 ignored ([evidence](../docs/workstreams/dictation-speed/log.md)).
 
 ## Доставка и наблюдения
 

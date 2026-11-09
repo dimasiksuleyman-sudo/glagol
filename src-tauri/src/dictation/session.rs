@@ -486,12 +486,111 @@ fn position_overlay(app: &AppHandle) {
     if let Err(e) = window.set_position(PhysicalPosition::new(x, y)) {
         tracing::warn!("failed to position overlay: {e}");
     }
+    tracing::debug!(
+        monitor = monitor.name().map(String::as_str).unwrap_or(""),
+        monitors = app.available_monitors().map(|m| m.len()).unwrap_or(0),
+        monitor_x = mon_pos.x,
+        monitor_y = mon_pos.y,
+        monitor_width = mon_size.width,
+        monitor_height = mon_size.height,
+        scale,
+        x = x as i64,
+        y = y as i64,
+        "overlay positioned"
+    );
 }
 
 /// Show the overlay window (created hidden at startup, D5).
+///
+/// GL-006 diagnostics: the pill can vanish while dictation keeps working, so
+/// every show records whether the window exists, accepted `show()`, reports
+/// itself visible and where it is. The pill's own reports
+/// ([`report_overlay_event`]) then tell whether its page received the state and
+/// painted a frame.
 fn show_overlay(app: &AppHandle) {
-    if let Some(window) = current_overlay(app) {
-        let _ = window.show();
+    let generation = OVERLAY_GENERATION.load(Ordering::SeqCst);
+    let Some(window) = current_overlay(app) else {
+        tracing::warn!(generation, "overlay window missing — cannot show");
+        return;
+    };
+    let shown = window.show();
+    if let Err(e) = &shown {
+        tracing::warn!(generation, "failed to show overlay: {e}");
+    }
+    let position = window.outer_position().ok();
+    let size = window.outer_size().ok();
+    tracing::debug!(
+        generation,
+        show_ok = shown.is_ok(),
+        visible = window.is_visible().unwrap_or(false),
+        minimized = window.is_minimized().unwrap_or(false),
+        x = position.map(|p| p.x).unwrap_or(i32::MIN),
+        y = position.map(|p| p.y).unwrap_or(i32::MIN),
+        width = size.map(|s| s.width).unwrap_or(0),
+        height = size.map(|s| s.height).unwrap_or(0),
+        "overlay shown"
+    );
+}
+
+/// What the overlay page reports about itself (GL-006 diagnostics).
+#[derive(Clone, Copy, Debug, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum OverlayEvent {
+    /// The page script started (first load or a WebView reload).
+    Mounted,
+    /// A `dictation-state` event reached the page.
+    StateReceived,
+    /// A frame was painted after the state arrived.
+    FramePainted,
+    /// No frame was painted within the page's deadline after the state arrived.
+    FrameMissing,
+    /// The page hid its window after a terminal state.
+    Hidden,
+    /// An uncaught script error or rejected promise in the page.
+    ScriptError,
+}
+
+/// Dictation states the overlay may name; anything else is dropped.
+const OVERLAY_STATES: &[&str] = &["starting", "recording", "processing", "done", "error"];
+
+/// Sanitize page-supplied fields: unknown state names become empty and the
+/// delay is capped at ten minutes.
+fn overlay_report_fields(state: Option<&str>, delay_ms: Option<u64>) -> (&'static str, u64) {
+    let state = state
+        .and_then(|s| OVERLAY_STATES.iter().copied().find(|known| *known == s))
+        .unwrap_or("");
+    (state, delay_ms.map(|d| d.min(600_000)).unwrap_or(0))
+}
+
+/// Log a report from the overlay page. Only an allow-listed event, state name
+/// and a bounded delay are accepted — the page cannot write free text to the log.
+#[tauri::command]
+pub fn report_overlay_event(
+    window: WebviewWindow,
+    event: OverlayEvent,
+    state: Option<String>,
+    delay_ms: Option<u64>,
+) {
+    let (state, delay_ms) = overlay_report_fields(state.as_deref(), delay_ms);
+    let label = window.label();
+    let current = overlay_label(OVERLAY_GENERATION.load(Ordering::SeqCst));
+    match event {
+        OverlayEvent::FrameMissing | OverlayEvent::ScriptError => tracing::warn!(
+            window = label,
+            current = label == current,
+            ?event,
+            state,
+            delay_ms,
+            "overlay page report"
+        ),
+        _ => tracing::debug!(
+            window = label,
+            current = label == current,
+            ?event,
+            state,
+            delay_ms,
+            "overlay page report"
+        ),
     }
 }
 
@@ -517,7 +616,7 @@ fn current_overlay(app: &AppHandle) -> Option<WebviewWindow> {
 /// `transparent` + always-on-top + `skipTaskbar` + `focused(false)` so the pill
 /// floats over the target app without stealing its keyboard focus.
 pub fn build_overlay(app: &AppHandle, label: &str) -> tauri::Result<WebviewWindow> {
-    WebviewWindowBuilder::new(app, label, WebviewUrl::App("index.html".into()))
+    let window = WebviewWindowBuilder::new(app, label, WebviewUrl::App("index.html".into()))
         .title("Glagol overlay")
         .inner_size(OVERLAY_WIDTH, OVERLAY_HEIGHT)
         .transparent(true)
@@ -528,7 +627,31 @@ pub fn build_overlay(app: &AppHandle, label: &str) -> tauri::Result<WebviewWindo
         .resizable(false)
         .shadow(false)
         .visible(false)
-        .build()
+        // GL-006: a second "page load" for the same window means WebView2
+        // reloaded the pill (for example after its renderer process failed).
+        .on_page_load(|window, payload| {
+            tracing::info!(
+                window = window.label(),
+                event = ?payload.event(),
+                "overlay page load"
+            );
+        })
+        .build()?;
+    let window_label = window.label().to_string();
+    window.on_window_event(move |event| match event {
+        tauri::WindowEvent::Destroyed => {
+            tracing::info!(window = %window_label, "overlay window destroyed")
+        }
+        tauri::WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
+            tracing::info!(window = %window_label, scale_factor, "overlay scale changed")
+        }
+        tauri::WindowEvent::Focused(true) => {
+            tracing::debug!(window = %window_label, "overlay took focus")
+        }
+        _ => {}
+    });
+    tracing::info!(window = label, "overlay window built");
+    Ok(window)
 }
 
 /// Whether a wall-clock advance of `wall_elapsed` over one `poll` interval
@@ -772,6 +895,19 @@ pub(crate) fn mark_tray_notice_shown(conn: &Connection, updated_at: i64) -> rusq
 mod tests {
     use super::*;
     use crate::db::test_connection;
+
+    #[test]
+    fn overlay_report_accepts_only_known_states_and_bounded_delays() {
+        assert_eq!(
+            overlay_report_fields(Some("recording"), Some(40)),
+            ("recording", 40)
+        );
+        assert_eq!(overlay_report_fields(Some("secret text"), None), ("", 0));
+        assert_eq!(overlay_report_fields(None, Some(u64::MAX)), ("", 600_000));
+        let event: OverlayEvent = serde_json::from_str("\"frame_missing\"").unwrap();
+        assert!(matches!(event, OverlayEvent::FrameMissing));
+        assert!(serde_json::from_str::<OverlayEvent>("\"anything\"").is_err());
+    }
 
     /// A minimal `AppState` for the advisory-history tests: real in-memory DB, no
     /// recorder thread. Mirrors `commands::dictation::tests::fresh_state`.

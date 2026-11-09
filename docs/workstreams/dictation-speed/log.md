@@ -75,3 +75,34 @@ ggml_backend_reg_* проверены `objdump -p`.
 
 Не проверено: работа на Windows (реальные строки журнала, открытие папки,
 выгрузка worker). Это S2 вместе с журналами на ПК и ноутбуке.
+
+## 2026-11-09T08:16:33.000Z — S1b диагностика индикатора (GL-006)
+
+Reported (пользователь): на ноутбуке процессор с AVX2, на ПК без AVX2; проверить
+на ПК до выпуска; «постоянно пропадает пилюля», причину выяснить по журналам.
+Отсутствие AVX2 согласуется с гипотезой о медленном CPU-варианте ggml, но это
+не доказано: «local STT compute devices» и «system diagnostics» с ПК покажут
+выбранный вариант.
+
+Код: окно индикатора прозрачное; если его WebView перестаёт рисовать или
+перезагружается, индикатор невидим, а диктовка работает (совпадает с GL-006).
+Добавлено:
+- Rust: «overlay window built», «overlay page load» (Started/Finished — повтор
+  означает перезагрузку страницы), «overlay window destroyed», «overlay scale
+  changed», «overlay took focus»; «overlay positioned» (монитор, их число,
+  геометрия, масштаб, x/y); «overlay shown» (поколение окна, show_ok, visible,
+  minimized, x/y, размер); warn при отсутствии окна или ошибке show.
+- Страница индикатора → команда report_overlay_event: mounted, state_received,
+  frame_painted (задержка), frame_missing (нет кадра за 2 с — warn), hidden,
+  script_error (без текста ошибки). Принимаются только перечисление событий,
+  имя состояния из белого списка и задержка ≤ 600 000 мс; тест
+  overlay_report_accepts_only_known_states_and_bounded_delays.
+- Руководства RU/EN и CHANGELOG дополнены описанием этих записей.
+
+Проверки (Linux container, rustc 1.97.0, node v22.23.4, pnpm 10.28.0;
+PDFIUM_LIBRARY_PATH как в S1): cargo fmt --check, clippy -D warnings,
+cargo test — exit 0, «351 passed; 0 failed; 6 ignored»; pnpm build — exit 0,
+«I18N PASS: 264 keys», «✓ built». На Windows не запускалось.
+
+Далее S2: установка сборки этой ветки на ПК (без выпуска), подробный журнал,
+одинаковая фраза на ПК и ноутбуке, отметить время пропажи индикатора.
