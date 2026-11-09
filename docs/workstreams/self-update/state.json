@@ -2,14 +2,10 @@
   "schema_version": 1,
   "id": "self-update",
   "title": "Самообновление и версия программы (0.6.0)",
-  "status": "active",
+  "status": "paused",
   "next": "U3",
-  "reason": null,
-  "claim": {
-    "owner": "claude",
-    "at": "2026-10-09T09:12:55.000Z",
-    "branch": "claude/pensive-wright-8jxin9"
-  },
+  "reason": "U3 ждёт подтверждения: пользователь 2026-11-09 сообщил, что 0.6.1 установлена и работает, но способ установки (обновление из 0.6.0 внутри программы или вручную) не уточнён. Продолжение: спросить способ и записать manual-update.",
+  "claim": null,
   "links": [
     "docs/workstreams/self-update/README.md",
     "docs/workstreams/self-update/log.md"
@@ -107,7 +103,7 @@
     {
       "id": "U3",
       "title": "Выпуск 0.6.1 и обновление из 0.6.0 внутри программы",
-      "status": "in_progress",
+      "status": "pending",
       "depends_on": [
         "U2"
       ],
