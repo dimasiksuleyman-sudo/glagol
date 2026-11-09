@@ -1,7 +1,7 @@
 # Glagol user guides / Руководства
 
-- [English — Glagol 0.6.1](USER_GUIDE.en.md)
-- [Русский — Глагол 0.6.1](USER_GUIDE.ru.md)
+- [English — Glagol 0.6.3](USER_GUIDE.en.md)
+- [Русский — Глагол 0.6.3](USER_GUIDE.ru.md)
 
-These guides describe the local 0.5.0 candidate; [0.4.1](docs/releases/v0.4.1.md) is the latest published release.
-Руководства описывают локальный кандидат 0.5.0; последний опубликованный выпуск — 0.4.1.
+These guides describe Glagol 0.6.3; see [release notes](docs/releases/v0.6.3.md).
+Руководства описывают Глагол 0.6.3; см. [заметки к выпуску](docs/releases/v0.6.3.md).

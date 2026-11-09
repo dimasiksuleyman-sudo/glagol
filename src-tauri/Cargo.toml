@@ -1,6 +1,6 @@
 [package]
 name = "glagol"
-version = "0.6.2"
+version = "0.6.3"
 description = "English and Russian dictation and optional offline speech synthesis"
 authors = ["Glagol Contributors"]
 edition = "2021"
@@ -178,7 +178,7 @@ arboard = { version = "=3.6.1", default-features = false }
 # `TextInserter` seam inside `spawn_blocking`, so unit tests stay hardware-free.
 enigo = "=0.6.1"
 
-# Native overlay diagnostics and recovery on Windows (0.6.2, GL-006): display,
+# Native overlay diagnostics and recovery on Windows (0.6.3, GL-006): display,
 # power and session notifications, DWM cloak state and the WebView2
 # ProcessFailed event for the dictation pill. Exact pins to the versions Tauri
 # 2.11.1 already resolves (windows 0.61.3, webview2-com 0.38.2), so no second

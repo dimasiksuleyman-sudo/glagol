@@ -317,3 +317,27 @@ webview2-com =0.38.2, тем же Cargo.lock и копией overlay_native.rs �
 Win+L на 10–30 мин, Win+Ctrl+Shift+B; после каждого — диктовка и журнал.
 Если пропажа повторится — A/B transparent=false, «парковка» вместо hide,
 обновление Tauri до 2.12 с no_redirection_bitmap (отдельное решение).
+
+## 2026-11-09T15:19:01.000Z — S4 подготовка выпуска 0.6.3
+
+Согласование: пользователь — «давай сделаем релиз, изменения хорошие, допишем
+доки и будем наблюдать». Номер 0.6.3 (предложен ранее, возражений не было):
+на ПК стоит тестовая 0.6.2, обновление из программы предлагает только более
+новую версию; 0.6.2 не публикуется.
+
+Сделано: версия 0.6.3 в package.json, Cargo.toml, Cargo.lock, tauri.conf.json;
+docs/releases/v0.6.3.md (EN/RU, замеры ПК, ограничения: Vulkan по выбору,
+зависание драйвера не ловится, индикатор под наблюдением); CHANGELOG
+[v0.6.3] — 2026-11-09; заголовки и ссылки обеих USER_GUIDE и USER_GUIDE.md
+(устаревшая строка про «кандидат 0.5.0» заменена); README — ссылка на
+установщик v0.6.3. Размер и SHA-256 установщика — плейсхолдеры
+{{INSTALLER_*}} до подписанной сборки пользователя.
+
+Проверки (Linux container, rustc 1.97.0, node v22.23.4, pnpm 10.28.0):
+check-version «Glagol 0.6.3 … versions match»; cargo fmt --check, clippy
+--locked -D warnings, cargo test --locked — exit 0, «356 passed»; pnpm build —
+exit 0, «I18N PASS: 279 keys»; release-assets 3 pass.
+
+Далее: подписанная сборка пользователя на Windows, release:assets, размер и
+SHA-256 в release notes/README, PR в main и CI, merge, GitHub Release v0.6.3
+(latest), сверка latest.json/подписи, обновление 0.6.x из программы.

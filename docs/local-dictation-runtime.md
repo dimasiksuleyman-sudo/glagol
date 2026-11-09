@@ -45,7 +45,7 @@ The following in-process lifetime applies only to the existing Russian path.
 Complete files are installed only after size and SHA-256 checks. Native archive
 extraction rejects absolute paths, parent components and links. Before a load, the
 model hash is checked and runtime files are compared against the verified archive;
-since 0.6.2 that full check is recorded in `verification-<model>.json` with the size
+since 0.6.3 that full check is recorded in `verification-<model>.json` with the size
 and modification time of the model, the archive and every runtime file, and is reused
 for at most 30 days while they are unchanged. Repair, removal, a failed session open
 or a recognition error delete the receipt and force the full check.

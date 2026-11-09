@@ -11,6 +11,10 @@ the per-session master logs under [`docs/day-logs/`](docs/day-logs/).
 
 ## [Unreleased]
 
+## [v0.6.3] — 2026-11-09
+
+[Release notes, validation and limits / проверка и ограничения](docs/releases/v0.6.3.md). Version 0.6.2 was an unpublished test build. / Версия 0.6.2 была неопубликованной тестовой сборкой.
+
 ### Added
 
 - Settings → Dictation → Recognition speed for the Russian local model: compute on the processor or the graphics card (Vulkan), and choose the number of processor threads. A graphics-card failure falls back to the processor with a warning. One-click hints suggest the graphics card when one was detected and GigaAM CTC (now marked recommended) instead of RNNT. / «Настройки» → «Диктовка» → «Скорость распознавания» для русской локальной модели: считать на процессоре или на видеокарте (Vulkan) и выбрать число потоков процессора. При сбое видеокарты Глагол переходит на процессор и показывает предупреждение. Подсказки в один клик предлагают видеокарту, если она обнаружена, и GigaAM CTC (теперь отмечена как рекомендуемая) вместо RNNT.
