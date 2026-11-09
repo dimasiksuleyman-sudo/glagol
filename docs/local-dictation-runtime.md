@@ -17,7 +17,7 @@ code change and a native smoke test on Windows x64.
   and [third-party notices](third-party/ONNX-Runtime-ThirdPartyNotices.txt) are retained.
 
 - [transcribe.cpp 0.2.3](https://github.com/handy-computer/transcribe.cpp/releases/tag/v0.2.3),
-  Windows x64 CPU/Vulkan archive, 20,077,848 bytes. Glagol explicitly selects CPU.
+  Windows x64 CPU/Vulkan archive, 20,077,848 bytes. Glagol uses the CPU by default; Vulkan is opt-in.
   Its package retains its MIT license and bundled third-party notices.
 - [GigaAM v3 E2E CTC Q8_0](https://huggingface.co/handy-computer/gigaam-v3-e2e-ctc-gguf),
   revision `075dff81f843cf23d22b4ce943ffdc4dd8650cd7`, 272,151,136 bytes.
@@ -43,14 +43,28 @@ The following in-process lifetime applies only to the existing Russian path.
 `paths::local_models_root` resolves the app-local `speech_models` directory.
 `.part` files remain after cancellation/disconnection and use HTTP Range to resume.
 Complete files are installed only after size and SHA-256 checks. Native archive
-extraction rejects absolute paths, parent components and links. Before the first
-load, runtime files are compared against the verified archive.
+extraction rejects absolute paths, parent components and links. Before a load, the
+model hash is checked and runtime files are compared against the verified archive;
+since 0.6.3 that full check is recorded in `verification-<model>.json` with the size
+and modification time of the model, the archive and every runtime file, and is reused
+for at most 30 days while they are unchanged. Repair, removal, a failed session open
+or a recognition error delete the receipt and force the full check.
+
+The Russian session uses the CPU by default. Settings can request the Vulkan backend
+of the same pinned runtime (`TRANSCRIBE_BACKEND_VULKAN`, first Vulkan device); if the
+session cannot open there it opens on the CPU, and a recognition error on Vulkan
+switches to the CPU and retries once for the rest of the process. The CPU thread count
+is passed through `transcribe_session_params::n_threads` (0 = library default,
+min(8, CPUs)).
 
 The native library remains loaded for the process lifetime: ggml keeps global
 backend registrations. A mutex owns one session/model at a time, and inference
 runs in `spawn_blocking`. Session destruction precedes freeing weights. No model
 is downloaded during recognition. Logs include model ID and timing, never audio
-or recognized text. Short utterances remain intact; long audio is partitioned
+or recognized text: runtime initialization, registered devices and the selected ggml
+CPU variant's features (through the public device/registry API; the engine's own log
+callback stays disabled), model verification/load time, and per-recording mel,
+encoder and decoder time with the default thread count. Short utterances remain intact; long audio is partitioned
 near low-energy boundaries between 16 and 24 seconds without losing samples.
 
 ## Reproduce native verification

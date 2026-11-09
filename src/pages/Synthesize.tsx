@@ -75,7 +75,8 @@ export function Synthesize() {
   const warmupStarted = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!status?.installed || !status.accepted || warmupStarted.current === provider) return;
+    // Text to speech can be turned off in Settings; then nothing is prepared.
+    if (preferences?.tts_enabled === false || !status?.installed || !status.accepted || warmupStarted.current === provider) return;
     warmupStarted.current = provider;
     setIsWarmingUp(true);
     // The backend reports preparation failures through TTS status; the warm-up
@@ -83,7 +84,7 @@ export function Synthesize() {
     void prepareTts(provider)
       .catch(() => undefined)
       .finally(() => { if (warmupStarted.current === provider) setIsWarmingUp(false); });
-  }, [provider, status?.accepted, status?.installed]);
+  }, [provider, status?.accepted, status?.installed, preferences?.tts_enabled]);
 
   async function handleSynthesize() {
     setIsLoading(true);

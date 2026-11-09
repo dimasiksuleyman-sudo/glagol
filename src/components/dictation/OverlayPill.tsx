@@ -2,11 +2,12 @@ import { t } from "@/i18n";
 import { useI18n } from "@/contexts/PreferencesContext";
 import { useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { getCurrentWindow } from "@tauri-apps/api/window";
 
 import {
   DICTATION_LEVEL_EVENT,
   DICTATION_STATE_EVENT,
+  hideOverlay,
+  reportOverlayEvent,
   type DictationDisposition,
   type DictationLevelPayload,
   type DictationState,
@@ -56,6 +57,8 @@ export function dispositionPillText(
 
 const HIDE_AFTER_DONE_MS = 1500;
 const HIDE_AFTER_ERROR_MS = 3000;
+/** A shown pill that paints no frame for this long is reported (GL-006). */
+const FRAME_DEADLINE_MS = 2000;
 const BAR_MULTIPLIERS = [0.45, 0.75, 1.0, 0.85, 1.0, 0.7, 0.4];
 
 export function OverlayPill() {
@@ -67,6 +70,26 @@ export function OverlayPill() {
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    // GL-006 diagnostics: report page start, delivery of each state and whether
+    // a frame was painted, so the log shows where a vanished pill broke down.
+    reportOverlayEvent("mounted");
+    const onError = () => reportOverlayEvent("script_error");
+    window.addEventListener("error", onError);
+    window.addEventListener("unhandledrejection", onError);
+    let frameCheck = 0;
+    const reportFrame = (kind: DictationState["kind"]) => {
+      const check = ++frameCheck;
+      const started = performance.now();
+      let painted = false;
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        painted = true;
+        if (check === frameCheck) reportOverlayEvent("frame_painted", kind, performance.now() - started);
+      }));
+      setTimeout(() => {
+        if (!painted && check === frameCheck) reportOverlayEvent("frame_missing", kind, performance.now() - started);
+      }, FRAME_DEADLINE_MS);
+    };
+
     const clearHideTimer = () => {
       if (hideTimer.current !== null) {
         clearTimeout(hideTimer.current);
@@ -84,7 +107,9 @@ export function OverlayPill() {
         delay = 0;
       }
       hideTimer.current = setTimeout(() => {
-        void getCurrentWindow().hide();
+        // Rust hides the window only if no new dictation started meanwhile.
+        void hideOverlay();
+        reportOverlayEvent("hidden", next.kind, delay);
         // The next session starts with device preparation, never false readiness.
         setState({ kind: "starting" });
         setLevel(0);
@@ -94,6 +119,9 @@ export function OverlayPill() {
     const stateUnlisten = listen<DictationState>(DICTATION_STATE_EVENT, (event) => {
       const next = event.payload;
       setState(next);
+      reportOverlayEvent("state_received", next.kind);
+      // A terminal state may hide the window at once; only check visible states.
+      if (!(next.kind === "done" && next.disposition === "discarded")) reportFrame(next.kind);
       if (next.kind === "starting" || next.kind === "recording") {
         clearHideTimer();
         setLevel(0);
@@ -107,6 +135,9 @@ export function OverlayPill() {
     });
 
     return () => {
+      frameCheck++;
+      window.removeEventListener("error", onError);
+      window.removeEventListener("unhandledrejection", onError);
       clearHideTimer();
       void stateUnlisten.then((fn) => fn());
       void levelUnlisten.then((fn) => fn());

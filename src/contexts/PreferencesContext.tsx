@@ -12,6 +12,8 @@ export interface Preferences {
   tts_voice_en: string;
   tts_voice_ru: string;
   legacy_voice_migrated: boolean;
+  /** Settings → Text to speech switch. When false, Silero is never prepared. */
+  tts_enabled: boolean;
 }
 interface Context {
   preferences: Preferences | null;
@@ -23,6 +25,7 @@ interface Context {
   setTtsLanguage: (language: Language) => Promise<void>;
   setSttLanguage: (language: Language) => Promise<void>;
   setTtsVoice: (voice: string) => Promise<void>;
+  setTtsEnabled: (enabled: boolean) => Promise<void>;
 }
 const PreferencesContext = createContext<Context | null>(null);
 export function PreferencesProvider({ children, overlay = false }: { children: ReactNode; overlay?: boolean }) {
@@ -63,6 +66,7 @@ export function PreferencesProvider({ children, overlay = false }: { children: R
     setTtsLanguage: language => change("set_tts_preference", { language, voice: null }),
     setSttLanguage: language => change("set_stt_preference", { language }),
     setTtsVoice: voice => change("set_tts_preference", { language: preferences?.tts_language ?? "ru", voice }),
+    setTtsEnabled: enabled => change("set_tts_enabled", { enabled }),
   }}>{children}</PreferencesContext.Provider>;
 }
 export function usePreferences() {

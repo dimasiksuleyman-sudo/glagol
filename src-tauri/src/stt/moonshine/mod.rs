@@ -49,10 +49,15 @@ impl crate::stt::SttProvider for Provider {
             .as_ref()
             .and_then(|s| s.result.lock().unwrap().take())
             .ok_or_else(|| crate::stt::SttError::Api("No active Moonshine recording.".into()))?;
+        let started = std::time::Instant::now();
         let text = receiver
             .await
             .map_err(|_| crate::stt::SttError::Api("The recognition worker exited.".into()))?
             .map_err(crate::stt::SttError::Api)?;
+        tracing::info!(
+            finish_ms = started.elapsed().as_millis() as u64,
+            "local EN STT completed"
+        );
         Ok(crate::stt::Transcript { text })
     }
     async fn list_models(&self) -> Result<Vec<String>, crate::stt::SttError> {
@@ -81,7 +86,15 @@ impl Moonshine {
         let failed = Arc::new(AtomicBool::new(false));
         let mut worker = match self.worker.lock().await.take() {
             Some(worker) => worker,
-            None => worker::Worker::start(&self.root, &failed).await?,
+            None => {
+                let started = std::time::Instant::now();
+                let worker = worker::Worker::start(&self.root, &failed).await?;
+                tracing::info!(
+                    elapsed_ms = started.elapsed().as_millis() as u64,
+                    "local EN STT worker started"
+                );
+                worker
+            }
         };
         worker.request(worker::Request::Begin, &failed).await?;
         let (sender, mut receiver) = tokio::sync::mpsc::channel(32);

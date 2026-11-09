@@ -5,6 +5,14 @@ use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 static RUSSIAN_UI: AtomicBool = AtomicBool::new(false);
+/// Mirror of the persisted `tts_enabled` switch for code without DB access.
+static TTS_ENABLED: AtomicBool = AtomicBool::new(true);
+
+/// Whether text to speech is turned on (Settings → Text to speech). When off,
+/// Silero files are not verified at startup and no worker is started.
+pub fn tts_enabled() -> bool {
+    TTS_ENABLED.load(Ordering::Relaxed)
+}
 
 pub fn language() -> Language {
     if RUSSIAN_UI.load(Ordering::Relaxed) {
@@ -57,6 +65,7 @@ pub struct Preferences {
     pub tts_voice_en: String,
     pub tts_voice_ru: String,
     pub legacy_voice_migrated: bool,
+    pub tts_enabled: bool,
 }
 
 fn read(conn: &Connection, key: &str, default: &str) -> rusqlite::Result<String> {
@@ -109,6 +118,7 @@ pub fn get(conn: &Connection) -> rusqlite::Result<Preferences> {
         tts_voice_en: read(conn, "tts_voice_en", "en_0")?,
         tts_voice_ru: read(conn, "tts_voice_ru", "xenia")?,
         legacy_voice_migrated: read(conn, "legacy_voice_migrated", "0")? == "1",
+        tts_enabled: read(conn, "tts_enabled", "1")? != "0",
     })
 }
 
@@ -131,6 +141,18 @@ pub fn set_stt_language(conn: &Connection, language: Language) -> rusqlite::Resu
 /// Set native message language after loading/saving preferences.
 pub fn activate(language: Language) {
     RUSSIAN_UI.store(language == Language::Ru, Ordering::Relaxed);
+}
+
+/// Apply the persisted text-to-speech switch to [`tts_enabled`].
+pub fn activate_tts(enabled: bool) {
+    TTS_ENABLED.store(enabled, Ordering::Relaxed);
+}
+
+/// Persist the text-to-speech switch. Models, runtime and consent are kept.
+pub fn set_tts_enabled(conn: &Connection, enabled: bool) -> rusqlite::Result<()> {
+    put(conn, "tts_enabled", if enabled { "1" } else { "0" })?;
+    activate_tts(enabled);
+    Ok(())
 }
 
 /// First choice seeds speech languages only for a fresh installation.
@@ -225,6 +247,21 @@ mod tests {
         finish_onboarding(&c).unwrap();
         assert_eq!(get(&c).unwrap().onboarding_stage, "complete");
     }
+    #[test]
+    fn tts_is_enabled_by_default_and_the_switch_survives_restart() {
+        let c = db();
+        initialize(&c, true).unwrap();
+        assert!(get(&c).unwrap().tts_enabled);
+        set_tts_enabled(&c, false).unwrap();
+        initialize(&c, true).unwrap();
+        let p = get(&c).unwrap();
+        assert!(!p.tts_enabled);
+        assert_eq!(p.tts_language, Language::Ru);
+        set_tts_enabled(&c, true).unwrap();
+        assert!(get(&c).unwrap().tts_enabled);
+        assert!(tts_enabled());
+    }
+
     #[test]
     fn upgrade_preserves_profiles_and_migrates_voice_once() {
         let c = db();

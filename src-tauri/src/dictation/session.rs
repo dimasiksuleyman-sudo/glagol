@@ -20,7 +20,7 @@
 //! The pipeline's wall-clock watchdog (D10) is the second line if a `Released`
 //! is ever lost.
 
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::{Duration, SystemTime};
 
 use rusqlite::Connection;
@@ -52,6 +52,17 @@ pub const OVERLAY_LABEL: &str = "overlay";
 
 /// How many times the overlay window was rebuilt. `0` is the startup window.
 static OVERLAY_GENERATION: AtomicU64 = AtomicU64::new(0);
+
+/// The overlay must be rebuilt before it is trusted again: set after sleep,
+/// display/session transitions and WebView2 process failures (GL-006).
+static OVERLAY_STALE: AtomicBool = AtomicBool::new(false);
+
+/// Mark the overlay for rebuild at the next idle poll, with the reason.
+fn mark_overlay_stale(reason: &str) {
+    if !OVERLAY_STALE.swap(true, Ordering::SeqCst) {
+        tracing::info!(reason, "overlay marked for rebuild");
+    }
+}
 
 /// Interval of the sleep/resume watcher thread.
 const RESUME_POLL: Duration = Duration::from_secs(3);
@@ -197,6 +208,8 @@ async fn run_session(app: AppHandle, release_rx: oneshot::Receiver<()>, token: u
         }
     };
 
+    log_dictation_context(&app);
+
     // The two delivery seams (D8): zero-field unit structs holding no OS handle,
     // so they cost nothing to construct here and open a fresh `Enigo` /
     // `arboard::Clipboard` per call inside the pipeline's `spawn_blocking`.
@@ -259,6 +272,45 @@ async fn run_session(app: AppHandle, release_rx: oneshot::Receiver<()>, token: u
     }
 
     finish_session(&app, &state, token);
+}
+
+/// Record the conditions that can slow recognition (0.6.2 diagnostics): Windows
+/// may throttle a process whose window is hidden or unfocused, and a loaded or
+/// busy Silero worker competes for CPU. Flags only — no content.
+fn log_dictation_context(app: &AppHandle) {
+    let window = app.get_webview_window("main");
+    let visible = window
+        .as_ref()
+        .and_then(|w| w.is_visible().ok())
+        .unwrap_or(false);
+    let focused = window
+        .as_ref()
+        .and_then(|w| w.is_focused().ok())
+        .unwrap_or(false);
+    let minimized = window
+        .as_ref()
+        .and_then(|w| w.is_minimized().ok())
+        .unwrap_or(false);
+    let (tts_loaded, tts_busy) = app
+        .try_state::<crate::tts::silero::models::Models>()
+        .map(|models| {
+            let loaded = [&models.ru, &models.en].iter().any(|m| {
+                m.worker
+                    .try_lock()
+                    .map(|worker| worker.is_some())
+                    .unwrap_or(true)
+            });
+            (loaded, models.ru.operation.try_lock().is_err())
+        })
+        .unwrap_or((false, false));
+    tracing::debug!(
+        window_visible = visible,
+        window_focused = focused,
+        window_minimized = minimized,
+        tts_worker_loaded = tts_loaded,
+        tts_operation_busy = tts_busy,
+        "dictation context"
+    );
 }
 
 /// Persisted `dictations.status` for a delivery disposition (D2). `Delivered`
@@ -445,12 +497,132 @@ fn position_overlay(app: &AppHandle) {
     if let Err(e) = window.set_position(PhysicalPosition::new(x, y)) {
         tracing::warn!("failed to position overlay: {e}");
     }
+    tracing::debug!(
+        monitor = monitor.name().map(String::as_str).unwrap_or(""),
+        monitors = app.available_monitors().map(|m| m.len()).unwrap_or(0),
+        monitor_x = mon_pos.x,
+        monitor_y = mon_pos.y,
+        monitor_width = mon_size.width,
+        monitor_height = mon_size.height,
+        scale,
+        x = x as i64,
+        y = y as i64,
+        "overlay positioned"
+    );
 }
 
-/// Show the overlay window (created hidden at startup, D5).
+/// Show the overlay window (created hidden at startup, D5). Re-asserts
+/// always-on-top first and checks the native WebView2 state afterwards.
+///
+/// GL-006 diagnostics: the pill can vanish while dictation keeps working, so
+/// every show records whether the window exists, accepted `show()`, reports
+/// itself visible and where it is. The pill's own reports
+/// ([`report_overlay_event`]) then tell whether its page received the state and
+/// painted a frame.
 fn show_overlay(app: &AppHandle) {
-    if let Some(window) = current_overlay(app) {
-        let _ = window.show();
+    let generation = OVERLAY_GENERATION.load(Ordering::SeqCst);
+    let Some(window) = current_overlay(app) else {
+        tracing::warn!(generation, "overlay window missing — cannot show");
+        return;
+    };
+    if let Err(e) = window.set_always_on_top(true) {
+        tracing::warn!(generation, "failed to re-assert overlay always-on-top: {e}");
+    }
+    let shown = window.show();
+    super::overlay_native::check_after_show(&window);
+    if let Err(e) = &shown {
+        tracing::warn!(generation, "failed to show overlay: {e}");
+    }
+    let position = window.outer_position().ok();
+    let size = window.outer_size().ok();
+    tracing::debug!(
+        generation,
+        show_ok = shown.is_ok(),
+        visible = window.is_visible().unwrap_or(false),
+        minimized = window.is_minimized().unwrap_or(false),
+        x = position.map(|p| p.x).unwrap_or(i32::MIN),
+        y = position.map(|p| p.y).unwrap_or(i32::MIN),
+        width = size.map(|s| s.width).unwrap_or(0),
+        height = size.map(|s| s.height).unwrap_or(0),
+        "overlay shown"
+    );
+}
+
+/// What the overlay page reports about itself (GL-006 diagnostics).
+#[derive(Clone, Copy, Debug, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum OverlayEvent {
+    /// The page script started (first load or a WebView reload).
+    Mounted,
+    /// A `dictation-state` event reached the page.
+    StateReceived,
+    /// A frame was painted after the state arrived.
+    FramePainted,
+    /// No frame was painted within the page's deadline after the state arrived.
+    FrameMissing,
+    /// The page hid its window after a terminal state.
+    Hidden,
+    /// An uncaught script error or rejected promise in the page.
+    ScriptError,
+}
+
+/// Dictation states the overlay may name; anything else is dropped.
+const OVERLAY_STATES: &[&str] = &["starting", "recording", "processing", "done", "error"];
+
+/// Sanitize page-supplied fields: unknown state names become empty and the
+/// delay is capped at ten minutes.
+fn overlay_report_fields(state: Option<&str>, delay_ms: Option<u64>) -> (&'static str, u64) {
+    let state = state
+        .and_then(|s| OVERLAY_STATES.iter().copied().find(|known| *known == s))
+        .unwrap_or("");
+    (state, delay_ms.map(|d| d.min(600_000)).unwrap_or(0))
+}
+
+/// Log a report from the overlay page. Only an allow-listed event, state name
+/// and a bounded delay are accepted — the page cannot write free text to the log.
+#[tauri::command]
+pub fn report_overlay_event(
+    window: WebviewWindow,
+    event: OverlayEvent,
+    state: Option<String>,
+    delay_ms: Option<u64>,
+) {
+    let (state, delay_ms) = overlay_report_fields(state.as_deref(), delay_ms);
+    let label = window.label();
+    let current = overlay_label(OVERLAY_GENERATION.load(Ordering::SeqCst));
+    match event {
+        OverlayEvent::FrameMissing | OverlayEvent::ScriptError => tracing::warn!(
+            window = label,
+            current = label == current,
+            ?event,
+            state,
+            delay_ms,
+            "overlay page report"
+        ),
+        _ => tracing::debug!(
+            window = label,
+            current = label == current,
+            ?event,
+            state,
+            delay_ms,
+            "overlay page report"
+        ),
+    }
+}
+
+/// Hide the calling overlay window unless a new dictation already started.
+/// Replaces the page's own delayed `hide()`, which could race a new `show()`.
+#[tauri::command]
+pub fn hide_overlay(app: AppHandle, window: WebviewWindow) {
+    if !dictation_idle(&app) {
+        tracing::debug!(
+            window = window.label(),
+            "overlay hide skipped: dictation active"
+        );
+        return;
+    }
+    if let Err(e) = window.hide() {
+        tracing::warn!(window = window.label(), "failed to hide overlay: {e}");
     }
 }
 
@@ -476,7 +648,7 @@ fn current_overlay(app: &AppHandle) -> Option<WebviewWindow> {
 /// `transparent` + always-on-top + `skipTaskbar` + `focused(false)` so the pill
 /// floats over the target app without stealing its keyboard focus.
 pub fn build_overlay(app: &AppHandle, label: &str) -> tauri::Result<WebviewWindow> {
-    WebviewWindowBuilder::new(app, label, WebviewUrl::App("index.html".into()))
+    let window = WebviewWindowBuilder::new(app, label, WebviewUrl::App("index.html".into()))
         .title("Glagol overlay")
         .inner_size(OVERLAY_WIDTH, OVERLAY_HEIGHT)
         .transparent(true)
@@ -487,7 +659,34 @@ pub fn build_overlay(app: &AppHandle, label: &str) -> tauri::Result<WebviewWindo
         .resizable(false)
         .shadow(false)
         .visible(false)
-        .build()
+        // GL-006: a second "page load" for the same window means WebView2
+        // reloaded the pill (for example after its renderer process failed).
+        .on_page_load(|window, payload| {
+            tracing::info!(
+                window = window.label(),
+                event = ?payload.event(),
+                "overlay page load"
+            );
+        })
+        .build()?;
+    let window_label = window.label().to_string();
+    window.on_window_event(move |event| match event {
+        tauri::WindowEvent::Destroyed => {
+            tracing::info!(window = %window_label, "overlay window destroyed")
+        }
+        tauri::WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
+            tracing::info!(window = %window_label, scale_factor, "overlay scale changed")
+        }
+        tauri::WindowEvent::Focused(true) => {
+            tracing::debug!(window = %window_label, "overlay took focus")
+        }
+        _ => {}
+    });
+    super::overlay_native::install_process_failed(&window, || {
+        mark_overlay_stale("webview2 process failed")
+    });
+    tracing::info!(window = label, "overlay window built");
+    Ok(window)
 }
 
 /// Whether a wall-clock advance of `wall_elapsed` over one `poll` interval
@@ -505,11 +704,19 @@ fn resumed_from_sleep(poll: Duration, wall_elapsed: Option<Duration>) -> bool {
 /// session. A false positive (the clock was set forward) only rebuilds the
 /// hidden window.
 pub fn spawn_resume_watch(app: AppHandle) {
+    // Display on, unlock, remote/console connect, display change and resume
+    // (GL-006). The clock-jump check below stays as a fallback for sleep.
+    super::overlay_native::spawn_system_watch(|event| {
+        tracing::info!(?event, "system display/session event");
+        if event.requires_rebuild() {
+            mark_overlay_stale("system event");
+        }
+    });
     let spawned = std::thread::Builder::new()
         .name("overlay-resume-watch".into())
         .spawn(move || {
             let mut last = SystemTime::now();
-            let mut stale = false;
+            let mut settled = true;
             loop {
                 std::thread::sleep(RESUME_POLL);
                 let now = SystemTime::now();
@@ -517,9 +724,16 @@ pub fn spawn_resume_watch(app: AppHandle) {
                 last = now;
                 if resumed {
                     tracing::info!("system resume detected; overlay will be rebuilt");
-                    stale = true;
-                } else if stale && dictation_idle(&app) {
-                    stale = false;
+                    mark_overlay_stale("clock jump after sleep");
+                    // Let the graphics stack settle for one more poll.
+                    settled = false;
+                    continue;
+                }
+                if !settled {
+                    settled = true;
+                    continue;
+                }
+                if OVERLAY_STALE.load(Ordering::SeqCst) && dictation_idle(&app) {
                     let handle = app.clone();
                     if let Err(e) = app.run_on_main_thread(move || rebuild_overlay(&handle)) {
                         tracing::warn!("failed to schedule overlay rebuild: {e}");
@@ -551,10 +765,14 @@ fn rebuild_overlay(app: &AppHandle) {
         tracing::debug!("overlay rebuild skipped: dictation in progress");
         return;
     }
+    if !OVERLAY_STALE.swap(false, Ordering::SeqCst) {
+        return;
+    }
     let old = current_overlay(app);
     let next = OVERLAY_GENERATION.load(Ordering::SeqCst).wrapping_add(1);
     if let Err(e) = build_overlay(app, &overlay_label(next)) {
         tracing::warn!("failed to rebuild overlay window: {e}");
+        OVERLAY_STALE.store(true, Ordering::SeqCst);
         return;
     }
     OVERLAY_GENERATION.store(next, Ordering::SeqCst);
@@ -563,7 +781,7 @@ fn rebuild_overlay(app: &AppHandle) {
             tracing::warn!("failed to destroy previous overlay window: {e}");
         }
     }
-    tracing::info!("overlay window rebuilt after resume");
+    tracing::info!(generation = next, "overlay window rebuilt");
 }
 
 // ── Tray ────────────────────────────────────────────────────────────────
@@ -731,6 +949,19 @@ pub(crate) fn mark_tray_notice_shown(conn: &Connection, updated_at: i64) -> rusq
 mod tests {
     use super::*;
     use crate::db::test_connection;
+
+    #[test]
+    fn overlay_report_accepts_only_known_states_and_bounded_delays() {
+        assert_eq!(
+            overlay_report_fields(Some("recording"), Some(40)),
+            ("recording", 40)
+        );
+        assert_eq!(overlay_report_fields(Some("secret text"), None), ("", 0));
+        assert_eq!(overlay_report_fields(None, Some(u64::MAX)), ("", 600_000));
+        let event: OverlayEvent = serde_json::from_str("\"frame_missing\"").unwrap();
+        assert!(matches!(event, OverlayEvent::FrameMissing));
+        assert!(serde_json::from_str::<OverlayEvent>("\"anything\"").is_err());
+    }
 
     /// A minimal `AppState` for the advisory-history tests: real in-memory DB, no
     /// recorder thread. Mirrors `commands::dictation::tests::fresh_state`.

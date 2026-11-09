@@ -292,6 +292,13 @@ export const localModelsStatus = () => invoke<LocalModelsStatus>("local_models_s
 export const downloadLocalModel = (id: string) => invoke<void>("download_local_model", { id });
 export const cancelModelDownload = () => invoke<void>("cancel_model_download");
 export const removeLocalModel = (id: string) => invoke<void>("remove_local_model", { id });
+/** Mirrors `EngineOptions`/`EngineState` in `src-tauri/src/stt/local/mod.rs`. */
+export type LocalDevice = "cpu" | "gpu";
+export interface LocalEngineOptions { device: LocalDevice; threads: number }
+export interface LocalEngineState { options: LocalEngineOptions; logical_cpus: number; default_threads: number; backend: string | null; gpu_fallback: boolean; gpu_name: string | null }
+export const localEngineState = () => invoke<LocalEngineState>("local_engine_state");
+/** Saves and, for active Russian local dictation, reopens the model at once. */
+export const setLocalEngineOptions = (options: LocalEngineOptions) => invoke<LocalEngineState>("set_local_engine_options", { options });
 
 export interface SttSettings {
   base_url: string;
@@ -554,3 +561,18 @@ export async function installUpdate(onProgress: (event: UpdateProgress) => void)
 }
 
 export { Channel };
+
+/** Mirrors `DiagnosticsSettings` in `src-tauri/src/commands/diagnostics.rs`. */
+export interface DiagnosticsSettings { detailed: boolean; logDir: string }
+export const getDiagnosticsSettings = () => invoke<DiagnosticsSettings>("get_diagnostics_settings");
+/** Applies immediately; the log never contains speech, recognized text or keys. */
+export const setDetailedLogging = (enabled: boolean) => invoke<DiagnosticsSettings>("set_detailed_logging", { enabled });
+export const openLogFolder = () => invoke<void>("open_log_folder");
+
+/** Mirrors `OverlayEvent` in `src-tauri/src/dictation/session.rs` (GL-006 diagnostics). */
+export type OverlayEvent = "mounted" | "state_received" | "frame_painted" | "frame_missing" | "hidden" | "script_error";
+/** Best-effort: the overlay must never fail because a diagnostic report did. */
+export const reportOverlayEvent = (event: OverlayEvent, state?: DictationState["kind"], delayMs?: number) =>
+  invoke<void>("report_overlay_event", { event, state: state ?? null, delayMs: delayMs === undefined ? null : Math.round(delayMs) }).catch(() => undefined);
+/** Ask Rust to hide this overlay window unless a new dictation already started. */
+export const hideOverlay = () => invoke<void>("hide_overlay").catch(() => undefined);

@@ -24,8 +24,8 @@ interface NavItem {
   Icon: typeof Settings;
 }
 
-const navItems = (): readonly NavItem[] => [
-  { to: "/synthesize", label: t("Synthesize"), Icon: AudioLines },
+const navItems = (ttsEnabled: boolean): readonly NavItem[] => [
+  ...(ttsEnabled ? [{ to: "/synthesize", label: t("Synthesize"), Icon: AudioLines }] : []),
   { to: "/library", label: t("Library"), Icon: Library },
   { to: "/dictation", label: t("Dictation"), Icon: Mic },
   { to: "/settings", label: t("Settings"), Icon: Settings },
@@ -40,7 +40,7 @@ const navItems = (): readonly NavItem[] => [
  */
 export function AppShell() {
   useI18n();
-  const { error } = usePreferences();
+  const { error, preferences } = usePreferences();
   const navigate = useNavigate();
   const [version, setVersion] = useState<string | null>(null);
 
@@ -98,7 +98,7 @@ export function AppShell() {
         </div>
         <Separator />
         <nav className="flex flex-1 flex-col gap-1 p-3">
-          {navItems().map(({ to, label, Icon }) => (
+          {navItems(preferences?.tts_enabled ?? true).map(({ to, label, Icon }) => (
             <NavLink
               key={to}
               to={to}

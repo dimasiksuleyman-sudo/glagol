@@ -1,14 +1,14 @@
-# Glagol user guide — 0.6.1
+# Glagol user guide — 0.6.3
 
 [Русский](USER_GUIDE.ru.md) · [README](README.md)
 
 Glagol reads English and Russian documents aloud and turns dictation into text.
-This guide describes [Glagol 0.6.1](docs/releases/v0.6.1.md).
+This guide describes [Glagol 0.6.3](docs/releases/v0.6.3.md).
 The GitHub link at the bottom of the sidebar opens the author's profile in your browser.
 
 ## Installation
 
-Windows 10/11 x64 is required. Run the locally built `Glagol_0.6.1_x64-setup.exe`.
+Windows 10/11 x64 is required. Run the locally built `Glagol_0.6.3_x64-setup.exe`.
 The installer offers English and Russian, starts with Windows' language and uses
 English as fallback. The unsigned installer may trigger SmartScreen: check the
 artifact's source and SHA-256 before choosing More info → Run anyway. Installation
@@ -83,6 +83,12 @@ failure trigger full verification. Opening Synthesize preloads the selected mode
 status shows preparation. Warm models unload after 15 idle minutes or on exit.
 Installed local synthesis works offline. This is process isolation, not an OS sandbox.
 
+If you only dictate, turn off the Text to speech switch in Settings → Local text to
+speech — Silero. Glagol then stops verifying Silero files at startup and preloading
+the model, hides the Synthesize page and opens Dictation first; a loaded model is
+unloaded immediately. Models, acknowledgement and your library are kept — turn the
+switch back on to use speech again.
+
 ## Reading a document
 
 Paste text or choose TXT, Markdown, DOCX or text-based PDF, then select a voice and
@@ -117,8 +123,9 @@ speech language remembers its local model and voice.
 
 - **On this computer:** English Moonshine Small Streaming (158.8 MB initial download,
   including 16.5 MB native runtime); Russian GigaAM v3 CTC/RNNT (272.2–273.7 MB model
-  plus 20.1 MB runtime). Windows x64 CPU. Models install by explicit choice, work offline
-  after verification and survive updates. Other-language installed models remain listed.
+  plus 20.1 MB runtime). Windows x64: processor or, for the Russian model, graphics card
+  through Vulkan. Models install by explicit choice, work offline after verification and
+  survive updates. Other-language installed models remain listed.
   Remove an inactive model to free space; shared runtime is retained. Local speech uses
   explicit EN/RU; mixed-language detection and translation are not included.
 - **Organization server:** OpenAI-compatible `/audio/transcriptions`; `/models` is
@@ -129,14 +136,30 @@ speech language remembers its local model and voice.
 - **Cloud service:** choose a preset or compatible endpoint, model, key and optional
   dictation-only proxy. The existing remote `auto` language option is retained.
 
+**Russian local model speed.** On a computer with an older processor (for example,
+without AVX2) GigaAM recognizes at roughly the speed of speech. In Settings → Dictation →
+Recognition speed, choose Compute on: Graphics card (Vulkan) and, if you like, the number
+of Processor threads (Automatic by default, up to 8). The change applies immediately, and
+Now computing on shows the actual device. If the graphics card cannot be used, Glagol
+uses the processor and shows a warning; the reason is in the log. If Glagol has already
+seen a graphics card on the computer but computes on the processor, the block suggests
+Use the graphics card; if RNNT is selected, it offers to switch to the recommended CTC
+(faster, especially on a graphics card). Both hints also appear on the Dictation page;
+nothing changes until you click. The full SHA-256 check
+of the GigaAM files runs on the first load and is then reused for up to 30 days while file
+sizes and dates are unchanged; Verify files and repair, a load error or a recognition
+error trigger the full check again.
+
 Office/cloud profiles and keys stay separate. Save and use activates an edited profile;
 changing endpoints does not send the old key to the new service. Local Moonshine streams
 audio internally while you hold the hotkey; GigaAM/server profiles keep their batch path.
 Large GigaAM recordings are split at quiet boundaries; punctuation and rare terms may suffer.
 Dictation and synthesis can run independently.
-After the computer wakes from sleep, Glagol rebuilds the hidden indicator window within
-a few seconds. Sleep shorter than about 13 seconds is not detected; if the indicator
-ever stays invisible, restart Glagol from the tray.
+After the computer wakes from sleep, the display turns back on, the session is unlocked,
+a remote desktop connects or disconnects, the display configuration changes, or the
+indicator's WebView2 process fails, Glagol rebuilds the hidden indicator window within
+a few seconds (on Windows). If the indicator ever stays invisible, restart Glagol from
+the tray and send the log from that day: it records these events and the indicator state.
 
 ## Windows limitations
 
@@ -162,6 +185,14 @@ repair if necessary. If a voice sounds wrong, check the speech language and try 
 voice. For recognition errors, retry after checking microphone/model, and verify files
 if needed. Close Glagol through the tray before collecting logs so they are flushed;
 never attach private speech, documents or credentials.
+
+Logs: Settings → Diagnostics → Open log folder (`%LOCALAPPDATA%\app.glagol.desktop\logs`,
+one file per day, kept for 7 days). The log always records the processor, model load
+time and the time of each recognition stage, and how the dictation indicator was shown:
+on which monitor, where, and whether it painted. If dictation is slow or the indicator disappears, turn on Detailed log,
+dictate the same phrase several times, close Glagol through the tray and attach that
+day's file. The log contains no speech, recognized text, documents or keys. You can
+turn the switch off afterwards.
 
 [Report a bug](https://github.com/dimasiksuleyman-sudo/glagol/issues).
 Glagol is independent open source software under MIT, created to listen to long texts.

@@ -11,7 +11,7 @@ import { Onboarding } from "@/components/Onboarding";
 /**
  * Top-level route table. Every page sits beneath the {@link AppShell}
  * layout (sidebar + Outlet); `/` redirects to `/synthesize` as the
- * default landing page.
+ * default landing page, or to `/dictation` when text to speech is off.
  *
  * `<BrowserRouter>` lives in {@link ./main.tsx} so the TTS readiness
  * context provider can sit outside (and survive route changes).
@@ -19,15 +19,18 @@ import { Onboarding } from "@/components/Onboarding";
 function App() {
   const { preferences } = usePreferences();
   if (!preferences || preferences.onboarding_stage !== "complete") return <Onboarding />;
+  // With text to speech off the Synthesize page (and its warm-up) never mounts.
+  const ttsEnabled = preferences.tts_enabled;
+  const home = ttsEnabled ? "/synthesize" : "/dictation";
   return (
     <Routes>
       <Route element={<AppShell />}>
-        <Route path="/" element={<Navigate to="/synthesize" replace />} />
-        <Route path="/synthesize" element={<Synthesize />} />
+        <Route path="/" element={<Navigate to={home} replace />} />
+        <Route path="/synthesize" element={ttsEnabled ? <Synthesize /> : <Navigate to="/dictation" replace />} />
         <Route path="/library" element={<Library />} />
         <Route path="/dictation" element={<Dictation />} />
         <Route path="/settings" element={<Settings />} />
-        <Route path="*" element={<Navigate to="/synthesize" replace />} />
+        <Route path="*" element={<Navigate to={home} replace />} />
       </Route>
     </Routes>
   );

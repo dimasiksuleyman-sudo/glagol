@@ -2,10 +2,11 @@
 pub mod catalog;
 pub mod download;
 mod engine;
+pub mod receipt;
 
 use crate::stt::{SttError, SttProvider, Transcript};
 use catalog::{model, MODELS, RUNTIME, RUNTIME_DIR};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{
     io::{Cursor, Read},
@@ -25,6 +26,90 @@ pub struct LocalModels {
     pub moonshine: Arc<super::moonshine::Moonshine>,
     cancel: AtomicBool,
     progress: Mutex<Option<Progress>>,
+    options: Mutex<EngineOptions>,
+    /// Set after a recognition error on the graphics card: the CPU is used
+    /// until the options are saved again or Glagol restarts.
+    gpu_failed: AtomicBool,
+}
+
+/// Where the Russian (GigaAM) model computes.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Device {
+    /// Processor — the default and the fallback.
+    #[default]
+    Cpu,
+    /// Graphics card through Vulkan.
+    Gpu,
+}
+
+/// User choices for the Russian local engine (Settings → Dictation).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct EngineOptions {
+    pub device: Device,
+    /// CPU threads; 0 = automatic (the library's default).
+    pub threads: u32,
+}
+
+/// `app_settings` keys of [`EngineOptions`].
+const DEVICE_SETTING: &str = "stt_local_device";
+const THREADS_SETTING: &str = "stt_local_threads";
+
+impl EngineOptions {
+    /// Read persisted options; absent or unknown values mean the defaults.
+    pub fn read(conn: &rusqlite::Connection) -> rusqlite::Result<Self> {
+        let get = |key| crate::db::repository::get_setting(conn, key);
+        Ok(Self {
+            device: if get(DEVICE_SETTING)?.as_deref() == Some("gpu") {
+                Device::Gpu
+            } else {
+                Device::Cpu
+            },
+            threads: get(THREADS_SETTING)?
+                .and_then(|v| v.parse().ok())
+                .filter(|n| *n <= 64)
+                .unwrap_or(0),
+        })
+    }
+
+    /// Persist options after validation.
+    pub fn write(self, conn: &rusqlite::Connection) -> Result<(), String> {
+        if self.threads > 64 {
+            return Err("Too many threads.".into());
+        }
+        let now = chrono::Utc::now().timestamp_millis();
+        let device = match self.device {
+            Device::Cpu => "cpu",
+            Device::Gpu => "gpu",
+        };
+        crate::db::repository::set_setting(conn, DEVICE_SETTING, device, now)
+            .and_then(|_| {
+                crate::db::repository::set_setting(
+                    conn,
+                    THREADS_SETTING,
+                    &self.threads.to_string(),
+                    now,
+                )
+            })
+            .map(|_| ())
+            .map_err(|e| e.to_string())
+    }
+}
+
+/// The engine as currently loaded, for the settings screen.
+#[derive(Serialize)]
+pub struct EngineState {
+    pub options: EngineOptions,
+    /// Logical CPUs, the upper bound offered for threads.
+    pub logical_cpus: usize,
+    /// Threads used when `options.threads` is 0.
+    pub default_threads: usize,
+    /// Backend of the loaded model (`CPU`, `Vulkan0`, …), if one is loaded.
+    pub backend: Option<String>,
+    /// The graphics card was requested but the CPU is used.
+    pub gpu_fallback: bool,
+    /// A discrete Vulkan graphics card seen by the runtime (after its first load).
+    pub gpu_name: Option<String>,
 }
 
 #[derive(Clone, Serialize)]
@@ -72,7 +157,73 @@ impl LocalModels {
             moonshine,
             cancel: AtomicBool::new(false),
             progress: Mutex::new(None),
+            options: Mutex::new(EngineOptions::default()),
+            gpu_failed: AtomicBool::new(false),
         }
+    }
+
+    /// Apply options; the next [`prepare`](Self::prepare) reopens the model if
+    /// they differ from the loaded session. Clears an earlier GPU failure.
+    pub fn set_options(&self, options: EngineOptions) {
+        *self.options.lock().unwrap() = options;
+        self.gpu_failed.store(false, Ordering::Relaxed);
+    }
+
+    /// Options and the loaded backend for the settings screen.
+    pub fn engine_state(&self) -> EngineState {
+        let options = *self.options.lock().unwrap();
+        let (backend, fell_back) = self
+            .engine
+            .try_lock()
+            .ok()
+            .and_then(|slot| {
+                slot.as_ref()
+                    .map(|e| (Some(e.backend.clone()), e.fell_back))
+            })
+            .unwrap_or((None, false));
+        EngineState {
+            options,
+            logical_cpus: crate::diagnostics::logical_cpus(),
+            default_threads: crate::diagnostics::stt_default_threads(),
+            backend,
+            gpu_fallback: options.device == Device::Gpu
+                && (fell_back || self.gpu_failed.load(Ordering::Relaxed)),
+            gpu_name: engine::discrete_gpu(),
+        }
+    }
+
+    /// Whether `gpu`/`threads` are what the session should use now.
+    fn wanted(&self) -> (bool, u32) {
+        let options = *self.options.lock().unwrap();
+        (
+            options.device == Device::Gpu && !self.gpu_failed.load(Ordering::Relaxed),
+            options.threads,
+        )
+    }
+
+    /// Full SHA-256 check of model and runtime, unless a recent receipt matches.
+    /// Returns (verify_model_ms, verify_runtime_ms, reused).
+    fn verify_files(&self, m: &catalog::Model) -> Result<(u64, u64, bool), String> {
+        let files = receipt::current_files(&self.root, m.artifact.file, RUNTIME.file, RUNTIME_DIR);
+        if let (Some(files), Some(saved)) = (&files, receipt::load(&self.root, m.id)) {
+            if receipt::is_valid(&saved, files, chrono::Utc::now().timestamp()) {
+                return Ok((0, 0, true));
+            }
+        }
+        let started = Instant::now();
+        download::verify(&self.root.join(m.artifact.file), &m.artifact).map_err(|_| {
+            "Модель отсутствует или повреждена. Скачайте её в настройках диктовки.".to_string()
+        })?;
+        let verify_model_ms = started.elapsed().as_millis() as u64;
+        let runtime_started = Instant::now();
+        verify_runtime(&self.root)?;
+        let verify_runtime_ms = runtime_started.elapsed().as_millis() as u64;
+        if let Some(files) =
+            receipt::current_files(&self.root, m.artifact.file, RUNTIME.file, RUNTIME_DIR)
+        {
+            receipt::save(&self.root, m.id, files);
+        }
+        Ok((verify_model_ms, verify_runtime_ms, false))
     }
     pub fn status(&self) -> LocalStatus {
         LocalStatus {
@@ -114,28 +265,100 @@ impl LocalModels {
     }
     pub fn prepare(&self, id: &str) -> Result<(), String> {
         let m = model(id)?;
+        let (gpu, threads) = self.wanted();
         let mut slot = self.engine.lock().map_err(|e| e.to_string())?;
-        if slot.as_ref().is_some_and(|e| e.model_id == id) {
+        if slot
+            .as_ref()
+            .is_some_and(|e| e.model_id == id && e.gpu_requested == gpu && e.threads == threads)
+        {
             return Ok(());
         }
-        download::verify(&self.root.join(m.artifact.file), &m.artifact).map_err(|_| {
-            "Модель отсутствует или повреждена. Скачайте её в настройках диктовки.".to_string()
-        })?;
-        verify_runtime(&self.root)?;
+        let started = Instant::now();
+        let (verify_model_ms, verify_runtime_ms, verification_reused) = self.verify_files(m)?;
         // Free old weights before allocating the new model on a 16GB machine.
         *slot = None;
         let now = Instant::now();
-        *slot = Some(engine::Engine::open(
+        let opened = engine::Engine::open(
             &self.root.join(RUNTIME_DIR),
             &self.root.join(m.artifact.file),
             id,
-        )?);
+            gpu,
+            threads,
+        );
+        let opened = match opened {
+            Ok(engine) => engine,
+            Err(error) => {
+                // A file may have changed without its metadata: check fully next time.
+                receipt::invalidate(&self.root, id);
+                return Err(error);
+            }
+        };
         tracing::info!(
             model = id,
             elapsed_ms = now.elapsed().as_millis(),
+            verify_model_ms,
+            verify_runtime_ms,
+            verification_reused,
+            backend = %opened.backend,
+            total_ms = started.elapsed().as_millis() as u64,
             "local STT model loaded"
         );
+        *slot = Some(opened);
         Ok(())
+    }
+
+    /// Recognize with the loaded model. A recognition error on the graphics
+    /// card switches this session to the CPU and retries once.
+    fn recognize(
+        &self,
+        id: &str,
+        pcm: &[f32],
+    ) -> Result<(String, engine::RunStats, u64, u64, String), String> {
+        let started = Instant::now();
+        self.prepare(id)?;
+        let prepare_ms = started.elapsed().as_millis() as u64;
+        let now = Instant::now();
+        let mut guard = self.engine.lock().map_err(|e| e.to_string())?;
+        let lock_wait_ms = now.elapsed().as_millis() as u64;
+        let engine = guard
+            .as_mut()
+            .filter(|e| e.model_id == id)
+            .ok_or("Модель переключена. Повторите диктовку.")?;
+        match engine.transcribe(pcm) {
+            Ok((text, stats)) => Ok((
+                text,
+                stats,
+                prepare_ms,
+                lock_wait_ms,
+                engine.backend.clone(),
+            )),
+            Err(_) if engine.gpu_requested && !engine.fell_back => {
+                tracing::warn!(model = id, backend = %engine.backend, "local STT graphics card failed; retrying on CPU");
+                self.gpu_failed.store(true, Ordering::Relaxed);
+                *guard = None;
+                drop(guard);
+                self.prepare(id)?;
+                let mut guard = self.engine.lock().map_err(|e| e.to_string())?;
+                let engine = guard
+                    .as_mut()
+                    .filter(|e| e.model_id == id)
+                    .ok_or("Модель переключена. Повторите диктовку.")?;
+                let (text, stats) = engine
+                    .transcribe(pcm)
+                    .inspect_err(|_| receipt::invalidate(&self.root, id))?;
+                Ok((
+                    text,
+                    stats,
+                    prepare_ms,
+                    lock_wait_ms,
+                    engine.backend.clone(),
+                ))
+            }
+            Err(error) => {
+                receipt::invalidate(&self.root, id);
+                Err(error)
+            }
+        }
     }
 }
 
@@ -207,6 +430,58 @@ fn install_runtime(root: &Path) -> Result<(), String> {
     verify_runtime(root)
 }
 
+/// Options and the loaded backend of the Russian local engine.
+#[tauri::command]
+pub fn local_engine_state(state: tauri::State<'_, Arc<LocalModels>>) -> EngineState {
+    state.engine_state()
+}
+
+/// Save engine options (graphics card / CPU threads). When Russian local
+/// dictation is active the model is reopened right away, so a graphics-card
+/// failure shows up here rather than on the next dictation.
+#[tauri::command]
+pub async fn set_local_engine_options(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, Arc<LocalModels>>,
+    options: EngineOptions,
+) -> Result<EngineState, String> {
+    (async {
+        let app_state = app.state::<crate::state::AppState>();
+        if *app_state.dictation.lock().map_err(|e| e.to_string())?
+            != crate::dictation::DictationPhase::Idle
+        {
+            return Err("Wait for the current dictation to finish.".into());
+        }
+        let _operation = state
+            .operation
+            .try_lock()
+            .map_err(|_| "Дождитесь текущей операции с моделью.".to_string())?;
+        let profile = {
+            let conn = app_state.db.lock().map_err(|e| e.to_string())?;
+            options.write(&conn)?;
+            crate::commands::speech::read_profile(&conn, None)?
+        };
+        state.set_options(options);
+        tracing::info!(device = ?options.device, threads = options.threads, "local STT engine options changed");
+        let models = state.inner().clone();
+        if profile.mode == crate::commands::speech::Mode::Local && model(&profile.model).is_ok() {
+            tauri::async_runtime::spawn_blocking(move || models.prepare(&profile.model))
+                .await
+                .map_err(|e| e.to_string())??;
+        } else {
+            tauri::async_runtime::spawn_blocking(move || {
+                *models.engine.lock().map_err(|e| e.to_string())? = None;
+                Ok::<_, String>(())
+            })
+            .await
+            .map_err(|e| e.to_string())??;
+        }
+        Ok(state.engine_state())
+    })
+    .await
+    .map_err(crate::i18n::error)
+}
+
 #[tauri::command]
 pub fn local_models_status(state: tauri::State<'_, Arc<LocalModels>>) -> LocalStatus {
     state.status()
@@ -255,6 +530,10 @@ pub async fn download_local_model(
             return result;
         }
         let m = *model(&id)?;
+        // Download/repair always ends with a full check on the next load.
+        for known in MODELS {
+            receipt::invalidate(&state.root, known.id);
+        }
         std::fs::create_dir_all(&state.root).map_err(|e| e.to_string())?;
         std::fs::write(
             state.root.join("GigaAM-LICENSE.txt"),
@@ -357,6 +636,7 @@ pub async fn remove_local_model(
             if engine.as_ref().is_some_and(|e| e.model_id == id) {
                 *engine = None;
             }
+            receipt::invalidate(&state.root, m.id);
             for file in [
                 m.artifact.file.to_string(),
                 format!("{}.part", m.artifact.file),
@@ -391,19 +671,49 @@ impl SttProvider for LocalProvider {
         let models = self.models.clone();
         let id = self.id.clone();
         tauri::async_runtime::spawn_blocking(move || {
-            let mut reader = hound::WavReader::new(Cursor::new(wav_bytes)).map_err(|e| e.to_string())?;
+            let mut reader =
+                hound::WavReader::new(Cursor::new(wav_bytes)).map_err(|e| e.to_string())?;
             let spec = reader.spec();
-            if spec.channels != 1 || spec.sample_rate != 16_000 || spec.bits_per_sample != 16 || spec.sample_format != hound::SampleFormat::Int { return Err("Неподдерживаемый формат записи.".into()); }
-            let pcm: Vec<f32> = reader.samples::<i16>().map(|s| s.map(|s| s as f32 / 32768.0)).collect::<Result<_, _>>().map_err(|e| e.to_string())?;
-            if pcm.len() > 10 * 60 * 16_000 { return Err("Запись слишком длинная для локальной диктовки.".into()); }
-            models.prepare(&id)?;
-            let now = Instant::now();
-            let mut guard = models.engine.lock().map_err(|e| e.to_string())?;
-            let engine = guard.as_mut().filter(|e| e.model_id == id).ok_or("Модель переключена. Повторите диктовку.")?;
-            let text = engine.transcribe(&pcm)?;
-            tracing::info!(model = %id, audio_ms = pcm.len()/16, elapsed_ms = now.elapsed().as_millis(), "local STT completed");
+            if spec.channels != 1
+                || spec.sample_rate != 16_000
+                || spec.bits_per_sample != 16
+                || spec.sample_format != hound::SampleFormat::Int
+            {
+                return Err("Неподдерживаемый формат записи.".into());
+            }
+            let pcm: Vec<f32> = reader
+                .samples::<i16>()
+                .map(|s| s.map(|s| s as f32 / 32768.0))
+                .collect::<Result<_, _>>()
+                .map_err(|e| e.to_string())?;
+            if pcm.len() > 10 * 60 * 16_000 {
+                return Err("Запись слишком длинная для локальной диктовки.".into());
+            }
+            let inference = Instant::now();
+            let (text, stats, prepare_ms, lock_wait_ms, backend) = models.recognize(&id, &pcm)?;
+            let elapsed_ms = (inference.elapsed().as_millis() as u64).saturating_sub(prepare_ms);
+            let audio_ms = (pcm.len() / 16) as u64;
+            let (_, threads) = models.wanted();
+            tracing::info!(
+                model = %id,
+                backend = %backend,
+                audio_ms,
+                elapsed_ms,
+                rtf = elapsed_ms as f64 / audio_ms.max(1) as f64,
+                prepare_ms,
+                lock_wait_ms,
+                segments = stats.segments,
+                mel_ms = stats.mel_ms as u64,
+                encode_ms = stats.encode_ms as u64,
+                decode_ms = stats.decode_ms as u64,
+                threads = if threads == 0 { crate::diagnostics::stt_default_threads() as u32 } else { threads },
+                "local STT completed"
+            );
             Ok(Transcript { text })
-        }).await.map_err(|e| SttError::Api(e.to_string()))?.map_err(SttError::Api)
+        })
+        .await
+        .map_err(|e| SttError::Api(e.to_string()))?
+        .map_err(SttError::Api)
     }
     async fn list_models(&self) -> Result<Vec<String>, SttError> {
         Ok(vec![self.id.clone()])
@@ -426,6 +736,42 @@ mod tests {
         ] {
             assert!(validate_entry(Path::new(path)).is_err(), "{path}");
         }
+    }
+
+    #[test]
+    fn engine_options_default_to_cpu_auto_and_round_trip() {
+        let mut conn = rusqlite::Connection::open_in_memory().unwrap();
+        crate::db::migrations::apply_migrations(&mut conn).unwrap();
+        assert_eq!(
+            EngineOptions::read(&conn).unwrap(),
+            EngineOptions::default()
+        );
+        let gpu = EngineOptions {
+            device: Device::Gpu,
+            threads: 4,
+        };
+        gpu.write(&conn).unwrap();
+        assert_eq!(EngineOptions::read(&conn).unwrap(), gpu);
+        assert!(EngineOptions {
+            device: Device::Cpu,
+            threads: 65
+        }
+        .write(&conn)
+        .is_err());
+        assert_eq!(EngineOptions::read(&conn).unwrap(), gpu);
+        let parsed: EngineOptions =
+            serde_json::from_str(r#"{"device":"gpu","threads":0}"#).unwrap();
+        assert_eq!(parsed.device, Device::Gpu);
+        assert!(serde_json::from_str::<EngineOptions>(r#"{"device":"tpu","threads":0}"#).is_err());
+
+        let models = LocalModels::new(std::env::temp_dir());
+        models.set_options(gpu);
+        assert_eq!(models.wanted(), (true, 4));
+        models.gpu_failed.store(true, Ordering::Relaxed);
+        assert_eq!(models.wanted(), (false, 4));
+        assert!(models.engine_state().gpu_fallback);
+        models.set_options(gpu);
+        assert_eq!(models.wanted(), (true, 4));
     }
 
     #[test]

@@ -120,3 +120,37 @@ pub fn complete_onboarding(
     })()
     .map_err(crate::i18n::error)
 }
+
+/// Turn text to speech on or off. Turning it off stops a warm Silero worker
+/// and skips startup verification; models, runtime and consent stay installed.
+#[tauri::command]
+pub async fn set_tts_enabled(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, AppState>,
+    models: tauri::State<'_, crate::tts::silero::models::Models>,
+    enabled: bool,
+) -> Result<Preferences, String> {
+    (async {
+        let _operation = models.ru.operation.try_lock().map_err(|_| {
+            preferences::message(
+                "Wait for the current speech operation to finish.",
+                "Дождитесь завершения текущей операции озвучки.",
+            )
+        })?;
+        let value = {
+            let conn = state.db.lock().map_err(|e| e.to_string())?;
+            preferences::set_tts_enabled(&conn, enabled).map_err(|e| e.to_string())?;
+            preferences::get(&conn).map_err(|e| e.to_string())?
+        };
+        if !enabled {
+            models.ru.close_worker().await;
+            models.en.close_worker().await;
+        }
+        tracing::info!(enabled, "text to speech switch changed");
+        let _ = app.emit("preferences-changed", &value);
+        let _ = app.emit("tts-status", ());
+        Ok(value)
+    })
+    .await
+    .map_err(crate::i18n::error)
+}

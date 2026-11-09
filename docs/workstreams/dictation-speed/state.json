@@ -1,0 +1,282 @@
+{
+  "schema_version": 1,
+  "id": "dictation-speed",
+  "title": "Скорость диктовки и отключение озвучки (0.6.3)",
+  "status": "active",
+  "next": "S3b",
+  "reason": null,
+  "claim": {
+    "owner": "claude",
+    "at": "2026-11-09T14:46:17.000Z",
+    "branch": "claude/optimistic-franklin-cvvbsr"
+  },
+  "links": [
+    "docs/workstreams/dictation-speed/README.md",
+    "docs/workstreams/dictation-speed/log.md"
+  ],
+  "steps": [
+    {
+      "id": "S1",
+      "title": "Диагностический журнал, «Подробный журнал», папка журналов, переключатель озвучки; автоматические гейты",
+      "status": "done",
+      "depends_on": [],
+      "required": [
+        "rust",
+        "frontend"
+      ],
+      "checks": [
+        {
+          "id": "rust",
+          "status": "PASS",
+          "method": "command",
+          "command": "cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test",
+          "cwd": "src-tauri",
+          "at": "2026-11-09T07:45:39.000Z",
+          "environment": {
+            "os": "Linux container",
+            "rustc": "1.97.0",
+            "node": "v22.23.4",
+            "pnpm": "10.28.0"
+          },
+          "exit_code": 0,
+          "output": "test result: ok. 350 passed; 0 failed; 6 ignored",
+          "evidence": "docs/workstreams/dictation-speed/log.md"
+        },
+        {
+          "id": "frontend",
+          "status": "PASS",
+          "method": "command",
+          "command": "pnpm build && node --test scripts/release-assets.test.mjs",
+          "cwd": ".",
+          "at": "2026-11-09T07:45:39.000Z",
+          "environment": {
+            "os": "Linux container",
+            "rustc": "1.97.0",
+            "node": "v22.23.4",
+            "pnpm": "10.28.0"
+          },
+          "exit_code": 0,
+          "output": "I18N PASS: 264 keys; ✓ built; release-assets 3 pass",
+          "evidence": "docs/workstreams/dictation-speed/log.md"
+        }
+      ]
+    },
+    {
+      "id": "S1b",
+      "title": "Диагностика пропадающего индикатора диктовки (GL-006); автоматические гейты",
+      "status": "done",
+      "depends_on": [
+        "S1"
+      ],
+      "required": [
+        "rust",
+        "frontend"
+      ],
+      "checks": [
+        {
+          "id": "rust",
+          "status": "PASS",
+          "method": "command",
+          "command": "cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test",
+          "cwd": "src-tauri",
+          "at": "2026-11-09T08:16:33.000Z",
+          "environment": {
+            "os": "Linux container",
+            "rustc": "1.97.0",
+            "node": "v22.23.4",
+            "pnpm": "10.28.0"
+          },
+          "exit_code": 0,
+          "output": "test result: ok. 351 passed; 0 failed; 6 ignored",
+          "evidence": "docs/workstreams/dictation-speed/log.md"
+        },
+        {
+          "id": "frontend",
+          "status": "PASS",
+          "method": "command",
+          "command": "pnpm build",
+          "cwd": ".",
+          "at": "2026-11-09T08:16:33.000Z",
+          "environment": {
+            "os": "Linux container",
+            "rustc": "1.97.0",
+            "node": "v22.23.4",
+            "pnpm": "10.28.0"
+          },
+          "exit_code": 0,
+          "output": "I18N PASS: 264 keys; ✓ built",
+          "evidence": "docs/workstreams/dictation-speed/log.md"
+        }
+      ]
+    },
+    {
+      "id": "S2",
+      "title": "Журнал с ПК: причина медленного распознавания",
+      "status": "done",
+      "depends_on": [
+        "S1b"
+      ],
+      "required": [
+        "logs"
+      ],
+      "checks": [
+        {
+          "id": "logs",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Пользователь передал glagol.2026-11-09.log с ПК (подробный журнал, 6 диктовок сборки ветки); разбор в журнале серии",
+          "cwd": ".",
+          "at": "2026-11-09T11:00:00.000Z",
+          "environment": {
+            "os": "Windows (ПК пользователя)",
+            "cpu": "AMD FX-8300"
+          },
+          "exit_code": null,
+          "output": "rtf 1,04–1,13; encode 91–93 % на CPU без AVX2; Vulkan0 RX 550 найден, backend=CPU",
+          "evidence": "docs/workstreams/dictation-speed/log.md"
+        }
+      ]
+    },
+    {
+      "id": "S3",
+      "title": "Ускорение по согласованию: видеокарта (Vulkan), потоки, 30-дневная квитанция проверки; замер на ПК",
+      "status": "done",
+      "depends_on": [
+        "S2"
+      ],
+      "required": [
+        "rust",
+        "frontend",
+        "pc-test"
+      ],
+      "checks": [
+        {
+          "id": "rust",
+          "status": "PASS",
+          "method": "command",
+          "command": "cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test",
+          "cwd": "src-tauri",
+          "at": "2026-11-09T11:03:13.000Z",
+          "environment": {
+            "os": "Linux container",
+            "rustc": "1.97.0",
+            "node": "v22.23.4",
+            "pnpm": "10.28.0"
+          },
+          "exit_code": 0,
+          "output": "test result: ok. 354 passed; 0 failed; 6 ignored",
+          "evidence": "docs/workstreams/dictation-speed/log.md"
+        },
+        {
+          "id": "frontend",
+          "status": "PASS",
+          "method": "command",
+          "command": "pnpm build",
+          "cwd": ".",
+          "at": "2026-11-09T11:03:13.000Z",
+          "environment": {
+            "os": "Linux container",
+            "rustc": "1.97.0",
+            "node": "v22.23.4",
+            "pnpm": "10.28.0"
+          },
+          "exit_code": 0,
+          "output": "I18N PASS: 274 keys; ✓ built",
+          "evidence": "docs/workstreams/dictation-speed/log.md"
+        },
+        {
+          "id": "pc-test",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Сборка 0.6.2 на ПК пользователя: GigaAM RNNT на CPU 8/4 потока и на Vulkan, подробный журнал",
+          "cwd": ".",
+          "at": "2026-11-09T14:11:26.000Z",
+          "environment": {
+            "os": "Windows (ПК пользователя)",
+            "cpu": "AMD FX-8300",
+            "gpu": "Radeon RX 550 2 ГБ"
+          },
+          "exit_code": null,
+          "output": "Vulkan0: rtf 0,20 (26 920 мс аудио → 5 515 мс) против CPU 1,11; 4 и 8 потоков CPU одинаково",
+          "evidence": "docs/workstreams/dictation-speed/log.md"
+        }
+      ]
+    },
+    {
+      "id": "S3b",
+      "title": "GL-006: нативные события Windows, WebView2 ProcessFailed, состояние окна, пересоздание индикатора; проверка на ПК",
+      "status": "in_progress",
+      "depends_on": [
+        "S3"
+      ],
+      "required": [
+        "rust",
+        "frontend",
+        "pc-test"
+      ],
+      "checks": [
+        {
+          "id": "rust",
+          "status": "PASS",
+          "method": "command",
+          "command": "cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test",
+          "cwd": "src-tauri",
+          "at": "2026-11-09T14:46:17.000Z",
+          "environment": {
+            "os": "Linux container",
+            "rustc": "1.97.0",
+            "node": "v22.23.4",
+            "pnpm": "10.28.0"
+          },
+          "exit_code": 0,
+          "output": "test result: ok. 356 passed; 0 failed; 6 ignored",
+          "evidence": "docs/workstreams/dictation-speed/log.md"
+        },
+        {
+          "id": "frontend",
+          "status": "PASS",
+          "method": "command",
+          "command": "pnpm build",
+          "cwd": ".",
+          "at": "2026-11-09T14:46:17.000Z",
+          "environment": {
+            "os": "Linux container",
+            "rustc": "1.97.0",
+            "node": "v22.23.4",
+            "pnpm": "10.28.0"
+          },
+          "exit_code": 0,
+          "output": "I18N PASS: 279 keys; ✓ built",
+          "evidence": "docs/workstreams/dictation-speed/log.md"
+        },
+        {
+          "id": "pc-test",
+          "status": "NOT_RUN",
+          "method": "manual",
+          "command": "Сборка на ПК: выключение экрана без сна, Win+L, сброс драйвера; диктовка после каждого, журнал",
+          "cwd": ".",
+          "at": "2026-11-09T14:46:17.000Z",
+          "environment": {
+            "os": "Windows (ПК пользователя)"
+          },
+          "exit_code": null,
+          "output": "Ожидает сборки и журнала пользователя",
+          "evidence": "docs/workstreams/dictation-speed/log.md"
+        }
+      ]
+    },
+    {
+      "id": "S4",
+      "title": "Выпуск 0.6.3: подписанная сборка, PR и CI, GitHub Release, обновление из программы",
+      "status": "pending",
+      "depends_on": [
+        "S3b"
+      ],
+      "required": [
+        "nsis",
+        "published"
+      ],
+      "checks": []
+    }
+  ]
+}

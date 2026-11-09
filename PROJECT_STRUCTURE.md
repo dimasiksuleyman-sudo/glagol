@@ -16,7 +16,8 @@ CC BY-NC-SA 4.0 для некоммерческого использования
 | `pages/Library.tsx`, `components/AudioPlayer.tsx` | Библиотека и локализованный плеер |
 | `pages/Dictation.tsx` | Горячая клавиша, микрофон, история |
 | `components/settings/DictationSection.tsx` | Local/server/cloud STT, модели и ключи |
-| `components/settings/TtsSection.tsx` | Лицензия, скачивание/импорт, восстановление, удаление, голоса |
+| `components/settings/TtsSection.tsx` | Переключатель «Озвучка», лицензия, скачивание/импорт, восстановление, удаление, голоса |
+| `components/settings/DiagnosticsSection.tsx` | «Подробный журнал» и открытие папки журналов |
 | `components/settings/UpdatesSection.tsx`, `lib/updates.ts` | Версия, ручная проверка, автопроверка при запуске, установка подписанного обновления |
 | `contexts/TtsContext.tsx` | Только локальное состояние TTS; без сети/OAuth при старте |
 | `lib/tauri.ts`, `lib/tts.ts` | Типизированные IPC-команды |
@@ -41,18 +42,20 @@ CC BY-NC-SA 4.0 для некоммерческого использования
 | `tts/silero/worker.rs`, `worker.py` | Скрытый CPU-процесс, bounded stdio JSON, офлайн синтез |
 | `commands/tts.rs` | Status/install/cancel/remove/preview; backend consent checks |
 | `commands/updates.rs` | Версия, флаг автопроверки, проверка `latest.json`, скачивание с прогрессом и установка через tauri-plugin-updater |
-| `stt/local` | Необязательные GigaAM/transcribe.cpp; downloader переиспользуется TTS |
+| `stt/local` | Необязательные GigaAM/transcribe.cpp; CPU или Vulkan, потоки, 30-дневная квитанция проверки (`receipt.rs`); downloader переиспользуется TTS |
 | `stt/moonshine` | EN каталог, staging, проверенные DLL, C ABI, скрытый режим того же EXE |
 | `dictation/stream_resample.rs` | Потоковый mono 16 kHz вне callback, сохранение границ и flush хвоста |
 | `commands/speech.rs` | Независимые профили local/server/cloud |
 | `stt/openai_compat.rs` | Совместимый HTTP STT-клиент |
 | `dictation` | Recorder, resampling, readiness, hotkey session, clipboard/paste |
+| `dictation/overlay_native.rs` | Windows: события дисплея/сна/сеанса, WebView2 ProcessFailed, состояние окна индикатора; пересоздание после них |
 | `parser` | TXT/MD/DOCX/PDF, Pdfium |
 | `text` | Общие URL/email/сокращения и разбиение; числа/латиница — Silero adapter |
 | `db` | Append-only миграции и repository |
 | `backup` | ZIP библиотеки, проверка и защитная копия перед восстановлением |
 | `secrets/keyring.rs` | Раздельные STT-ключи; узкое удаление старого TTS-ключа |
-| `logging.rs` | Tracing без текста, аудио и ключей |
+| `logging.rs` | Tracing без текста, аудио и ключей; перезагружаемый фильтр для «Подробного журнала» |
+| `diagnostics.rs`, `commands/diagnostics.rs` | Сведения о CPU, переключатель подробного журнала, папка журналов |
 | `paths.rs` | Единый источник путей |
 
 ## Потоки и данные

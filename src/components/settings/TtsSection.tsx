@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { Switch } from "@/components/ui/switch";
 import { useTts } from "@/contexts/TtsContext";
 import { cancelTts, installTts, previewTts, removeTts } from "@/lib/tts";
 import { voicesFor } from "@/lib/voices";
@@ -19,7 +20,8 @@ export function TtsSection({ compact = false }: { compact?: boolean }) {
   const { status, error, refresh, provider } = useTts();
   const [checked, setChecked] = useState(false);
   const [busy, setBusy] = useState(false);
-  const { preferences, setTtsVoice } = usePreferences();
+  const { preferences, setTtsVoice, setTtsEnabled, saving } = usePreferences();
+  const enabled = preferences?.tts_enabled ?? true;
   const speechLanguage = preferences?.tts_language ?? "ru";
   const voice = (speechLanguage === "en" ? preferences?.tts_voice_en : preferences?.tts_voice_ru) ?? (speechLanguage === "en" ? "en_0" : "xenia");
   const VOICES = voicesFor(speechLanguage);
@@ -40,6 +42,14 @@ export function TtsSection({ compact = false }: { compact?: boolean }) {
       <CardDescription>{t("Optional. Works offline after downloading.")}</CardDescription>
     </CardHeader>
     <CardContent className="space-y-4">
+      {!compact && <div className="flex items-center justify-between gap-3">
+        <div className="space-y-0.5">
+          <label htmlFor="tts-enabled" className="text-sm font-medium">{t("Text to speech")}</label>
+          <p className="text-muted-foreground text-xs">{t("Turn off if you only dictate: Glagol will not prepare speech at startup or on the Synthesize page, and the Synthesize page is hidden. Installed models, consent and your library are kept.")}</p>
+        </div>
+        <Switch id="tts-enabled" checked={enabled} disabled={!preferences || active || saving} onCheckedChange={value => { setAudio(null); void setTtsEnabled(value).then(() => refresh()).catch(e => toast.error(String(e))); }} />
+      </div>}
+      {(enabled || compact) && <>
       <TtsLanguageSwitch disabled={active} />
       <p className="text-xs text-muted-foreground">{t("sharedRuntimeNote")}</p>
       {status && <p className="text-sm">{t("downloadRequired", {size: mb(status.download_bytes)})}</p>}
@@ -67,6 +77,7 @@ export function TtsSection({ compact = false }: { compact?: boolean }) {
           <Button variant="outline" disabled={active} onClick={() => void action(async () => { setAudio(null); const path = await previewTts(voice, provider); setAudio(convertFileSrc(path) + "?v=" + Date.now()); })}>{t("Preview voice")}</Button>
           {audio && <AudioPlayer key={audio} autoPlay src={audio} />}
         </div>}
+      </>}
       </>}
     </CardContent>
   </Card>;
