@@ -206,3 +206,14 @@ pnpm build — exit 0, «I18N PASS: 274 keys». Manual (headless Chromium,
 
 План замера на ПК: та же фраза ~10 с по 3 раза — CPU авто (8), CPU 4,
 видеокарта; сравнить rtf и encode_ms в «local STT completed».
+
+## 2026-11-09T13:57:41.000Z — версия 0.6.2 для тестовой сборки
+
+По просьбе пользователя («как я узнаю, что это та сборка — подними версию до
+0.6.2») версия поднята в package.json, Cargo.toml, Cargo.lock, tauri.conf.json.
+`node scripts/check-version.mjs` — «Glagol 0.6.2: … versions match»;
+`cargo build --locked`, `cargo test --locked` (354 passed) и `pnpm build` —
+exit 0. Это не выпуск: CHANGELOG остаётся в [Unreleased], заголовки
+руководств, release notes, подписанная сборка и публикация — при выпуске.
+Установщик тестовой сборки будет называться Glagol_0.6.2_x64-setup.exe,
+версия видна в боковом меню и в «Обновлениях».
