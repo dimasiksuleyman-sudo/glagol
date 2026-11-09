@@ -11,6 +11,10 @@ the per-session master logs under [`docs/day-logs/`](docs/day-logs/).
 
 ## [Unreleased]
 
+### Changed
+
+- The dictation indicator has a two-tone outline (light inside, dark outside), so it stays visible on both light and dark backgrounds. / У индикатора диктовки двухцветный контур (светлый внутри, тёмный снаружи), поэтому он виден и на светлом, и на тёмном фоне.
+
 ### Fixed
 
 - The dictation indicator could disappear after a long idle period with no display or session event, while every software check reported it as visible. Glagol now rebuilds the hidden indicator after 10 minutes without use and, after each show, checks a few screen pixels within the indicator; if it did not reach the screen, Glagol logs it and rebuilds the window after that dictation (GL-006). / Индикатор диктовки мог пропадать после долгого простоя без событий экрана или сеанса, хотя все программные проверки считали его видимым. Теперь Глагол пересоздаёт скрытый индикатор после 10 минут без использования и после каждого показа проверяет несколько пикселей экрана в пределах индикатора; если он не попал на экран, Глагол пишет это в журнал и пересоздаёт окно после этой диктовки (GL-006).

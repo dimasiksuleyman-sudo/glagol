@@ -481,3 +481,13 @@ clippy --locked -D warnings, cargo test --locked — exit 0, «358 passed»;
 pnpm build — exit 0. Windows: мини-крейт с overlay_native.rs —
 `cargo clippy --target x86_64-pc-windows-msvc -- -D warnings` exit 0.
 На Windows не запускалось.
+
+## 2026-11-09T20:07:32.000Z — контур индикатора для любого фона
+
+Запрос пользователя: «Можно изменить пилюлю так, чтобы она была на любом фоне
+видна?» OverlayPill: border 1px rgba(255,255,255,0.32) и внешнее кольцо
+box-shadow 0 0 0 1px rgba(0,0,0,0.6) поверх прежней тени. Manual (headless
+Chromium, 224×40 @3x, заглушка IPC): пилюля различима на #f5f5f5, #16181d,
+#000 и градиенте. Проверка пикселей не затронута: точки на 6 логических px
+ниже верха, внутри тела пилюли. pnpm build — exit 0. Руководства RU/EN,
+CHANGELOG [Unreleased] Changed.

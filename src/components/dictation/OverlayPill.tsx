@@ -255,8 +255,10 @@ const pillStyle: React.CSSProperties = {
   padding: "0 14px",
   borderRadius: 18,
   background: "rgba(20, 22, 28, 0.94)",
-  border: "1px solid rgba(255, 255, 255, 0.08)",
-  boxShadow: "0 6px 20px rgba(0, 0, 0, 0.35)",
+  // Two-tone outline keeps the pill visible on any background: the light inner
+  // ring stands out on dark windows, the dark outer ring on light ones.
+  border: "1px solid rgba(255, 255, 255, 0.32)",
+  boxShadow: "0 0 0 1px rgba(0, 0, 0, 0.6), 0 6px 20px rgba(0, 0, 0, 0.35)",
   color: "#f4f4f5",
   fontFamily:
     "'Geist Variable', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
