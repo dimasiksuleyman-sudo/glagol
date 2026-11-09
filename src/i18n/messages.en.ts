@@ -239,5 +239,10 @@ export const messages = {
   "Processor threads": "Processor threads",
   "Automatic ({p0})": "Automatic ({p0})",
   "Now computing on: {p0}": "Now computing on: {p0}",
-  "The graphics card could not be used, so the processor is used. Details are in the log.": "The graphics card could not be used, so the processor is used. Details are in the log."
+  "The graphics card could not be used, so the processor is used. Details are in the log.": "The graphics card could not be used, so the processor is used. Details are in the log.",
+  "This computer has a graphics card ({p0}). Recognition on it is usually several times faster.": "This computer has a graphics card ({p0}). Recognition on it is usually several times faster.",
+  "Use the graphics card": "Use the graphics card",
+  "GigaAM CTC is faster than RNNT, especially on a graphics card. Compare the quality on your own phrases.": "GigaAM CTC is faster than RNNT, especially on a graphics card. Compare the quality on your own phrases.",
+  "Switch to CTC": "Switch to CTC",
+  "Download CTC ({p0})": "Download CTC ({p0})"
 } as const;

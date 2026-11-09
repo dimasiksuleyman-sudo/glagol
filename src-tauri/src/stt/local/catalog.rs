@@ -30,7 +30,7 @@ pub const MODELS: [Model; 2] = [
     Model {
         id: "gigaam-v3-e2e-ctc",
         name: "GigaAM v3 · CTC",
-        description: "Русская речь с пунктуацией. Компактный вариант для повседневной диктовки.",
+        description: "Русская речь с пунктуацией. Рекомендуется: быстрее, особенно на видеокарте.",
         artifact: Artifact {
             file: "gigaam-v3-e2e-ctc-Q8_0.gguf",
             url: "https://huggingface.co/handy-computer/gigaam-v3-e2e-ctc-gguf/resolve/075dff81f843cf23d22b4ce943ffdc4dd8650cd7/gigaam-v3-e2e-ctc-Q8_0.gguf",
@@ -41,7 +41,7 @@ pub const MODELS: [Model; 2] = [
     Model {
         id: "gigaam-v3-e2e-rnnt",
         name: "GigaAM v3 · RNNT",
-        description: "Русская речь с пунктуацией. Альтернативный вариант — сравните на своих фразах.",
+        description: "Русская речь с пунктуацией. Альтернатива: медленнее CTC — сравните на своих фразах.",
         artifact: Artifact {
             file: "gigaam-v3-e2e-rnnt-Q8_0.gguf",
             url: "https://huggingface.co/handy-computer/gigaam-v3-e2e-rnnt-gguf/resolve/f719d70812344f4d0fb8c11c0887b190501a7465/gigaam-v3-e2e-rnnt-Q8_0.gguf",

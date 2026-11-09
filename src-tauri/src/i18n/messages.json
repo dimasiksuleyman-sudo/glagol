@@ -692,12 +692,12 @@
     "ru": "Некорректный архив движка Moonshine."
   },
   {
-    "en": "Russian speech with punctuation. A compact model for everyday dictation.",
-    "ru": "Русская речь с пунктуацией. Компактный вариант для повседневной диктовки."
+    "en": "Russian speech with punctuation. Recommended: faster, especially on a graphics card.",
+    "ru": "Русская речь с пунктуацией. Рекомендуется: быстрее, особенно на видеокарте."
   },
   {
-    "en": "Russian speech with punctuation. An alternative model to compare on your own phrases.",
-    "ru": "Русская речь с пунктуацией. Альтернативный вариант — сравните на своих фразах."
+    "en": "Russian speech with punctuation. Alternative: slower than CTC — compare on your own phrases.",
+    "ru": "Русская речь с пунктуацией. Альтернатива: медленнее CTC — сравните на своих фразах."
   },
   {
     "en": "Unknown local model.",

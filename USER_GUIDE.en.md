@@ -141,7 +141,11 @@ without AVX2) GigaAM recognizes at roughly the speed of speech. In Settings → 
 Recognition speed, choose Compute on: Graphics card (Vulkan) and, if you like, the number
 of Processor threads (Automatic by default, up to 8). The change applies immediately, and
 Now computing on shows the actual device. If the graphics card cannot be used, Glagol
-uses the processor and shows a warning; the reason is in the log. The full SHA-256 check
+uses the processor and shows a warning; the reason is in the log. If Glagol has already
+seen a graphics card on the computer but computes on the processor, the block suggests
+Use the graphics card; if RNNT is selected, it offers to switch to the recommended CTC
+(faster, especially on a graphics card). Both hints also appear on the Dictation page;
+nothing changes until you click. The full SHA-256 check
 of the GigaAM files runs on the first load and is then reused for up to 30 days while file
 sizes and dates are unchanged; Verify files and repair, a load error or a recognition
 error trigger the full check again.

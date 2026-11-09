@@ -147,6 +147,7 @@ export function DictationSection() {
   }
 
   const locked = busy || progress !== null || dictating;
+  const ctc = models?.models.find(m => m.id === "gigaam-v3-e2e-ctc");
   return <Card>
     <CardHeader>
       <CardTitle>{t("Dictation")}</CardTitle>
@@ -204,6 +205,13 @@ export function DictationSection() {
               </Select>
             </div>
             {engine.backend && <p className="text-xs text-muted-foreground">{t("Now computing on: {p0}", { p0: engine.backend })}</p>}
+            {engine.options.device === "cpu" && engine.gpu_name && <SpeedHint
+              text={t("This computer has a graphics card ({p0}). Recognition on it is usually several times faster.", { p0: engine.gpu_name })}
+              action={t("Use the graphics card")} disabled={locked} onClick={() => void changeEngine({ device: "gpu" })} />}
+            {active === "local" && ctc && activeModel !== ctc.id && activeModel.startsWith("gigaam-") && <SpeedHint
+              text={t("GigaAM CTC is faster than RNNT, especially on a graphics card. Compare the quality on your own phrases.")}
+              action={ctc.installed && ctc.download_bytes === 0 ? t("Switch to CTC") : t("Download CTC ({p0})", { p0: size(ctc.download_bytes) })}
+              disabled={locked} onClick={() => void useModel(ctc.id, ctc.installed)} />}
             {engine.gpu_fallback && <p role="alert" className="text-sm text-destructive">{t("The graphics card could not be used, so the processor is used. Details are in the log.")}</p>}
           </div>}
           {progress && <div className="space-y-2" role="status">
@@ -252,4 +260,12 @@ export function DictationSection() {
       </>}
     </CardContent>
   </Card>;
+}
+
+/** A recommendation with a one-click action inside «Recognition speed». */
+function SpeedHint({ text, action, disabled, onClick }: { text: string; action: string; disabled: boolean; onClick: () => void }) {
+  return <div className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-muted p-3">
+    <p className="text-sm">{text}</p>
+    <Button size="sm" variant="outline" disabled={disabled} onClick={onClick}>{action}</Button>
+  </div>;
 }

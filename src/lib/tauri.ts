@@ -295,7 +295,7 @@ export const removeLocalModel = (id: string) => invoke<void>("remove_local_model
 /** Mirrors `EngineOptions`/`EngineState` in `src-tauri/src/stt/local/mod.rs`. */
 export type LocalDevice = "cpu" | "gpu";
 export interface LocalEngineOptions { device: LocalDevice; threads: number }
-export interface LocalEngineState { options: LocalEngineOptions; logical_cpus: number; default_threads: number; backend: string | null; gpu_fallback: boolean }
+export interface LocalEngineState { options: LocalEngineOptions; logical_cpus: number; default_threads: number; backend: string | null; gpu_fallback: boolean; gpu_name: string | null }
 export const localEngineState = () => invoke<LocalEngineState>("local_engine_state");
 /** Saves and, for active Russian local dictation, reopens the model at once. */
 export const setLocalEngineOptions = (options: LocalEngineOptions) => invoke<LocalEngineState>("set_local_engine_options", { options });

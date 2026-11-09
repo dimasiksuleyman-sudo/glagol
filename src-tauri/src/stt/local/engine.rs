@@ -79,6 +79,15 @@ struct Native {
 }
 static NATIVE: OnceLock<Result<Arc<Native>, String>> = OnceLock::new();
 
+/// Name of the first discrete Vulkan GPU the runtime registered, if any.
+static DISCRETE_GPU: OnceLock<String> = OnceLock::new();
+
+/// The discrete graphics card usable through Vulkan, known after the runtime
+/// has been loaded once in this process (first Russian local model load).
+pub fn discrete_gpu() -> Option<String> {
+    DISCRETE_GPU.get().cloned()
+}
+
 /// Copy a runtime-owned C string for diagnostics; NULL becomes empty.
 ///
 /// # Safety
@@ -132,6 +141,10 @@ fn log_backends(library: &Library, dir: &Path) {
                 };
                 init(&mut out);
                 if info(device, &mut out) == 0 {
+                    // TRANSCRIBE_DEVICE_TYPE_GPU (1) is a discrete card.
+                    if out.device_type == 1 && c_text(out.kind) == "vulkan" {
+                        let _ = DISCRETE_GPU.set(c_text(out.description).trim().to_string());
+                    }
                     devices.push(format!(
                         "{}:{}:{} ({}, {} MB)",
                         index,

@@ -240,5 +240,10 @@ export const messages: {[K in keyof typeof en]: string} = {
   "Processor threads": "Потоки процессора",
   "Automatic ({p0})": "Автоматически ({p0})",
   "Now computing on: {p0}": "Сейчас считает: {p0}",
-  "The graphics card could not be used, so the processor is used. Details are in the log.": "Видеокарту использовать не удалось, поэтому работает процессор. Подробности — в журнале."
+  "The graphics card could not be used, so the processor is used. Details are in the log.": "Видеокарту использовать не удалось, поэтому работает процессор. Подробности — в журнале.",
+  "This computer has a graphics card ({p0}). Recognition on it is usually several times faster.": "На этом компьютере есть видеокарта ({p0}). На ней распознавание обычно в несколько раз быстрее.",
+  "Use the graphics card": "Считать на видеокарте",
+  "GigaAM CTC is faster than RNNT, especially on a graphics card. Compare the quality on your own phrases.": "GigaAM CTC быстрее RNNT, особенно на видеокарте. Качество сравните на своих фразах.",
+  "Switch to CTC": "Перейти на CTC",
+  "Download CTC ({p0})": "Скачать CTC ({p0})"
 };

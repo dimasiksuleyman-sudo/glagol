@@ -108,6 +108,8 @@ pub struct EngineState {
     pub backend: Option<String>,
     /// The graphics card was requested but the CPU is used.
     pub gpu_fallback: bool,
+    /// A discrete Vulkan graphics card seen by the runtime (after its first load).
+    pub gpu_name: Option<String>,
 }
 
 #[derive(Clone, Serialize)]
@@ -186,6 +188,7 @@ impl LocalModels {
             backend,
             gpu_fallback: options.device == Device::Gpu
                 && (fell_back || self.gpu_failed.load(Ordering::Relaxed)),
+            gpu_name: engine::discrete_gpu(),
         }
     }
 
