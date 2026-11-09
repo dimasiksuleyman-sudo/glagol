@@ -7,11 +7,11 @@
 
 Выбранная серия: **Скорость диктовки и отключение озвучки (0.6.3)**.
 
-**NEXT: S3b — GL-006: нативные события Windows, WebView2 ProcessFailed, состояние окна, пересоздание индикатора; проверка на ПК** (in_progress).
+**NEXT: S4 — Выпуск 0.6.3: подписанная сборка, PR и CI, GitHub Release, обновление из программы** (in_progress).
 
 [Решения](workstreams/dictation-speed/README.md) · [Состояние](workstreams/dictation-speed/state.json) · [Журнал](workstreams/dictation-speed/log.md)
 
-Выполняет: claude; ветка claude/optimistic-franklin-cvvbsr; с 2026-11-09T14:46:17.000Z.
+Выполняет: claude; ветка claude/optimistic-franklin-cvvbsr; с 2026-11-09T16:00:52.000Z.
 
 Последний завершённый шаг серии: **S3 — Ускорение по согласованию: видеокарта (Vulkan), потоки, 30-дневная квитанция проверки; замер на ПК**.
 
@@ -68,5 +68,7 @@
 - [docs/workstreams/self-update/log.md](../docs/workstreams/self-update/log.md)
 - [docs/workstreams/dictation-speed/README.md](../docs/workstreams/dictation-speed/README.md)
 - [docs/workstreams/dictation-speed/log.md](../docs/workstreams/dictation-speed/log.md)
+- [docs/workstreams/hardware-recommendations/README.md](../docs/workstreams/hardware-recommendations/README.md)
+- [docs/workstreams/hardware-recommendations/log.md](../docs/workstreams/hardware-recommendations/log.md)
 
 PASS в старом журнале — результат той даты, не новая проверка. Сборка, установка и публикация учитываются отдельно.

@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "id": "hardware-recommendations",
+  "title": "Рекомендации модели и настроек диктовки по железу",
+  "status": "paused",
+  "next": "R1",
+  "reason": "TODO от пользователя 2026-11-09: начинать после закрытия dictation-speed (выпуск 0.6.3, наблюдение GL-006); объём согласовать перед R1; продолжение — README серии.",
+  "claim": null,
+  "links": [
+    "docs/workstreams/hardware-recommendations/README.md",
+    "docs/workstreams/hardware-recommendations/log.md"
+  ],
+  "steps": [
+    {
+      "id": "R1",
+      "title": "Опрос железа заранее (AVX2, Vulkan-видеокарта) без загрузки модели",
+      "status": "pending",
+      "depends_on": [],
+      "required": ["rust"],
+      "checks": []
+    },
+    {
+      "id": "R2",
+      "title": "Рекомендация при первой настройке и выборе русской локальной модели",
+      "status": "pending",
+      "depends_on": ["R1"],
+      "required": ["rust", "frontend"],
+      "checks": []
+    },
+    {
+      "id": "R3",
+      "title": "Подсказка по фактической скорости последних диктовок",
+      "status": "pending",
+      "depends_on": ["R2"],
+      "required": ["rust", "frontend", "manual"],
+      "checks": []
+    }
+  ]
+}

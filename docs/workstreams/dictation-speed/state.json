@@ -3,11 +3,11 @@
   "id": "dictation-speed",
   "title": "Скорость диктовки и отключение озвучки (0.6.3)",
   "status": "active",
-  "next": "S3b",
+  "next": "S4",
   "reason": null,
   "claim": {
     "owner": "claude",
-    "at": "2026-11-09T14:46:17.000Z",
+    "at": "2026-11-09T16:00:52.000Z",
     "branch": "claude/optimistic-franklin-cvvbsr"
   },
   "links": [
@@ -203,11 +203,24 @@
       ]
     },
     {
-      "id": "S3b",
-      "title": "GL-006: нативные события Windows, WebView2 ProcessFailed, состояние окна, пересоздание индикатора; проверка на ПК",
+      "id": "S4",
+      "title": "Выпуск 0.6.3: подписанная сборка, PR и CI, GitHub Release, обновление из программы",
       "status": "in_progress",
       "depends_on": [
         "S3"
+      ],
+      "required": [
+        "nsis",
+        "published"
+      ],
+      "checks": []
+    },
+    {
+      "id": "S3b",
+      "title": "GL-006 после выпуска: наблюдение индикатора на ПК и ноутбуке по журналам (выключение экрана, Win+L, сброс драйвера)",
+      "status": "pending",
+      "depends_on": [
+        "S4"
       ],
       "required": [
         "rust",
@@ -264,19 +277,6 @@
           "evidence": "docs/workstreams/dictation-speed/log.md"
         }
       ]
-    },
-    {
-      "id": "S4",
-      "title": "Выпуск 0.6.3: подписанная сборка, PR и CI, GitHub Release, обновление из программы",
-      "status": "pending",
-      "depends_on": [
-        "S3b"
-      ],
-      "required": [
-        "nsis",
-        "published"
-      ],
-      "checks": []
     }
   ]
 }
