@@ -42,7 +42,7 @@ CC BY-NC-SA 4.0 для некоммерческого использования
 | `tts/silero/worker.rs`, `worker.py` | Скрытый CPU-процесс, bounded stdio JSON, офлайн синтез |
 | `commands/tts.rs` | Status/install/cancel/remove/preview; backend consent checks |
 | `commands/updates.rs` | Версия, флаг автопроверки, проверка `latest.json`, скачивание с прогрессом и установка через tauri-plugin-updater |
-| `stt/local` | Необязательные GigaAM/transcribe.cpp; downloader переиспользуется TTS |
+| `stt/local` | Необязательные GigaAM/transcribe.cpp; CPU или Vulkan, потоки, 30-дневная квитанция проверки (`receipt.rs`); downloader переиспользуется TTS |
 | `stt/moonshine` | EN каталог, staging, проверенные DLL, C ABI, скрытый режим того же EXE |
 | `dictation/stream_resample.rs` | Потоковый mono 16 kHz вне callback, сохранение границ и flush хвоста |
 | `commands/speech.rs` | Независимые профили local/server/cloud |

@@ -167,3 +167,42 @@ CTC вместо RNNT убрал бы не больше ~10 % (декодер). 
 проверить 4 потока вместо 8 (4 модуля FX делят FPU) и кеш проверки модели
 (~3 с при первой диктовке). Исправление — после согласования с пользователем.
 GL-006: ждём журнал с пропажей.
+
+## 2026-11-09T11:03:13.000Z — S3 ускорение: Vulkan, потоки, квитанция проверки
+
+Согласование: пользователь 2026-11-09 — «Да, гоу, все три и будем
+тестировать» (видеокарта, потоки, кеш проверки). S2 закрыт по журналу ПК:
+причина определена без журнала ноутбука, поэтому шаг сужен до ПК (заголовок
+изменён, сравнение с ноутбуком не требуется для вывода).
+
+Сделано:
+- engine.rs: `transcribe_open` с `transcribe_session_params` (n_threads; 0 =
+  по умолчанию библиотеки) и backend CPU(1) или VULKAN(3); при ошибке Vulkan —
+  warn «local STT graphics card unavailable; using CPU» и открытие на CPU.
+  «local STT session opened» пишет backend, gpu_requested, fell_back, threads.
+- stt/local/mod.rs: EngineOptions {device cpu|gpu, threads 0..64} в
+  app_settings (stt_local_device, stt_local_threads), читаются при запуске;
+  prepare переоткрывает модель при смене опций; ошибка распознавания на Vulkan
+  → warn, gpu_failed, повтор на CPU (до сохранения опций/перезапуска).
+  Команды local_engine_state, set_local_engine_options (сразу prepare для
+  активной русской локальной диктовки).
+- receipt.rs: verification-<model>.json с размером и mtime модели, архива и
+  всех файлов runtime; повтор полной проверки не дольше 30 дней; сброс при
+  загрузке/восстановлении, удалении, ошибке открытия и распознавания.
+  «local STT model loaded» пишет verification_reused и backend.
+- UI: блок «Скорость распознавания» (где считать, потоки, «Сейчас считает»,
+  предупреждение об откате на CPU) для русской локальной модели.
+- Документация: обе USER_GUIDE, обе части README, CHANGELOG, runtime doc,
+  PROJECT_STRUCTURE, CLAUDE.md.
+
+Проверки (Linux container, rustc 1.97.0, node v22.23.4, pnpm 10.28.0;
+PDFIUM_LIBRARY_PATH как в S1): cargo fmt --check, clippy -D warnings,
+cargo test — exit 0, «354 passed; 0 failed; 6 ignored» (новые тесты:
+receipt — повтор/устаревание/изменение файла/отсутствующие файлы; опции
+движка — значения по умолчанию, запись, отказ >64, откат gpu_failed).
+pnpm build — exit 0, «I18N PASS: 274 keys». Manual (headless Chromium,
+заглушка IPC): блок отображается, с предупреждением об откате.
+Не проверено: Vulkan и потоки на реальном ПК — это pc-test (NOT_RUN).
+
+План замера на ПК: та же фраза ~10 с по 3 раза — CPU авто (8), CPU 4,
+видеокарта; сравнить rtf и encode_ms в «local STT completed».

@@ -171,9 +171,20 @@ pub fn run() {
             );
 
             app.manage(state::AppState::new(conn, recorder));
-            app.manage(std::sync::Arc::new(stt::local::LocalModels::new(
-                paths::local_models_root(app.handle())?,
-            )));
+            let engine_options = {
+                let state = app.state::<state::AppState>();
+                let conn = state.db.lock().map_err(|e| e.to_string())?;
+                stt::local::EngineOptions::read(&conn)?
+            };
+            let local_models =
+                stt::local::LocalModels::new(paths::local_models_root(app.handle())?);
+            local_models.set_options(engine_options);
+            tracing::info!(
+                device = ?engine_options.device,
+                threads = engine_options.threads,
+                "local STT engine options at startup"
+            );
+            app.manage(std::sync::Arc::new(local_models));
 
             let silero = std::sync::Arc::new(tts::silero::Silero::new(paths::tts_models_root(
                 app.handle(),
@@ -284,6 +295,8 @@ pub fn run() {
             commands::speech::test_speech_settings,
             commands::speech::delete_speech_key,
             stt::local::local_models_status,
+            stt::local::local_engine_state,
+            stt::local::set_local_engine_options,
             stt::local::download_local_model,
             stt::local::cancel_model_download,
             stt::local::remove_local_model,

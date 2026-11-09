@@ -7,13 +7,15 @@
 
 Выбранная серия: **Скорость диктовки и отключение озвучки (0.6.2)**.
 
-**NEXT: S2 — Сборка на ПК до выпуска: журналы одной и той же диктовки на ПК и ноутбуке, случаи пропажи индикатора** (pending).
+**NEXT: S3 — Ускорение по согласованию: видеокарта (Vulkan), потоки, 30-дневная квитанция проверки; замер на ПК** (in_progress).
 
 [Решения](workstreams/dictation-speed/README.md) · [Состояние](workstreams/dictation-speed/state.json) · [Журнал](workstreams/dictation-speed/log.md)
 
-Последний завершённый шаг серии: **S1b — Диагностика пропадающего индикатора диктовки (GL-006); автоматические гейты**.
+Выполняет: claude; ветка claude/optimistic-franklin-cvvbsr; с 2026-11-09T11:03:13.000Z.
 
-Проверка 2026-11-09T08:16:33.000Z: test result: ok. 351 passed; 0 failed; 6 ignored ([evidence](../docs/workstreams/dictation-speed/log.md)).
+Последний завершённый шаг серии: **S2 — Журнал с ПК: причина медленного распознавания**.
+
+Проверка 2026-11-09T11:00:00.000Z: rtf 1,04–1,13; encode 91–93 % на CPU без AVX2; Vulkan0 RX 550 найден, backend=CPU ([evidence](../docs/workstreams/dictation-speed/log.md)).
 
 ## Доставка и наблюдения
 

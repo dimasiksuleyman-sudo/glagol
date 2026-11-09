@@ -13,8 +13,13 @@ the per-session master logs under [`docs/day-logs/`](docs/day-logs/).
 
 ### Added
 
+- Settings → Dictation → Recognition speed for the Russian local model: compute on the processor or the graphics card (Vulkan), and choose the number of processor threads. A graphics-card failure falls back to the processor with a warning. / «Настройки» → «Диктовка» → «Скорость распознавания» для русской локальной модели: считать на процессоре или на видеокарте (Vulkan) и выбрать число потоков процессора. При сбое видеокарты Глагол переходит на процессор и показывает предупреждение.
 - Settings → Local text to speech has a Text to speech switch. When it is off, Glagol does not verify Silero files at startup or preload the model, unloads a warm model, hides the Synthesize page and opens Dictation first; models, acknowledgement and the library are kept. / В «Настройки» → «Локальная озвучка» появился переключатель «Озвучка». Когда он выключен, Глагол не проверяет файлы Silero при запуске и не загружает модель заранее, выгружает уже загруженную модель, скрывает экран «Озвучить» и открывается на «Диктовке»; модели, согласие и библиотека сохраняются.
 - Settings → Diagnostics: Detailed log switch and Open log folder. The log now records the processor, the local engine's devices and instruction set, model load and verification time, and the time of each recognition stage, plus how the dictation indicator was shown (monitor, position, whether its page received the state and painted) — never speech, recognized text, documents or keys. / «Настройки» → «Диагностика»: переключатель «Подробный журнал» и кнопка «Открыть папку журналов». В журнал теперь записываются процессор, устройства и набор инструкций локального движка, время проверки и загрузки модели, время каждого этапа распознавания и показ индикатора диктовки (монитор, положение, получила ли страница состояние и отрисовалась ли) — без речи, распознанного текста, документов и ключей.
+
+### Changed
+
+- The first Russian local dictation after start no longer re-hashes the model and runtime every time: a full SHA-256 check is reused for up to 30 days while file sizes and dates are unchanged; repair or a load/recognition error forces the full check. / Первая русская локальная диктовка после запуска больше не пересчитывает хеши модели и движка каждый раз: полная проверка SHA-256 используется до 30 дней, пока размер и дата файлов не меняются; восстановление или ошибка загрузки/распознавания вызывают полную проверку.
 
 ## [v0.6.1] — 2026-10-09
 

@@ -3,9 +3,13 @@
   "id": "dictation-speed",
   "title": "Скорость диктовки и отключение озвучки (0.6.2)",
   "status": "active",
-  "next": "S2",
+  "next": "S3",
   "reason": null,
-  "claim": null,
+  "claim": {
+    "owner": "claude",
+    "at": "2026-11-09T11:03:13.000Z",
+    "branch": "claude/optimistic-franklin-cvvbsr"
+  },
   "links": [
     "docs/workstreams/dictation-speed/README.md",
     "docs/workstreams/dictation-speed/log.md"
@@ -107,27 +111,94 @@
     },
     {
       "id": "S2",
-      "title": "Сборка на ПК до выпуска: журналы одной и той же диктовки на ПК и ноутбуке, случаи пропажи индикатора",
-      "status": "pending",
+      "title": "Журнал с ПК: причина медленного распознавания",
+      "status": "done",
       "depends_on": [
         "S1b"
       ],
       "required": [
         "logs"
       ],
-      "checks": []
+      "checks": [
+        {
+          "id": "logs",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Пользователь передал glagol.2026-11-09.log с ПК (подробный журнал, 6 диктовок сборки ветки); разбор в журнале серии",
+          "cwd": ".",
+          "at": "2026-11-09T11:00:00.000Z",
+          "environment": {
+            "os": "Windows (ПК пользователя)",
+            "cpu": "AMD FX-8300"
+          },
+          "exit_code": null,
+          "output": "rtf 1,04–1,13; encode 91–93 % на CPU без AVX2; Vulkan0 RX 550 найден, backend=CPU",
+          "evidence": "docs/workstreams/dictation-speed/log.md"
+        }
+      ]
     },
     {
       "id": "S3",
-      "title": "Анализ журналов: причина или явное unknown, согласованное исправление",
-      "status": "pending",
+      "title": "Ускорение по согласованию: видеокарта (Vulkan), потоки, 30-дневная квитанция проверки; замер на ПК",
+      "status": "in_progress",
       "depends_on": [
         "S2"
       ],
       "required": [
-        "analysis"
+        "rust",
+        "frontend",
+        "pc-test"
       ],
-      "checks": []
+      "checks": [
+        {
+          "id": "rust",
+          "status": "PASS",
+          "method": "command",
+          "command": "cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test",
+          "cwd": "src-tauri",
+          "at": "2026-11-09T11:03:13.000Z",
+          "environment": {
+            "os": "Linux container",
+            "rustc": "1.97.0",
+            "node": "v22.23.4",
+            "pnpm": "10.28.0"
+          },
+          "exit_code": 0,
+          "output": "test result: ok. 354 passed; 0 failed; 6 ignored",
+          "evidence": "docs/workstreams/dictation-speed/log.md"
+        },
+        {
+          "id": "frontend",
+          "status": "PASS",
+          "method": "command",
+          "command": "pnpm build",
+          "cwd": ".",
+          "at": "2026-11-09T11:03:13.000Z",
+          "environment": {
+            "os": "Linux container",
+            "rustc": "1.97.0",
+            "node": "v22.23.4",
+            "pnpm": "10.28.0"
+          },
+          "exit_code": 0,
+          "output": "I18N PASS: 274 keys; ✓ built",
+          "evidence": "docs/workstreams/dictation-speed/log.md"
+        },
+        {
+          "id": "pc-test",
+          "status": "NOT_RUN",
+          "method": "manual",
+          "command": "Сборка ветки на ПК: CPU 8/4 потока и Vulkan, одинаковая фраза, подробный журнал",
+          "cwd": ".",
+          "at": "2026-11-09T11:03:13.000Z",
+          "environment": {
+            "os": "Windows (ПК пользователя)"
+          },
+          "exit_code": null,
+          "output": "Ожидает сборки и журнала пользователя",
+          "evidence": "docs/workstreams/dictation-speed/log.md"
+        }
+      ]
     }
   ]
 }

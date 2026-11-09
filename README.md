@@ -41,7 +41,8 @@ local dictation. Upgrades retain modes, server addresses, credentials and voices
 - Hold `Ctrl+Shift+Space`, wait for the recording signal, speak, release, then receive
   the final text once. Auto-paste or clipboard only; optional history is off by default.
 - English local dictation: Moonshine Small Streaming, native CPU runtime. Russian:
-  GigaAM v3 CTC/RNNT. Independent office-server and cloud profiles remain available.
+  GigaAM v3 CTC/RNNT on the processor or, optionally, the graphics card (Vulkan), with
+  a selectable thread count. Independent office-server and cloud profiles remain available.
 - Optional offline Silero synthesis: v3_en with EN 0–3 (default EN 0), and v5.5 RU
   with Aidar, Baya, Kseniya, Xenia and Eugene. Voice preview, progress and cancellation.
 - Paste text or import TXT/MD/DOCX/PDF. Long documents use a sequential WAV pipeline.
@@ -131,7 +132,8 @@ the development machine; importing pinned files was exercised separately.
 - Удерживайте `Ctrl+Shift+Space`, дождитесь сигнала записи, говорите и отпустите:
   готовый текст вставится один раз. Доступен режим буфера; история изначально выключена.
 - Английская локальная диктовка: Moonshine Small Streaming, нативный CPU-runtime.
-  Русская: GigaAM v3 CTC/RNNT. Сохраняются отдельные офисный и облачный профили.
+  Русская: GigaAM v3 CTC/RNNT на процессоре или, по выбору, на видеокарте (Vulkan),
+  с настраиваемым числом потоков. Сохраняются отдельные офисный и облачный профили.
 - Необязательная офлайн-озвучка Silero: v3_en с EN 0–3 (по умолчанию EN 0) и
   v5.5 RU с Айдаром, Баей, Ксенией, Xenia и Евгением. Есть образец голоса, прогресс и отмена.
 - Текст или TXT/MD/DOCX/PDF; последовательная озвучка длинных документов в WAV.

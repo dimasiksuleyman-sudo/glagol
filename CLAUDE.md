@@ -116,6 +116,8 @@ These constraints apply to changes. Resolve required architectural changes befor
   Removing one language model retains the other model and runtime. No Kokoro/G2P.
 
 - `tts/silero` owns optional files, consent, worker and download state; STT is separate.
+- GigaAM (RU STT) defaults to CPU; Vulkan is opt-in with CPU fallback. Its full SHA-256
+  check is reused ≤30 days via a size/mtime receipt; repair/removal/open or run errors clear it.
 - `TtsBackend` defines provider, voices, chunk limit and on-disk WAV result. Future
   Yandex SpeechKit v3 is out of scope until separately requested.
 - Silero v5.5 RU and v3 EN are CC BY-NC-SA 4.0, not MIT. Unchecked acknowledgement before first

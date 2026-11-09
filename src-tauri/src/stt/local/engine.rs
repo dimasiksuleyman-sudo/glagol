@@ -23,6 +23,19 @@ type Close = unsafe extern "C" fn(*mut c_void);
 type GetTimings = unsafe extern "C" fn(*const c_void, *mut Timings) -> i32;
 type TimingsInit = unsafe extern "C" fn(*mut Timings);
 
+/// `struct transcribe_session_params` from the pinned 0.2.3 header.
+#[repr(C)]
+struct SessionParams {
+    struct_size: u64,
+    n_threads: i32,
+    kv_type: i32,
+    n_ctx: i32,
+}
+
+/// `TRANSCRIBE_BACKEND_CPU` / `TRANSCRIBE_BACKEND_VULKAN` from the 0.2.3 header.
+const BACKEND_CPU: i32 = 1;
+const BACKEND_VULKAN: i32 = 3;
+
 /// `struct transcribe_timings` from the pinned 0.2.3 header.
 #[repr(C)]
 #[derive(Default)]
@@ -289,13 +302,29 @@ pub struct Engine {
     native: Arc<Native>,
     session: *mut c_void,
     pub model_id: String,
+    /// The graphics card (Vulkan) was requested for this session.
+    pub gpu_requested: bool,
+    /// Requested CPU threads; 0 lets the library choose.
+    pub threads: u32,
+    /// Backend the library bound, e.g. `CPU` or `Vulkan0`.
+    pub backend: String,
+    /// Vulkan was requested but could not open, so the CPU is used.
+    pub fell_back: bool,
 }
 // SAFETY: the C API permits moving a session across threads, but not concurrent
 // access. Engine is only accessed through an exclusive Mutex guard. It is not Sync.
 unsafe impl Send for Engine {}
 
 impl Engine {
-    pub fn open(runtime: &Path, model_path: &Path, model_id: &str) -> Result<Self, String> {
+    /// Open `model_path` on the graphics card (Vulkan) when `gpu` is set, falling
+    /// back to the CPU if that fails; `threads == 0` keeps the library default.
+    pub fn open(
+        runtime: &Path,
+        model_path: &Path,
+        model_id: &str,
+        gpu: bool,
+        threads: u32,
+    ) -> Result<Self, String> {
         let native = Native::load(runtime)?;
         let path = CString::new(
             model_path
@@ -303,28 +332,26 @@ impl Engine {
                 .ok_or("Путь модели не является UTF-8.")?,
         )
         .map_err(|e| e.to_string())?;
-        let mut params = LoadParams {
-            struct_size: 0,
-            backend: 0,
-            device: std::ptr::null_mut(),
+        let mut fell_back = false;
+        let session = if gpu {
+            let started = std::time::Instant::now();
+            match Self::try_open(&native, &path, BACKEND_VULKAN, threads) {
+                Ok(session) => session,
+                Err(status) => {
+                    tracing::warn!(
+                        model = model_id,
+                        status,
+                        elapsed_ms = started.elapsed().as_millis() as u64,
+                        "local STT graphics card unavailable; using CPU"
+                    );
+                    fell_back = true;
+                    Self::try_open(&native, &path, BACKEND_CPU, threads)
+                        .map_err(Self::open_error)?
+                }
+            }
+        } else {
+            Self::try_open(&native, &path, BACKEND_CPU, threads).map_err(Self::open_error)?
         };
-        let mut session = std::ptr::null_mut();
-        // SAFETY: params has the exact C layout; initialize through the API, then
-        // request CPU explicitly. C strings and output storage live throughout open.
-        let status = unsafe {
-            let init: libloading::Symbol<unsafe extern "C" fn(*mut LoadParams)> = native
-                ._library
-                .get(b"transcribe_model_load_params_init\0")
-                .map_err(|e| e.to_string())?;
-            init(&mut params);
-            params.backend = 1;
-            (native.open)(path.as_ptr(), &params, std::ptr::null(), &mut session)
-        };
-        if status != 0 || session.is_null() {
-            return Err(format!(
-                "Не удалось открыть модель (код {status}). Попробуйте скачать её заново."
-            ));
-        }
         // SAFETY: the session is valid; the model and backend string are
         // library-owned for the session lifetime and copied immediately.
         let backend = unsafe {
@@ -341,12 +368,76 @@ impl Engine {
                 _ => String::new(),
             }
         };
-        tracing::info!(model = model_id, backend = %backend, "local STT session opened");
+        tracing::info!(
+            model = model_id,
+            backend = %backend,
+            gpu_requested = gpu,
+            fell_back,
+            threads = if threads == 0 { crate::diagnostics::stt_default_threads() as u32 } else { threads },
+            "local STT session opened"
+        );
         Ok(Self {
             native,
             session,
             model_id: model_id.into(),
+            gpu_requested: gpu,
+            threads,
+            backend,
+            fell_back,
         })
+    }
+
+    fn open_error(status: i32) -> String {
+        format!("Не удалось открыть модель (код {status}). Попробуйте скачать её заново.")
+    }
+
+    /// One `transcribe_open` attempt; returns the library status on failure.
+    fn try_open(
+        native: &Native,
+        path: &CString,
+        backend: i32,
+        threads: u32,
+    ) -> Result<*mut c_void, i32> {
+        let mut params = LoadParams {
+            struct_size: 0,
+            backend: 0,
+            device: std::ptr::null_mut(),
+        };
+        let mut session_params = SessionParams {
+            struct_size: 0,
+            n_threads: 0,
+            kv_type: 0,
+            n_ctx: 0,
+        };
+        let mut session = std::ptr::null_mut();
+        // SAFETY: both param structs have the exact 0.2.3 C layout and are
+        // initialized through the API before the backend and thread count are
+        // set; a NULL device selects the first device of the requested backend.
+        // C strings and output storage live throughout open.
+        let status = unsafe {
+            let init: libloading::Symbol<unsafe extern "C" fn(*mut LoadParams)> = native
+                ._library
+                .get(b"transcribe_model_load_params_init\0")
+                .map_err(|_| -1)?;
+            init(&mut params);
+            params.backend = backend;
+            let session_init: libloading::Symbol<unsafe extern "C" fn(*mut SessionParams)> = native
+                ._library
+                .get(b"transcribe_session_params_init\0")
+                .map_err(|_| -1)?;
+            session_init(&mut session_params);
+            session_params.n_threads = threads.min(64) as i32;
+            (native.open)(
+                path.as_ptr(),
+                &params,
+                (&session_params as *const SessionParams).cast(),
+                &mut session,
+            )
+        };
+        if status != 0 || session.is_null() {
+            return Err(if status == 0 { -1 } else { status });
+        }
+        Ok(session)
     }
 
     /// Recognize 16 kHz mono PCM; also returns engine time per stage.

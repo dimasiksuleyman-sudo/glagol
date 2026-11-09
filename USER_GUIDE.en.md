@@ -123,8 +123,9 @@ speech language remembers its local model and voice.
 
 - **On this computer:** English Moonshine Small Streaming (158.8 MB initial download,
   including 16.5 MB native runtime); Russian GigaAM v3 CTC/RNNT (272.2–273.7 MB model
-  plus 20.1 MB runtime). Windows x64 CPU. Models install by explicit choice, work offline
-  after verification and survive updates. Other-language installed models remain listed.
+  plus 20.1 MB runtime). Windows x64: processor or, for the Russian model, graphics card
+  through Vulkan. Models install by explicit choice, work offline after verification and
+  survive updates. Other-language installed models remain listed.
   Remove an inactive model to free space; shared runtime is retained. Local speech uses
   explicit EN/RU; mixed-language detection and translation are not included.
 - **Organization server:** OpenAI-compatible `/audio/transcriptions`; `/models` is
@@ -134,6 +135,16 @@ speech language remembers its local model and voice.
   bypassed; an explicit proxy is available.
 - **Cloud service:** choose a preset or compatible endpoint, model, key and optional
   dictation-only proxy. The existing remote `auto` language option is retained.
+
+**Russian local model speed.** On a computer with an older processor (for example,
+without AVX2) GigaAM recognizes at roughly the speed of speech. In Settings → Dictation →
+Recognition speed, choose Compute on: Graphics card (Vulkan) and, if you like, the number
+of Processor threads (Automatic by default, up to 8). The change applies immediately, and
+Now computing on shows the actual device. If the graphics card cannot be used, Glagol
+uses the processor and shows a warning; the reason is in the log. The full SHA-256 check
+of the GigaAM files runs on the first load and is then reused for up to 30 days while file
+sizes and dates are unchanged; Verify files and repair, a load error or a recognition
+error trigger the full check again.
 
 Office/cloud profiles and keys stay separate. Save and use activates an edited profile;
 changing endpoints does not send the old key to the new service. Local Moonshine streams

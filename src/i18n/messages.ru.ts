@@ -230,5 +230,15 @@ export const messages: {[K in keyof typeof en]: string} = {
   "The log records timings, hardware and errors. It never contains your speech, recognized text, documents or keys.": "Журнал записывает время этапов, сведения об оборудовании и ошибки. В нём никогда нет вашей речи, распознанного текста, документов и ключей.",
   "Detailed log": "Подробный журнал",
   "Off by default. Turn it on to investigate slow dictation, reproduce the problem, then send the log file from the folder below.": "По умолчанию выключен. Включите, чтобы разобраться с медленной диктовкой: повторите проблему и отправьте файл журнала из папки ниже.",
-  "Open log folder": "Открыть папку журналов"
+  "Open log folder": "Открыть папку журналов",
+  "Applying…": "Применяем…",
+  "Recognition speed": "Скорость распознавания",
+  "For the Russian model. Try the graphics card on a computer with an older processor; if it fails, Glagol uses the processor.": "Для русской модели. На компьютере со старым процессором попробуйте видеокарту; если она не сработает, Глагол будет считать на процессоре.",
+  "Compute on": "Где считать",
+  "Processor": "Процессор",
+  "Graphics card (Vulkan)": "Видеокарта (Vulkan)",
+  "Processor threads": "Потоки процессора",
+  "Automatic ({p0})": "Автоматически ({p0})",
+  "Now computing on: {p0}": "Сейчас считает: {p0}",
+  "The graphics card could not be used, so the processor is used. Details are in the log.": "Видеокарту использовать не удалось, поэтому работает процессор. Подробности — в журнале."
 };

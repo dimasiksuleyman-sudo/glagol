@@ -229,5 +229,15 @@ export const messages = {
   "The log records timings, hardware and errors. It never contains your speech, recognized text, documents or keys.": "The log records timings, hardware and errors. It never contains your speech, recognized text, documents or keys.",
   "Detailed log": "Detailed log",
   "Off by default. Turn it on to investigate slow dictation, reproduce the problem, then send the log file from the folder below.": "Off by default. Turn it on to investigate slow dictation, reproduce the problem, then send the log file from the folder below.",
-  "Open log folder": "Open log folder"
+  "Open log folder": "Open log folder",
+  "Applying…": "Applying…",
+  "Recognition speed": "Recognition speed",
+  "For the Russian model. Try the graphics card on a computer with an older processor; if it fails, Glagol uses the processor.": "For the Russian model. Try the graphics card on a computer with an older processor; if it fails, Glagol uses the processor.",
+  "Compute on": "Compute on",
+  "Processor": "Processor",
+  "Graphics card (Vulkan)": "Graphics card (Vulkan)",
+  "Processor threads": "Processor threads",
+  "Automatic ({p0})": "Automatic ({p0})",
+  "Now computing on: {p0}": "Now computing on: {p0}",
+  "The graphics card could not be used, so the processor is used. Details are in the log.": "The graphics card could not be used, so the processor is used. Details are in the log."
 } as const;
