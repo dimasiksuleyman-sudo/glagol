@@ -404,3 +404,33 @@ exit 0.
 
 Осталось: обновление из программы — ноутбук (0.6.1) и ПК (тестовая 0.6.2) через
 «Проверить обновления»; затем наблюдение индикатора (S3b).
+
+## 2026-11-09T18:54:39.000Z — журнал ПК после выпуска: обновление из программы, CTC+Vulkan, Win+L
+
+Источник: третий журнал ПК glagol.2026-11-09.log (передан пользователем).
+
+Обновление из программы (observed по журналу): 16:12:23Z «update available
+version=0.6.3», 16:14:15Z «installing update version=0.6.3», 16:14:24Z
+«system diagnostics version="0.6.3"» — ПК обновился с тестовой 0.6.2 до 0.6.3
+из программы. Ноутбук (0.6.1) ещё не обновлён — reported.
+
+Скорость: GigaAM v3 CTC, backend=Vulkan0, 4 потока, verification_reused=true;
+10 диктовок 2,1–9,2 с аудио — rtf 0,07–0,14 (9 150 мс аудио → 669 мс).
+Для сравнения: RNNT на CPU rtf ≈1,1, RNNT на Vulkan ≈0,2.
+
+Индикатор (GL-006): после старта 0.6.3 «overlay system watch started
+display_notifications=true session_notifications=true». Win+L: 18:07:00Z
+SessionLock, 18:50:12Z SessionUnlock → «overlay marked for rebuild» →
+18:50:16Z «overlay window rebuilt generation=1», старое окно destroyed, страница
+overlay-1 загружена. Все 10 показов (4 — окно overlay до блокировки, 6 —
+overlay-1 после): topmost=true, cloaked=0, controller_visible=true,
+corrected=false, 224×40. ProcessFailed, FrameMissing, ScriptError — нет;
+DisplayOff/DisplayOn за блокировку не пришли (экран, видимо, не гас — не
+проверено). Пользователь: «пилюля на месте; обычно к этому времени уже
+исчезала» (reported).
+
+Вывод: механизм из исследования (пересоздание по событию сеанса) сработал
+по назначению. Сама поломка в этом журнале не поймана: до пересоздания старое
+окно было «здорово» по всем признакам, поэтому причина GL-006 не доказана;
+пересоздание работает как профилактика. Наблюдение — неделя на обоих
+компьютерах, отдельно сценарий с погасшим экраном.
