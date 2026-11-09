@@ -50,7 +50,10 @@ The native library remains loaded for the process lifetime: ggml keeps global
 backend registrations. A mutex owns one session/model at a time, and inference
 runs in `spawn_blocking`. Session destruction precedes freeing weights. No model
 is downloaded during recognition. Logs include model ID and timing, never audio
-or recognized text. Short utterances remain intact; long audio is partitioned
+or recognized text: runtime initialization, registered devices and the selected ggml
+CPU variant's features (through the public device/registry API; the engine's own log
+callback stays disabled), model verification/load time, and per-recording mel,
+encoder and decoder time with the default thread count. Short utterances remain intact; long audio is partitioned
 near low-energy boundaries between 16 and 24 seconds without losing samples.
 
 ## Reproduce native verification

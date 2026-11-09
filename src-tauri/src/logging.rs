@@ -51,9 +51,19 @@
 //! What we DO log: RMS values, durations, error codes/messages, dispositions,
 //! boolean flags. Never content, never secrets.
 
+use std::sync::OnceLock;
 use tauri::AppHandle;
 use tracing_appender::non_blocking::WorkerGuard;
-use tracing_subscriber::EnvFilter;
+use tracing_subscriber::{prelude::*, reload, EnvFilter, Registry};
+
+/// Runtime handle for the «Detailed log» switch (0.6.2). `None` when the
+/// subscriber could not be installed or `RUST_LOG` overrides the filter.
+static FILTER: OnceLock<reload::Handle<EnvFilter, Registry>> = OnceLock::new();
+
+/// Filter while the user has turned on «Detailed log»: every Glagol module at
+/// `debug`, dependencies still at `warn`. Same content rules (D-L5) apply —
+/// `debug` lines carry numbers and reasons, never text, audio or keys.
+const DETAILED_DIRECTIVE: &str = "warn,glagol_lib=debug";
 
 /// Default filter when `RUST_LOG` is unset, in dev: our lib at `debug`, deps
 /// quiet.
@@ -99,6 +109,49 @@ fn env_filter() -> EnvFilter {
     EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(DEFAULT_DIRECTIVE))
 }
 
+/// The filter directive for the «Detailed log» switch state.
+fn directive(detailed: bool) -> &'static str {
+    if detailed {
+        DETAILED_DIRECTIVE
+    } else {
+        DEFAULT_DIRECTIVE
+    }
+}
+
+/// Switch between the default and detailed filters without restarting.
+///
+/// An explicit `RUST_LOG` wins: a maintainer's filter is never replaced by the
+/// UI switch. Returns whether the filter was changed.
+pub fn set_detailed(detailed: bool) -> bool {
+    if std::env::var_os("RUST_LOG").is_some() {
+        return false;
+    }
+    FILTER
+        .get()
+        .is_some_and(|handle| handle.reload(EnvFilter::new(directive(detailed))).is_ok())
+}
+
+/// Install `writer` behind a reloadable filter, keeping the handle for
+/// [`set_detailed`].
+fn install<W>(writer: W, ansi: bool)
+where
+    W: for<'w> tracing_subscriber::fmt::MakeWriter<'w> + Send + Sync + 'static,
+{
+    let (filter, handle) = reload::Layer::new(env_filter());
+    let installed = tracing_subscriber::registry()
+        .with(filter)
+        .with(
+            tracing_subscriber::fmt::layer()
+                .with_ansi(ansi)
+                .with_writer(writer),
+        )
+        .try_init()
+        .is_ok();
+    if installed {
+        let _ = FILTER.set(handle);
+    }
+}
+
 /// Install the global tracing subscriber and return the log-flush guard.
 ///
 /// Returns `Some(WorkerGuard)` in release (the caller **must** keep it alive for
@@ -110,10 +163,7 @@ pub fn init_tracing(app: &AppHandle) -> Option<WorkerGuard> {
     #[cfg(debug_assertions)]
     {
         let _ = app; // release-only; keep the signature stable across profiles.
-        let _ = tracing_subscriber::fmt()
-            .with_env_filter(env_filter())
-            .with_writer(std::io::stdout)
-            .try_init();
+        install(std::io::stdout, true);
         None
     }
 
@@ -149,11 +199,8 @@ pub fn init_tracing(app: &AppHandle) -> Option<WorkerGuard> {
         };
 
         let (writer, guard) = tracing_appender::non_blocking(appender);
-        let _ = tracing_subscriber::fmt()
-            .with_env_filter(env_filter())
-            .with_ansi(false) // a file is not a terminal — no colour escapes.
-            .with_writer(writer)
-            .try_init();
+        // A file is not a terminal — no colour escapes.
+        install(writer, false);
         Some(guard)
     }
 }
@@ -411,6 +458,14 @@ mod tests {
         // A typo'd default directive would silently disable all logging; assert
         // the compiled-in default is a valid filter.
         assert!(EnvFilter::try_new(DEFAULT_DIRECTIVE).is_ok());
+    }
+
+    #[test]
+    fn detailed_directive_parses_and_keeps_dependencies_quiet() {
+        assert!(EnvFilter::try_new(DETAILED_DIRECTIVE).is_ok());
+        assert!(DETAILED_DIRECTIVE.starts_with("warn,"));
+        assert_eq!(directive(true), DETAILED_DIRECTIVE);
+        assert_eq!(directive(false), DEFAULT_DIRECTIVE);
     }
 
     #[test]

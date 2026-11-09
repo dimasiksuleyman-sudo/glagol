@@ -73,6 +73,8 @@ Silero retains a full-verification receipt for 30 days; changed key files, an ex
 receipt or worker failure trigger a full check. Workers stay warm and unload after
 15 idle minutes. Installed local speech works offline. Speech languages are selected
 explicitly: mixed-language detection and translation are not provided locally.
+If you only dictate, turn text to speech off in Settings: Silero is then neither
+verified at startup nor preloaded, and the Synthesize page is hidden.
 
 ### Licenses and data
 
@@ -87,7 +89,9 @@ own terms and charges; no commercial TTS provider is integrated in this version.
 Data stays in `%LOCALAPPDATA%\app.glagol.desktop\`: `glagol.db`, `audio_cache`,
 `speech_models`, `tts_models`. Library backups exclude models, runtime, OS credentials
 and Silero consent. User text, document names and old history are never translated
-when changing the interface language.
+when changing the interface language. Daily logs (`logs`, kept 7 days) record timings,
+hardware and errors, never speech, recognized text or keys; Settings → Diagnostics
+opens the folder and offers an optional Detailed log.
 
 ### Development and validation
 
@@ -158,6 +162,8 @@ Python/PyTorch и словарей произношения. Начальную 
 ключевых файлов или ошибка worker вызывают полный контроль. Прогретый worker
 выгружается через 15 минут простоя. Установленная локальная речь работает без сети.
 Язык выбирается явно; локального автоопределения смешанной речи и перевода нет.
+Если нужна только диктовка, выключите озвучку в настройках: Silero не проверяется
+при запуске и не загружается заранее, экран «Озвучить» скрывается.
 
 ### Лицензии и данные
 
@@ -173,7 +179,10 @@ Python/PyTorch и словарей произношения. Начальную 
 Данные: `%LOCALAPPDATA%\app.glagol.desktop\`: `glagol.db`, `audio_cache`,
 `speech_models`, `tts_models`. Бэкап библиотеки не переносит модели, runtime,
 OS-ключи и согласие Silero. При смене интерфейса тексты пользователя, названия
-документов и прежняя история не переводятся.
+документов и прежняя история не переводятся. Ежедневные журналы (`logs`, хранятся
+7 дней) содержат время этапов, сведения об оборудовании и ошибки, но не речь,
+распознанный текст и ключи; «Настройки» → «Диагностика» открывает папку и
+предлагает необязательный «Подробный журнал».
 
 ### Разработка и проверка
 

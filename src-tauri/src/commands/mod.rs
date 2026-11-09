@@ -6,6 +6,7 @@
 //! layer serializes errors to strings on the JavaScript side anyway.
 
 pub mod backup;
+pub mod diagnostics;
 pub mod dictation;
 pub mod file;
 pub mod metrics;

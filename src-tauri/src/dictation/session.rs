@@ -197,6 +197,8 @@ async fn run_session(app: AppHandle, release_rx: oneshot::Receiver<()>, token: u
         }
     };
 
+    log_dictation_context(&app);
+
     // The two delivery seams (D8): zero-field unit structs holding no OS handle,
     // so they cost nothing to construct here and open a fresh `Enigo` /
     // `arboard::Clipboard` per call inside the pipeline's `spawn_blocking`.
@@ -259,6 +261,45 @@ async fn run_session(app: AppHandle, release_rx: oneshot::Receiver<()>, token: u
     }
 
     finish_session(&app, &state, token);
+}
+
+/// Record the conditions that can slow recognition (0.6.2 diagnostics): Windows
+/// may throttle a process whose window is hidden or unfocused, and a loaded or
+/// busy Silero worker competes for CPU. Flags only — no content.
+fn log_dictation_context(app: &AppHandle) {
+    let window = app.get_webview_window("main");
+    let visible = window
+        .as_ref()
+        .and_then(|w| w.is_visible().ok())
+        .unwrap_or(false);
+    let focused = window
+        .as_ref()
+        .and_then(|w| w.is_focused().ok())
+        .unwrap_or(false);
+    let minimized = window
+        .as_ref()
+        .and_then(|w| w.is_minimized().ok())
+        .unwrap_or(false);
+    let (tts_loaded, tts_busy) = app
+        .try_state::<crate::tts::silero::models::Models>()
+        .map(|models| {
+            let loaded = [&models.ru, &models.en].iter().any(|m| {
+                m.worker
+                    .try_lock()
+                    .map(|worker| worker.is_some())
+                    .unwrap_or(true)
+            });
+            (loaded, models.ru.operation.try_lock().is_err())
+        })
+        .unwrap_or((false, false));
+    tracing::debug!(
+        window_visible = visible,
+        window_focused = focused,
+        window_minimized = minimized,
+        tts_worker_loaded = tts_loaded,
+        tts_operation_busy = tts_busy,
+        "dictation context"
+    );
 }
 
 /// Persisted `dictations.status` for a delivery disposition (D2). `Delivered`

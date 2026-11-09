@@ -478,6 +478,12 @@ impl Silero {
     }
     pub async fn prepare(self: &Arc<Self>, app: &tauri::AppHandle) -> Result<(), String> {
         let started = std::time::Instant::now();
+        if !crate::preferences::tts_enabled() {
+            return Err(crate::preferences::message(
+                "Text to speech is turned off in Settings.",
+                "Озвучка выключена в настройках.",
+            ));
+        }
         self.require_consent()?;
         if self.worker.lock().await.is_some() {
             tracing::info!(
@@ -516,6 +522,13 @@ impl Silero {
             tauri::async_runtime::spawn(async move {
                 // Installation can replace shared files; never inspect a half-written runtime.
                 let _operation = state.operation.lock().await;
+                if !crate::preferences::tts_enabled() {
+                    tracing::info!(
+                        model = state.model.id,
+                        "local TTS startup verification skipped: text to speech is off"
+                    );
+                    return;
+                }
                 let status = state.status();
                 if !status.supported || !status.installed || !status.accepted {
                     return;

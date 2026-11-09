@@ -11,6 +11,11 @@ the per-session master logs under [`docs/day-logs/`](docs/day-logs/).
 
 ## [Unreleased]
 
+### Added
+
+- Settings → Local text to speech has a Text to speech switch. When it is off, Glagol does not verify Silero files at startup or preload the model, unloads a warm model, hides the Synthesize page and opens Dictation first; models, acknowledgement and the library are kept. / В «Настройки» → «Локальная озвучка» появился переключатель «Озвучка». Когда он выключен, Глагол не проверяет файлы Silero при запуске и не загружает модель заранее, выгружает уже загруженную модель, скрывает экран «Озвучить» и открывается на «Диктовке»; модели, согласие и библиотека сохраняются.
+- Settings → Diagnostics: Detailed log switch and Open log folder. The log now records the processor, the local engine's devices and instruction set, model load and verification time, and the time of each recognition stage — never speech, recognized text, documents or keys. / «Настройки» → «Диагностика»: переключатель «Подробный журнал» и кнопка «Открыть папку журналов». В журнал теперь записываются процессор, устройства и набор инструкций локального движка, время проверки и загрузки модели и время каждого этапа распознавания — без речи, распознанного текста, документов и ключей.
+
 ## [v0.6.1] — 2026-10-09
 
 [Release notes, validation and limits / проверка и ограничения](docs/releases/v0.6.1.md).

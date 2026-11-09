@@ -31,6 +31,9 @@ pub mod backup;
 // Structured-logging subscriber installation (Sprint 6 PR3.1).
 pub mod logging;
 
+// Performance diagnostics: hardware facts and timings only (0.6.2).
+pub mod diagnostics;
+
 // Shared Tauri application state.
 pub mod i18n;
 
@@ -140,7 +143,15 @@ pub fn run() {
             let existing_database = db_path.exists();
             let conn = crate::db::init_database(&db_path)?;
             preferences::initialize(&conn, existing_database)?;
-            preferences::activate(preferences::get(&conn)?.ui_language);
+            let startup_preferences = preferences::get(&conn)?;
+            preferences::activate(startup_preferences.ui_language);
+            preferences::activate_tts(startup_preferences.tts_enabled);
+            diagnostics::load(&conn)?;
+            diagnostics::log_system();
+            tracing::info!(
+                tts_enabled = startup_preferences.tts_enabled,
+                "text to speech switch at startup"
+            );
 
             // Ensure the audio cache directory exists. Synthesis writes
             // straight into it without a per-call mkdir, so the directory
@@ -244,6 +255,10 @@ pub fn run() {
             commands::preferences::set_tts_preference,
             commands::preferences::set_stt_preference,
             commands::preferences::is_dictating,
+            commands::preferences::set_tts_enabled,
+            commands::diagnostics::get_diagnostics_settings,
+            commands::diagnostics::set_detailed_logging,
+            commands::diagnostics::open_log_folder,
             commands::metrics::report_ui_ready,
             commands::synthesize::synthesize_document,
             commands::tts::tts_status,

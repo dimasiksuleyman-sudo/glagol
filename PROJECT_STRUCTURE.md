@@ -16,7 +16,8 @@ CC BY-NC-SA 4.0 для некоммерческого использования
 | `pages/Library.tsx`, `components/AudioPlayer.tsx` | Библиотека и локализованный плеер |
 | `pages/Dictation.tsx` | Горячая клавиша, микрофон, история |
 | `components/settings/DictationSection.tsx` | Local/server/cloud STT, модели и ключи |
-| `components/settings/TtsSection.tsx` | Лицензия, скачивание/импорт, восстановление, удаление, голоса |
+| `components/settings/TtsSection.tsx` | Переключатель «Озвучка», лицензия, скачивание/импорт, восстановление, удаление, голоса |
+| `components/settings/DiagnosticsSection.tsx` | «Подробный журнал» и открытие папки журналов |
 | `components/settings/UpdatesSection.tsx`, `lib/updates.ts` | Версия, ручная проверка, автопроверка при запуске, установка подписанного обновления |
 | `contexts/TtsContext.tsx` | Только локальное состояние TTS; без сети/OAuth при старте |
 | `lib/tauri.ts`, `lib/tts.ts` | Типизированные IPC-команды |
@@ -52,7 +53,8 @@ CC BY-NC-SA 4.0 для некоммерческого использования
 | `db` | Append-only миграции и repository |
 | `backup` | ZIP библиотеки, проверка и защитная копия перед восстановлением |
 | `secrets/keyring.rs` | Раздельные STT-ключи; узкое удаление старого TTS-ключа |
-| `logging.rs` | Tracing без текста, аудио и ключей |
+| `logging.rs` | Tracing без текста, аудио и ключей; перезагружаемый фильтр для «Подробного журнала» |
+| `diagnostics.rs`, `commands/diagnostics.rs` | Сведения о CPU, переключатель подробного журнала, папка журналов |
 | `paths.rs` | Единый источник путей |
 
 ## Потоки и данные

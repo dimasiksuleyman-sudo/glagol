@@ -223,5 +223,12 @@ export const messages: {[K in keyof typeof en]: string} = {
   "Your text will become a WAV file in your library.": "Текст превратится в WAV-файл и попадёт в библиотеку.",
   "Text split into {p0} chunks": "Текст разбит на {p0} фрагментов",
   "Synthesizing chunk {p0} of {p1}": "Озвучиваем фрагмент {p0} из {p1}",
-  "Joining WAV…": "Склеиваем WAV…"
+  "Joining WAV…": "Склеиваем WAV…",
+  "Text to speech": "Озвучка",
+  "Turn off if you only dictate: Glagol will not prepare speech at startup or on the Synthesize page, and the Synthesize page is hidden. Installed models, consent and your library are kept.": "Выключите, если пользуетесь только диктовкой: Глагол не будет готовить озвучку при запуске и на экране «Озвучить», а сам экран скроется. Установленные модели, согласие с условиями и библиотека сохраняются.",
+  "Diagnostics": "Диагностика",
+  "The log records timings, hardware and errors. It never contains your speech, recognized text, documents or keys.": "Журнал записывает время этапов, сведения об оборудовании и ошибки. В нём никогда нет вашей речи, распознанного текста, документов и ключей.",
+  "Detailed log": "Подробный журнал",
+  "Off by default. Turn it on to investigate slow dictation, reproduce the problem, then send the log file from the folder below.": "По умолчанию выключен. Включите, чтобы разобраться с медленной диктовкой: повторите проблему и отправьте файл журнала из папки ниже.",
+  "Open log folder": "Открыть папку журналов"
 };

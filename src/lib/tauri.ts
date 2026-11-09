@@ -554,3 +554,10 @@ export async function installUpdate(onProgress: (event: UpdateProgress) => void)
 }
 
 export { Channel };
+
+/** Mirrors `DiagnosticsSettings` in `src-tauri/src/commands/diagnostics.rs`. */
+export interface DiagnosticsSettings { detailed: boolean; logDir: string }
+export const getDiagnosticsSettings = () => invoke<DiagnosticsSettings>("get_diagnostics_settings");
+/** Applies immediately; the log never contains speech, recognized text or keys. */
+export const setDetailedLogging = (enabled: boolean) => invoke<DiagnosticsSettings>("set_detailed_logging", { enabled });
+export const openLogFolder = () => invoke<void>("open_log_folder");

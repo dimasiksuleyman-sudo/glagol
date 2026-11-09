@@ -222,5 +222,12 @@ export const messages = {
   "Your text will become a WAV file in your library.": "Your text will become a WAV file in your library.",
   "Text split into {p0} chunks": "Text split into {p0} chunks",
   "Synthesizing chunk {p0} of {p1}": "Synthesizing chunk {p0} of {p1}",
-  "Joining WAV…": "Joining WAV…"
+  "Joining WAV…": "Joining WAV…",
+  "Text to speech": "Text to speech",
+  "Turn off if you only dictate: Glagol will not prepare speech at startup or on the Synthesize page, and the Synthesize page is hidden. Installed models, consent and your library are kept.": "Turn off if you only dictate: Glagol will not prepare speech at startup or on the Synthesize page, and the Synthesize page is hidden. Installed models, consent and your library are kept.",
+  "Diagnostics": "Diagnostics",
+  "The log records timings, hardware and errors. It never contains your speech, recognized text, documents or keys.": "The log records timings, hardware and errors. It never contains your speech, recognized text, documents or keys.",
+  "Detailed log": "Detailed log",
+  "Off by default. Turn it on to investigate slow dictation, reproduce the problem, then send the log file from the folder below.": "Off by default. Turn it on to investigate slow dictation, reproduce the problem, then send the log file from the folder below.",
+  "Open log folder": "Open log folder"
 } as const;

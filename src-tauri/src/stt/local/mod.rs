@@ -118,10 +118,14 @@ impl LocalModels {
         if slot.as_ref().is_some_and(|e| e.model_id == id) {
             return Ok(());
         }
+        let started = Instant::now();
         download::verify(&self.root.join(m.artifact.file), &m.artifact).map_err(|_| {
             "Модель отсутствует или повреждена. Скачайте её в настройках диктовки.".to_string()
         })?;
+        let verify_model_ms = started.elapsed().as_millis() as u64;
+        let runtime_started = Instant::now();
         verify_runtime(&self.root)?;
+        let verify_runtime_ms = runtime_started.elapsed().as_millis() as u64;
         // Free old weights before allocating the new model on a 16GB machine.
         *slot = None;
         let now = Instant::now();
@@ -133,6 +137,9 @@ impl LocalModels {
         tracing::info!(
             model = id,
             elapsed_ms = now.elapsed().as_millis(),
+            verify_model_ms,
+            verify_runtime_ms,
+            total_ms = started.elapsed().as_millis() as u64,
             "local STT model loaded"
         );
         Ok(())
@@ -391,19 +398,57 @@ impl SttProvider for LocalProvider {
         let models = self.models.clone();
         let id = self.id.clone();
         tauri::async_runtime::spawn_blocking(move || {
-            let mut reader = hound::WavReader::new(Cursor::new(wav_bytes)).map_err(|e| e.to_string())?;
+            let mut reader =
+                hound::WavReader::new(Cursor::new(wav_bytes)).map_err(|e| e.to_string())?;
             let spec = reader.spec();
-            if spec.channels != 1 || spec.sample_rate != 16_000 || spec.bits_per_sample != 16 || spec.sample_format != hound::SampleFormat::Int { return Err("Неподдерживаемый формат записи.".into()); }
-            let pcm: Vec<f32> = reader.samples::<i16>().map(|s| s.map(|s| s as f32 / 32768.0)).collect::<Result<_, _>>().map_err(|e| e.to_string())?;
-            if pcm.len() > 10 * 60 * 16_000 { return Err("Запись слишком длинная для локальной диктовки.".into()); }
+            if spec.channels != 1
+                || spec.sample_rate != 16_000
+                || spec.bits_per_sample != 16
+                || spec.sample_format != hound::SampleFormat::Int
+            {
+                return Err("Неподдерживаемый формат записи.".into());
+            }
+            let pcm: Vec<f32> = reader
+                .samples::<i16>()
+                .map(|s| s.map(|s| s as f32 / 32768.0))
+                .collect::<Result<_, _>>()
+                .map_err(|e| e.to_string())?;
+            if pcm.len() > 10 * 60 * 16_000 {
+                return Err("Запись слишком длинная для локальной диктовки.".into());
+            }
+            let started = Instant::now();
             models.prepare(&id)?;
+            let prepare_ms = started.elapsed().as_millis() as u64;
             let now = Instant::now();
             let mut guard = models.engine.lock().map_err(|e| e.to_string())?;
-            let engine = guard.as_mut().filter(|e| e.model_id == id).ok_or("Модель переключена. Повторите диктовку.")?;
-            let text = engine.transcribe(&pcm)?;
-            tracing::info!(model = %id, audio_ms = pcm.len()/16, elapsed_ms = now.elapsed().as_millis(), "local STT completed");
+            let lock_wait_ms = now.elapsed().as_millis() as u64;
+            let engine = guard
+                .as_mut()
+                .filter(|e| e.model_id == id)
+                .ok_or("Модель переключена. Повторите диктовку.")?;
+            let inference = Instant::now();
+            let (text, stats) = engine.transcribe(&pcm)?;
+            let elapsed_ms = inference.elapsed().as_millis() as u64;
+            let audio_ms = (pcm.len() / 16) as u64;
+            tracing::info!(
+                model = %id,
+                audio_ms,
+                elapsed_ms,
+                rtf = elapsed_ms as f64 / audio_ms.max(1) as f64,
+                prepare_ms,
+                lock_wait_ms,
+                segments = stats.segments,
+                mel_ms = stats.mel_ms as u64,
+                encode_ms = stats.encode_ms as u64,
+                decode_ms = stats.decode_ms as u64,
+                threads = crate::diagnostics::stt_default_threads(),
+                "local STT completed"
+            );
             Ok(Transcript { text })
-        }).await.map_err(|e| SttError::Api(e.to_string()))?.map_err(SttError::Api)
+        })
+        .await
+        .map_err(|e| SttError::Api(e.to_string()))?
+        .map_err(SttError::Api)
     }
     async fn list_models(&self) -> Result<Vec<String>, SttError> {
         Ok(vec![self.id.clone()])

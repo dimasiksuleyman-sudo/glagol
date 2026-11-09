@@ -83,6 +83,12 @@ failure trigger full verification. Opening Synthesize preloads the selected mode
 status shows preparation. Warm models unload after 15 idle minutes or on exit.
 Installed local synthesis works offline. This is process isolation, not an OS sandbox.
 
+If you only dictate, turn off the Text to speech switch in Settings → Local text to
+speech — Silero. Glagol then stops verifying Silero files at startup and preloading
+the model, hides the Synthesize page and opens Dictation first; a loaded model is
+unloaded immediately. Models, acknowledgement and your library are kept — turn the
+switch back on to use speech again.
+
 ## Reading a document
 
 Paste text or choose TXT, Markdown, DOCX or text-based PDF, then select a voice and
@@ -162,6 +168,13 @@ repair if necessary. If a voice sounds wrong, check the speech language and try 
 voice. For recognition errors, retry after checking microphone/model, and verify files
 if needed. Close Glagol through the tray before collecting logs so they are flushed;
 never attach private speech, documents or credentials.
+
+Logs: Settings → Diagnostics → Open log folder (`%LOCALAPPDATA%\app.glagol.desktop\logs`,
+one file per day, kept for 7 days). The log always records the processor, model load
+time and the time of each recognition stage. If dictation is slow, turn on Detailed log,
+dictate the same phrase several times, close Glagol through the tray and attach that
+day's file. The log contains no speech, recognized text, documents or keys. You can
+turn the switch off afterwards.
 
 [Report a bug](https://github.com/dimasiksuleyman-sudo/glagol/issues).
 Glagol is independent open source software under MIT, created to listen to long texts.

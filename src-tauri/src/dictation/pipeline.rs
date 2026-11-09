@@ -35,7 +35,7 @@
 //! user sees "обрезано по 60 с" rather than a silent truncation.
 
 use std::sync::Mutex;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use tokio::sync::oneshot;
 
@@ -370,7 +370,9 @@ where
         }
     }
 
-    // Stop + finalize. Either branch above converges here.
+    // Stop + finalize. Either branch above converges here. Latency is measured
+    // from here: it is what the user waits for after releasing the shortcut.
+    let released_at = Instant::now();
     let pcm = match deps.recorder.stop().await {
         Ok(pcm) => pcm,
         Err(e) => return fail(&deps, recorder_error_to_user_facing_ru(&e)),
@@ -392,15 +394,25 @@ where
     // Transcribe (PR1). The clip is already 16 kHz mono S16LE; wrap it as WAV.
     set_phase(deps.phase, DictationPhase::Processing);
     deps.emitter.emit_state(DictationState::Processing);
+    let stop_ms = released_at.elapsed().as_millis() as u64;
     let wav_bytes = wav::wrap_wav_s16le_mono(&pcm.samples, pcm.sample_rate);
+    let stt_started = Instant::now();
     let text = match deps
         .provider
         .transcribe(wav_bytes, opts.lang.as_deref())
         .await
     {
         Ok(t) => t.text,
-        Err(e) => return fail(&deps, stt_error_to_user_facing_ru(&e)),
+        Err(e) => {
+            tracing::debug!(
+                stop_ms,
+                stt_ms = stt_started.elapsed().as_millis() as u64,
+                "dictation recognition failed"
+            );
+            return fail(&deps, stt_error_to_user_facing_ru(&e));
+        }
     };
+    let stt_ms = stt_started.elapsed().as_millis() as u64;
 
     // A provider can return empty text for a clip that passed the RMS gate
     // (breath, a click). Nothing to deliver — discard silently rather than
@@ -419,10 +431,19 @@ where
     let clipboard = deps.clipboard.clone();
     let owned = text.to_string();
     let mode = opts.mode;
+    let insert_started = Instant::now();
     let delivery =
         tokio::task::spawn_blocking(move || insert_transcript(&inserter, &clipboard, &owned, mode))
             .await;
 
+    tracing::debug!(
+        duration_ms = pcm.duration_ms,
+        stop_ms,
+        stt_ms,
+        insert_ms = insert_started.elapsed().as_millis() as u64,
+        release_to_text_ms = released_at.elapsed().as_millis() as u64,
+        "dictation latency"
+    );
     match delivery {
         Ok(insert_outcome) => {
             let disposition = match insert_outcome {
