@@ -453,3 +453,31 @@ corrected=false notified=true 224×40, overlay shown show_ok=true visible=true,
 ловят. Профилактика по событиям его не покрывает: причина — простой без
 системных событий. Какая именно диктовка была без индикатора, не уточнено
 (предположительно 19:23:05).
+
+## 2026-11-09T19:53:59.000Z — GL-006: пересоздание после простоя и проверка пикселей (0.6.4)
+
+Согласование: пользователь — «Да, делаем оба». Версия 0.6.4.
+
+Сделано:
+- session.rs: OVERLAY_HIDDEN_SINCE_MS (ставится при скрытии и создании окна,
+  сбрасывается при показе); поток наблюдения помечает окно на пересоздание,
+  если индикатор скрыт ≥10 минут и диктовки нет («hidden for a long idle
+  period»), — при длительном простое окно меняется каждые 10 минут.
+- Через 350 мс после показа отдельный поток (если диктовка идёт и окно
+  видимо) читает 4 пикселя экрана: 3 в верхней полосе пилюли (6 логических px
+  от верха, центр ±12) и 1 в прозрачном углу окна. Решение judge_presence:
+  угол тёмный (все каналы ≤60) → Inconclusive; большинство точек пилюли тёмные →
+  Visible; иначе NotPresented → warn «overlay shown but not presented on
+  screen» (в журнал только максимум яркости 0–255 и решение) и пересоздание
+  после диктовки. Окно не WS_EX_LAYERED (tao: только при ignore cursor events),
+  поэтому GetPixel экранного DC видит его.
+- overlay_native.rs: read_screen_pixels (GetDC/GetPixel/ReleaseDC),
+  presence_points, Presence; тесты judge/points и idle_rebuild_due.
+- Руководства RU/EN, CHANGELOG [Unreleased] Fixed.
+
+Проверки (Linux container, rustc 1.97.0, node v22.23.4, pnpm 10.28.0;
+PDFIUM_LIBRARY_PATH как в S1): check-version 0.6.4; cargo fmt --check,
+clippy --locked -D warnings, cargo test --locked — exit 0, «358 passed»;
+pnpm build — exit 0. Windows: мини-крейт с overlay_native.rs —
+`cargo clippy --target x86_64-pc-windows-msvc -- -D warnings` exit 0.
+На Windows не запускалось.

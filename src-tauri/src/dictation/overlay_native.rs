@@ -79,6 +79,52 @@ pub fn display_event(previous: Option<u32>, state: u32) -> Option<SystemEvent> {
     }
 }
 
+/// Whether the pill's pixels actually reached the screen.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Presence {
+    /// The dark pill is on screen.
+    Visible,
+    /// The pill area shows the background: the frame was not presented.
+    NotPresented,
+    /// The background is itself dark, so the check cannot tell.
+    Inconclusive,
+}
+
+/// The pill is `rgba(20, 22, 28, 0.94)`; any channel above this is not pill.
+const DARK_MAX: u8 = 60;
+
+/// Decide from pixels inside the pill's top band and one pixel in the
+/// window's transparent corner (the background behind the overlay).
+pub fn judge_presence(inside: &[(u8, u8, u8)], corner: (u8, u8, u8)) -> Presence {
+    let dark = |p: &(u8, u8, u8)| p.0.max(p.1).max(p.2) <= DARK_MAX;
+    if dark(&corner) {
+        return Presence::Inconclusive;
+    }
+    if inside.iter().filter(|p| dark(p)).count() * 2 > inside.len() {
+        Presence::Visible
+    } else {
+        Presence::NotPresented
+    }
+}
+
+/// Screen points to sample for an overlay at `(x, y)` (physical px) of
+/// physical `width` with `scale`: three points 6 logical px below the top
+/// (inside the pill's padding, above any text) around the centre, and the
+/// transparent top-left corner. The pill is 36 px high, centred in 40 px.
+pub fn presence_points(x: i32, y: i32, width: u32, scale: f64) -> (Vec<(i32, i32)>, (i32, i32)) {
+    let px = |logical: f64| (logical * scale).round() as i32;
+    let centre = x + width as i32 / 2;
+    let band = y + px(6.0);
+    (
+        vec![
+            (centre - px(12.0), band),
+            (centre, band),
+            (centre + px(12.0), band),
+        ],
+        (x + 1, y + 1),
+    )
+}
+
 #[cfg(windows)]
 mod imp {
     use super::{display_event, session_event, SystemEvent};
@@ -92,6 +138,7 @@ mod imp {
     use windows::core::{w, Interface, BOOL};
     use windows::Win32::Foundation::{HANDLE, HWND, LPARAM, LRESULT, RECT, WPARAM};
     use windows::Win32::Graphics::Dwm::{DwmGetWindowAttribute, DWMWA_CLOAKED};
+    use windows::Win32::Graphics::Gdi::{GetDC, GetPixel, ReleaseDC, CLR_INVALID};
     use windows::Win32::System::LibraryLoader::GetModuleHandleW;
     use windows::Win32::System::Power::{RegisterPowerSettingNotification, POWERBROADCAST_SETTING};
     use windows::Win32::System::RemoteDesktop::{
@@ -293,6 +340,34 @@ mod imp {
         }
     }
 
+    /// Read screen pixels (RGB) at physical `points`; `None` if the screen
+    /// cannot be read. Only these few pixels are read; nothing is stored.
+    pub fn read_screen_pixels(points: &[(i32, i32)]) -> Option<Vec<(u8, u8, u8)>> {
+        // SAFETY: the screen DC is obtained and released in this block; GetPixel
+        // only reads one composed pixel per call into a value.
+        unsafe {
+            let hdc = GetDC(None);
+            if hdc.is_invalid() {
+                return None;
+            }
+            let mut pixels = Vec::with_capacity(points.len());
+            for &(x, y) in points {
+                let color = GetPixel(hdc, x, y).0;
+                if color == CLR_INVALID {
+                    ReleaseDC(None, hdc);
+                    return None;
+                }
+                pixels.push((
+                    (color & 0xff) as u8,
+                    ((color >> 8) & 0xff) as u8,
+                    ((color >> 16) & 0xff) as u8,
+                ));
+            }
+            ReleaseDC(None, hdc);
+            Some(pixels)
+        }
+    }
+
     /// Log what Windows and WebView2 think of the overlay right after `show()`
     /// and nudge the controller: a WebView2 controller left invisible is made
     /// visible again, and the moved parent window is reported to it.
@@ -362,9 +437,13 @@ mod imp {
     }
     /// No-op outside Windows.
     pub fn check_after_show(_window: &WebviewWindow) {}
+    /// The screen is not read outside Windows.
+    pub fn read_screen_pixels(_points: &[(i32, i32)]) -> Option<Vec<(u8, u8, u8)>> {
+        None
+    }
 }
 
-pub use imp::{check_after_show, install_process_failed, spawn_system_watch};
+pub use imp::{check_after_show, install_process_failed, read_screen_pixels, spawn_system_watch};
 
 #[cfg(test)]
 mod tests {
@@ -384,6 +463,37 @@ mod tests {
         assert_eq!(display_event(Some(2), 1), Some(SystemEvent::DisplayOn));
         assert_eq!(display_event(Some(1), 1), None);
         assert_eq!(display_event(Some(1), 7), None, "unknown state");
+    }
+
+    #[test]
+    fn presence_compares_pill_band_with_the_background_corner() {
+        let pill = (19, 21, 26);
+        let light = (230, 230, 235);
+        assert_eq!(
+            judge_presence(&[pill, pill, pill], light),
+            Presence::Visible
+        );
+        assert_eq!(
+            judge_presence(&[light, light, light], light),
+            Presence::NotPresented
+        );
+        assert_eq!(
+            judge_presence(&[pill, light, light], light),
+            Presence::NotPresented
+        );
+        assert_eq!(
+            judge_presence(&[pill, pill, light], light),
+            Presence::Visible
+        );
+        assert_eq!(
+            judge_presence(&[pill, pill, pill], (10, 10, 10)),
+            Presence::Inconclusive
+        );
+        let (inside, corner) = presence_points(848, 960, 224, 1.0);
+        assert_eq!(inside, vec![(948, 966), (960, 966), (972, 966)]);
+        assert_eq!(corner, (849, 961));
+        let (inside, _) = presence_points(0, 0, 448, 2.0);
+        assert_eq!(inside[1], (224, 12));
     }
 
     #[test]

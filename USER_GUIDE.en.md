@@ -158,7 +158,10 @@ Dictation and synthesis can run independently.
 After the computer wakes from sleep, the display turns back on, the session is unlocked,
 a remote desktop connects or disconnects, the display configuration changes, or the
 indicator's WebView2 process fails, Glagol rebuilds the hidden indicator window within
-a few seconds (on Windows). If the indicator ever stays invisible, restart Glagol from
+a few seconds (on Windows). The window is also rebuilt when the indicator has not been
+shown for more than 10 minutes, and after each show Glagol reads a few screen pixels
+within the indicator itself to confirm it is really visible; if not, it logs a warning
+and rebuilds the window right after that dictation. The pixels are not stored. If the indicator ever stays invisible, restart Glagol from
 the tray and send the log from that day: it records these events and the indicator state.
 
 ## Windows limitations
