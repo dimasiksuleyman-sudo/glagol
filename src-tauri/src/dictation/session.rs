@@ -20,7 +20,7 @@
 //! The pipeline's wall-clock watchdog (D10) is the second line if a `Released`
 //! is ever lost.
 
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::{Duration, SystemTime};
 
 use rusqlite::Connection;
@@ -52,6 +52,17 @@ pub const OVERLAY_LABEL: &str = "overlay";
 
 /// How many times the overlay window was rebuilt. `0` is the startup window.
 static OVERLAY_GENERATION: AtomicU64 = AtomicU64::new(0);
+
+/// The overlay must be rebuilt before it is trusted again: set after sleep,
+/// display/session transitions and WebView2 process failures (GL-006).
+static OVERLAY_STALE: AtomicBool = AtomicBool::new(false);
+
+/// Mark the overlay for rebuild at the next idle poll, with the reason.
+fn mark_overlay_stale(reason: &str) {
+    if !OVERLAY_STALE.swap(true, Ordering::SeqCst) {
+        tracing::info!(reason, "overlay marked for rebuild");
+    }
+}
 
 /// Interval of the sleep/resume watcher thread.
 const RESUME_POLL: Duration = Duration::from_secs(3);
@@ -500,7 +511,8 @@ fn position_overlay(app: &AppHandle) {
     );
 }
 
-/// Show the overlay window (created hidden at startup, D5).
+/// Show the overlay window (created hidden at startup, D5). Re-asserts
+/// always-on-top first and checks the native WebView2 state afterwards.
 ///
 /// GL-006 diagnostics: the pill can vanish while dictation keeps working, so
 /// every show records whether the window exists, accepted `show()`, reports
@@ -513,7 +525,11 @@ fn show_overlay(app: &AppHandle) {
         tracing::warn!(generation, "overlay window missing — cannot show");
         return;
     };
+    if let Err(e) = window.set_always_on_top(true) {
+        tracing::warn!(generation, "failed to re-assert overlay always-on-top: {e}");
+    }
     let shown = window.show();
+    super::overlay_native::check_after_show(&window);
     if let Err(e) = &shown {
         tracing::warn!(generation, "failed to show overlay: {e}");
     }
@@ -594,6 +610,22 @@ pub fn report_overlay_event(
     }
 }
 
+/// Hide the calling overlay window unless a new dictation already started.
+/// Replaces the page's own delayed `hide()`, which could race a new `show()`.
+#[tauri::command]
+pub fn hide_overlay(app: AppHandle, window: WebviewWindow) {
+    if !dictation_idle(&app) {
+        tracing::debug!(
+            window = window.label(),
+            "overlay hide skipped: dictation active"
+        );
+        return;
+    }
+    if let Err(e) = window.hide() {
+        tracing::warn!(window = window.label(), "failed to hide overlay: {e}");
+    }
+}
+
 /// Label of the overlay window for a rebuild `generation`: `overlay` for the
 /// startup window, `overlay-N` afterwards. A fresh label is needed because a
 /// destroyed window releases its label only asynchronously.
@@ -650,6 +682,9 @@ pub fn build_overlay(app: &AppHandle, label: &str) -> tauri::Result<WebviewWindo
         }
         _ => {}
     });
+    super::overlay_native::install_process_failed(&window, || {
+        mark_overlay_stale("webview2 process failed")
+    });
     tracing::info!(window = label, "overlay window built");
     Ok(window)
 }
@@ -669,11 +704,19 @@ fn resumed_from_sleep(poll: Duration, wall_elapsed: Option<Duration>) -> bool {
 /// session. A false positive (the clock was set forward) only rebuilds the
 /// hidden window.
 pub fn spawn_resume_watch(app: AppHandle) {
+    // Display on, unlock, remote/console connect, display change and resume
+    // (GL-006). The clock-jump check below stays as a fallback for sleep.
+    super::overlay_native::spawn_system_watch(|event| {
+        tracing::info!(?event, "system display/session event");
+        if event.requires_rebuild() {
+            mark_overlay_stale("system event");
+        }
+    });
     let spawned = std::thread::Builder::new()
         .name("overlay-resume-watch".into())
         .spawn(move || {
             let mut last = SystemTime::now();
-            let mut stale = false;
+            let mut settled = true;
             loop {
                 std::thread::sleep(RESUME_POLL);
                 let now = SystemTime::now();
@@ -681,9 +724,16 @@ pub fn spawn_resume_watch(app: AppHandle) {
                 last = now;
                 if resumed {
                     tracing::info!("system resume detected; overlay will be rebuilt");
-                    stale = true;
-                } else if stale && dictation_idle(&app) {
-                    stale = false;
+                    mark_overlay_stale("clock jump after sleep");
+                    // Let the graphics stack settle for one more poll.
+                    settled = false;
+                    continue;
+                }
+                if !settled {
+                    settled = true;
+                    continue;
+                }
+                if OVERLAY_STALE.load(Ordering::SeqCst) && dictation_idle(&app) {
                     let handle = app.clone();
                     if let Err(e) = app.run_on_main_thread(move || rebuild_overlay(&handle)) {
                         tracing::warn!("failed to schedule overlay rebuild: {e}");
@@ -715,10 +765,14 @@ fn rebuild_overlay(app: &AppHandle) {
         tracing::debug!("overlay rebuild skipped: dictation in progress");
         return;
     }
+    if !OVERLAY_STALE.swap(false, Ordering::SeqCst) {
+        return;
+    }
     let old = current_overlay(app);
     let next = OVERLAY_GENERATION.load(Ordering::SeqCst).wrapping_add(1);
     if let Err(e) = build_overlay(app, &overlay_label(next)) {
         tracing::warn!("failed to rebuild overlay window: {e}");
+        OVERLAY_STALE.store(true, Ordering::SeqCst);
         return;
     }
     OVERLAY_GENERATION.store(next, Ordering::SeqCst);
@@ -727,7 +781,7 @@ fn rebuild_overlay(app: &AppHandle) {
             tracing::warn!("failed to destroy previous overlay window: {e}");
         }
     }
-    tracing::info!("overlay window rebuilt after resume");
+    tracing::info!(generation = next, "overlay window rebuilt");
 }
 
 // ── Tray ────────────────────────────────────────────────────────────────

@@ -574,3 +574,5 @@ export type OverlayEvent = "mounted" | "state_received" | "frame_painted" | "fra
 /** Best-effort: the overlay must never fail because a diagnostic report did. */
 export const reportOverlayEvent = (event: OverlayEvent, state?: DictationState["kind"], delayMs?: number) =>
   invoke<void>("report_overlay_event", { event, state: state ?? null, delayMs: delayMs === undefined ? null : Math.round(delayMs) }).catch(() => undefined);
+/** Ask Rust to hide this overlay window unless a new dictation already started. */
+export const hideOverlay = () => invoke<void>("hide_overlay").catch(() => undefined);

@@ -2,11 +2,11 @@ import { t } from "@/i18n";
 import { useI18n } from "@/contexts/PreferencesContext";
 import { useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { getCurrentWindow } from "@tauri-apps/api/window";
 
 import {
   DICTATION_LEVEL_EVENT,
   DICTATION_STATE_EVENT,
+  hideOverlay,
   reportOverlayEvent,
   type DictationDisposition,
   type DictationLevelPayload,
@@ -107,7 +107,8 @@ export function OverlayPill() {
         delay = 0;
       }
       hideTimer.current = setTimeout(() => {
-        void getCurrentWindow().hide();
+        // Rust hides the window only if no new dictation started meanwhile.
+        void hideOverlay();
         reportOverlayEvent("hidden", next.kind, delay);
         // The next session starts with device preparation, never false readiness.
         setState({ kind: "starting" });

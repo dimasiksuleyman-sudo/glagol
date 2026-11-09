@@ -268,6 +268,7 @@ pub fn run() {
             commands::preferences::is_dictating,
             commands::preferences::set_tts_enabled,
             dictation::session::report_overlay_event,
+            dictation::session::hide_overlay,
             commands::diagnostics::get_diagnostics_settings,
             commands::diagnostics::set_detailed_logging,
             commands::diagnostics::open_log_folder,

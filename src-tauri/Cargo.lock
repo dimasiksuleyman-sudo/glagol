@@ -1619,6 +1619,8 @@ dependencies = [
  "tracing-appender",
  "tracing-subscriber",
  "uuid",
+ "webview2-com",
+ "windows",
  "zip 2.4.2",
 ]
 

@@ -48,6 +48,7 @@ CC BY-NC-SA 4.0 для некоммерческого использования
 | `commands/speech.rs` | Независимые профили local/server/cloud |
 | `stt/openai_compat.rs` | Совместимый HTTP STT-клиент |
 | `dictation` | Recorder, resampling, readiness, hotkey session, clipboard/paste |
+| `dictation/overlay_native.rs` | Windows: события дисплея/сна/сеанса, WebView2 ProcessFailed, состояние окна индикатора; пересоздание после них |
 | `parser` | TXT/MD/DOCX/PDF, Pdfium |
 | `text` | Общие URL/email/сокращения и разбиение; числа/латиница — Silero adapter |
 | `db` | Append-only миграции и repository |

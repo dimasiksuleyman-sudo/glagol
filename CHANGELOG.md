@@ -19,6 +19,7 @@ the per-session master logs under [`docs/day-logs/`](docs/day-logs/).
 
 ### Changed
 
+- The hidden dictation indicator window is rebuilt not only after sleep but also after the display turns on, session unlock, remote desktop connect/disconnect, display changes and WebView2 process failures; hiding it after a dictation is decided by the app, so a delayed hide can no longer cancel a new dictation's indicator (GL-006 diagnostics continue). / Скрытое окно индикатора диктовки пересоздаётся не только после сна, но и после включения экрана, разблокировки, подключения/отключения удалённого рабочего стола, смены дисплея и сбоя процесса WebView2; скрытие после диктовки решает программа, поэтому запоздавшее скрытие больше не прячет индикатор новой диктовки (диагностика GL-006 продолжается).
 - The first Russian local dictation after start no longer re-hashes the model and runtime every time: a full SHA-256 check is reused for up to 30 days while file sizes and dates are unchanged; repair or a load/recognition error forces the full check. / Первая русская локальная диктовка после запуска больше не пересчитывает хеши модели и движка каждый раз: полная проверка SHA-256 используется до 30 дней, пока размер и дата файлов не меняются; восстановление или ошибка загрузки/распознавания вызывают полную проверку.
 
 ## [v0.6.1] — 2026-10-09

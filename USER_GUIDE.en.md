@@ -155,9 +155,11 @@ changing endpoints does not send the old key to the new service. Local Moonshine
 audio internally while you hold the hotkey; GigaAM/server profiles keep their batch path.
 Large GigaAM recordings are split at quiet boundaries; punctuation and rare terms may suffer.
 Dictation and synthesis can run independently.
-After the computer wakes from sleep, Glagol rebuilds the hidden indicator window within
-a few seconds. Sleep shorter than about 13 seconds is not detected; if the indicator
-ever stays invisible, restart Glagol from the tray.
+After the computer wakes from sleep, the display turns back on, the session is unlocked,
+a remote desktop connects or disconnects, the display configuration changes, or the
+indicator's WebView2 process fails, Glagol rebuilds the hidden indicator window within
+a few seconds (on Windows). If the indicator ever stays invisible, restart Glagol from
+the tray and send the log from that day: it records these events and the indicator state.
 
 ## Windows limitations
 

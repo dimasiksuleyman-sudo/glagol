@@ -272,3 +272,48 @@ CPU и найденной видеокарте; «Перейти на CTC»/«С
 в S1): cargo fmt --check, clippy -D warnings, cargo test — exit 0, «354 passed»;
 pnpm build — exit 0, «I18N PASS: 279 keys». Manual (headless Chromium, заглушка):
 подсказка видеокарты видна при CPU. На Windows не проверялось.
+
+## 2026-11-09T14:46:17.000Z — S3b GL-006: нативная диагностика и пересоздание индикатора по событиям
+
+Основание: пользователь — «давай сначала разберёмся с пилюлей»; затем передал
+результат внешнего исследования (Tauri/wry/WebView2 issues, Win32 API). Сверено с
+локальными исходниками: `backgroundThrottling` в tauri 2.11.1 помечен
+«Linux / Windows / Android: Unsupported»; `with_no_redirection_bitmap` есть в
+tao 0.35.2, но в tauri 2.11.1 не выведен (стиль задаётся только при создании
+окна); tauri 2.12.0 требует windows ^0.62, webview2-com ^0.39, wry ^0.57,
+tao ^0.37 (index.crates.io) — раскол с windows 0.61 из cpal/enigo, отдельное
+решение. Выводы исследования о причинах — гипотезы до журнала с пропажей.
+
+Сделано (без обновления Tauri):
+- dictation/overlay_native.rs (Windows): скрытое top-level окно в своём потоке
+  получает WM_DISPLAYCHANGE, WM_POWERBROADCAST (resume, GUID_CONSOLE_DISPLAY_STATE)
+  и WM_WTSSESSION_CHANGE; события пишутся в журнал, «возвратные» (экран включён
+  после выключения/затемнения, resume, unlock, RDP/console connect, RDP disconnect,
+  смена дисплея) помечают индикатор на пересоздание. Обработчик WebView2
+  ProcessFailed окна индикатора: kind, reason, exit_code; тоже пересоздание.
+  После show: WS_EX_TOPMOST, DWMWA_CLOAKED, ICoreWebView2Controller IsVisible и
+  Bounds; невидимый контроллер делается видимым (warn), всегда
+  NotifyParentWindowPositionChanged.
+- session.rs: общий флаг OVERLAY_STALE; поток проверки сна (3 с) пересоздаёт
+  окно при флаге, когда диктовка не идёт; перед show — set_always_on_top(true);
+  скрытие после диктовки — команда hide_overlay (скрывает только в Idle) вместо
+  getCurrentWindow().hide() на странице.
+- Cargo.toml: [target.'cfg(windows)'.dependencies] windows =0.61.3 (features
+  Dwm, Gdi, LibraryLoader, Power, RemoteDesktop, SystemServices,
+  WindowsAndMessaging), webview2-com =0.38.2 — версии уже были в графе;
+  Cargo.lock +2 строки (зависимости glagol).
+- Руководства RU/EN, CHANGELOG, PROJECT_STRUCTURE.
+
+Проверки (Linux container, rustc 1.97.0, node v22.23.4, pnpm 10.28.0;
+PDFIUM_LIBRARY_PATH как в S1): cargo fmt --check, clippy -D warnings,
+cargo test — exit 0, «356 passed» (новые: display_event, session_event);
+pnpm build — exit 0. Windows: мини-крейт с tauri =2.11.1, windows =0.61.3,
+webview2-com =0.38.2, тем же Cargo.lock и копией overlay_native.rs —
+`cargo clippy --target x86_64-pc-windows-msvc -- -D warnings` exit 0 (первый
+прогон нашёл конфликт имени `display` с макросом tracing — исправлено).
+Полный крейт под Windows и поведение на Windows не проверены.
+
+Далее: сборка на ПК; сценарии — экран выключается по таймауту 15 мин без сна,
+Win+L на 10–30 мин, Win+Ctrl+Shift+B; после каждого — диктовка и журнал.
+Если пропажа повторится — A/B transparent=false, «парковка» вместо hide,
+обновление Tauri до 2.12 с no_redirection_bitmap (отдельное решение).

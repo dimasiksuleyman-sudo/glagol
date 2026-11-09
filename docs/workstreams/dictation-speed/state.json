@@ -3,9 +3,13 @@
   "id": "dictation-speed",
   "title": "Скорость диктовки и отключение озвучки (0.6.2)",
   "status": "active",
-  "next": "S4",
+  "next": "S3b",
   "reason": null,
-  "claim": null,
+  "claim": {
+    "owner": "claude",
+    "at": "2026-11-09T14:46:17.000Z",
+    "branch": "claude/optimistic-franklin-cvvbsr"
+  },
   "links": [
     "docs/workstreams/dictation-speed/README.md",
     "docs/workstreams/dictation-speed/log.md"
@@ -199,11 +203,74 @@
       ]
     },
     {
+      "id": "S3b",
+      "title": "GL-006: нативные события Windows, WebView2 ProcessFailed, состояние окна, пересоздание индикатора; проверка на ПК",
+      "status": "in_progress",
+      "depends_on": [
+        "S3"
+      ],
+      "required": [
+        "rust",
+        "frontend",
+        "pc-test"
+      ],
+      "checks": [
+        {
+          "id": "rust",
+          "status": "PASS",
+          "method": "command",
+          "command": "cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test",
+          "cwd": "src-tauri",
+          "at": "2026-11-09T14:46:17.000Z",
+          "environment": {
+            "os": "Linux container",
+            "rustc": "1.97.0",
+            "node": "v22.23.4",
+            "pnpm": "10.28.0"
+          },
+          "exit_code": 0,
+          "output": "test result: ok. 356 passed; 0 failed; 6 ignored",
+          "evidence": "docs/workstreams/dictation-speed/log.md"
+        },
+        {
+          "id": "frontend",
+          "status": "PASS",
+          "method": "command",
+          "command": "pnpm build",
+          "cwd": ".",
+          "at": "2026-11-09T14:46:17.000Z",
+          "environment": {
+            "os": "Linux container",
+            "rustc": "1.97.0",
+            "node": "v22.23.4",
+            "pnpm": "10.28.0"
+          },
+          "exit_code": 0,
+          "output": "I18N PASS: 279 keys; ✓ built",
+          "evidence": "docs/workstreams/dictation-speed/log.md"
+        },
+        {
+          "id": "pc-test",
+          "status": "NOT_RUN",
+          "method": "manual",
+          "command": "Сборка на ПК: выключение экрана без сна, Win+L, сброс драйвера; диктовка после каждого, журнал",
+          "cwd": ".",
+          "at": "2026-11-09T14:46:17.000Z",
+          "environment": {
+            "os": "Windows (ПК пользователя)"
+          },
+          "exit_code": null,
+          "output": "Ожидает сборки и журнала пользователя",
+          "evidence": "docs/workstreams/dictation-speed/log.md"
+        }
+      ]
+    },
+    {
       "id": "S4",
       "title": "Выпуск с ускорением диктовки: номер версии (0.6.2 занят тестовой сборкой) и выбор по умолчанию — по решению пользователя; GL-006 по журналу пропажи",
       "status": "pending",
       "depends_on": [
-        "S3"
+        "S3b"
       ],
       "required": [
         "release"
