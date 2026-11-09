@@ -3,13 +3,9 @@
   "id": "dictation-speed",
   "title": "Скорость диктовки и отключение озвучки (0.6.2)",
   "status": "active",
-  "next": "S3",
+  "next": "S4",
   "reason": null,
-  "claim": {
-    "owner": "claude",
-    "at": "2026-11-09T11:03:13.000Z",
-    "branch": "claude/optimistic-franklin-cvvbsr"
-  },
+  "claim": null,
   "links": [
     "docs/workstreams/dictation-speed/README.md",
     "docs/workstreams/dictation-speed/log.md"
@@ -140,7 +136,7 @@
     {
       "id": "S3",
       "title": "Ускорение по согласованию: видеокарта (Vulkan), потоки, 30-дневная квитанция проверки; замер на ПК",
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [
         "S2"
       ],
@@ -186,19 +182,33 @@
         },
         {
           "id": "pc-test",
-          "status": "NOT_RUN",
+          "status": "PASS",
           "method": "manual",
-          "command": "Сборка ветки на ПК: CPU 8/4 потока и Vulkan, одинаковая фраза, подробный журнал",
+          "command": "Сборка 0.6.2 на ПК пользователя: GigaAM RNNT на CPU 8/4 потока и на Vulkan, подробный журнал",
           "cwd": ".",
-          "at": "2026-11-09T11:03:13.000Z",
+          "at": "2026-11-09T14:11:26.000Z",
           "environment": {
-            "os": "Windows (ПК пользователя)"
+            "os": "Windows (ПК пользователя)",
+            "cpu": "AMD FX-8300",
+            "gpu": "Radeon RX 550 2 ГБ"
           },
           "exit_code": null,
-          "output": "Ожидает сборки и журнала пользователя",
+          "output": "Vulkan0: rtf 0,20 (26 920 мс аудио → 5 515 мс) против CPU 1,11; 4 и 8 потоков CPU одинаково",
           "evidence": "docs/workstreams/dictation-speed/log.md"
         }
       ]
+    },
+    {
+      "id": "S4",
+      "title": "Выпуск с ускорением диктовки: номер версии (0.6.2 занят тестовой сборкой) и выбор по умолчанию — по решению пользователя; GL-006 по журналу пропажи",
+      "status": "pending",
+      "depends_on": [
+        "S3"
+      ],
+      "required": [
+        "release"
+      ],
+      "checks": []
     }
   ]
 }
