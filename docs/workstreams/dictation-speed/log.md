@@ -384,3 +384,23 @@ Reported (пользователь): у ключа обновлений нет �
 работает со скоростью звука, ещё быстрее, чем на ноутбуке» (ПК, CTC на
 видеокарте, тестовая сборка; журнала этого прогона нет).
 Создана серия-TODO hardware-recommendations (пауза) и находка GL-008.
+
+## 2026-11-09T16:09:59.000Z — S4 публикация v0.6.3 и сверка
+
+Release https://github.com/dimasiksuleyman-sudo/glagol/releases/tag/v0.6.3 —
+создан пользователем, published 2026-11-09T16:07:11Z, draft=false,
+prerelease=false, latest (get_latest_release → v0.6.3), target main; тег
+refs/tags/v0.6.3 → 9c76f511a8c6a0fa60581775190e6544e9124482 (ls-remote).
+Assets: Glagol_0.6.3_x64-setup.exe 10 323 165 байт (digest sha256:4b98afd9…54cdea49),
+latest.json 1 836 байт, SHA256SUMS.txt 93 байта.
+
+Из контейнера: три файла скачаны curl; `sha256sum -c SHA256SUMS.txt` —
+«Glagol_0.6.3_x64-setup.exe: OK»; releases/latest/download/latest.json
+совпадает с файлом выпуска (cmp); version 0.6.3, обе цели windows-x86_64-nsis
+и windows-x86_64 → установщик v0.6.3. Подпись из latest.json проверена
+`minisign -V` с pubkey из tauri.conf.json — «Signature and comment signature
+verified», trusted comment timestamp:1794239218 file:Glagol_0.6.3_x64-setup.exe,
+exit 0.
+
+Осталось: обновление из программы — ноутбук (0.6.1) и ПК (тестовая 0.6.2) через
+«Проверить обновления»; затем наблюдение индикатора (S3b).
