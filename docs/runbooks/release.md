@@ -33,6 +33,14 @@ Remove-Item Env:TAURI_SIGNING_PRIVATE_KEY, Env:TAURI_SIGNING_PRIVATE_KEY_PASSWOR
 pnpm release:assets --notes "Glagol <version>"
 ```
 
+Ключ можно не хранить файлом, а вставить его текст в `Read-Host -AsSecureString`.
+Если у ключа нет пароля, `pnpm tauri build` после сборки установщика запрашивает
+пароль и падает с «Wrong password for that key» (0.6.3). Тогда подписать готовый
+установщик отдельно: `pnpm tauri signer sign src-tauri\target\release\bundle\nsis\Glagol_<version>_x64-setup.exe`
+(выводит «Signing without password»), затем `pnpm release:assets`. Перед сборкой
+ключ проверяется подписью тестового файла; ID ключа в `.sig` должен совпасть с
+pubkey в tauri.conf.json (82D55017631804B2).
+
 Рядом с установщиком появятся `.exe.sig`, `latest.json` и `SHA256SUMS.txt`. К Release
 прикрепить установщик, `latest.json` и `SHA256SUMS.txt`; Release должен быть отмечен
 latest, потому что программы читают `releases/latest/download/latest.json`. После

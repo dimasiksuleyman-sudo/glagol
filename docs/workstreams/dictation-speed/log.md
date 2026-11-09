@@ -341,3 +341,31 @@ exit 0, «I18N PASS: 279 keys»; release-assets 3 pass.
 Далее: подписанная сборка пользователя на Windows, release:assets, размер и
 SHA-256 в release notes/README, PR в main и CI, merge, GitHub Release v0.6.3
 (latest), сверка latest.json/подписи, обновление 0.6.x из программы.
+
+## 2026-11-09T15:51:26.000Z — S4 подписанная сборка 0.6.3 на ПК пользователя
+
+Manual (вывод передан пользователем), ПК, D:\Projects\glagol, ветка
+claude/optimistic-franklin-cvvbsr на 0fc3587. Файла ключа на ПК не было; текст
+закрытого ключа из менеджера паролей введён через Read-Host -AsSecureString
+только в процесс PowerShell. Проверка ключа: `pnpm tauri signer sign` тестового
+файла — первый ввод пароля «Wrong password», второй — успех; ID ключа из .sig
+— 82D55017631804B2, совпадает с pubkey в tauri.conf.json.
+
+`pnpm tauri build --config src-tauri/tauri.release.conf.json`: check-version
+0.6.3, I18N 279, release-профиль за 5 м 20 с, «Finished 1 bundle»
+Glagol_0.6.3_x64-setup.exe; затем «Password: <empty>» и «failed to decode secret
+key: … Wrong password for that key», exit 1 — у ключа нет пароля, а сборщик при
+пустой переменной спрашивает пароль. Повторный запуск прерван после I18N PASS.
+Установщик: 10 323 165 байт, LastWriteTime 09.11.2026 18:43:30 (локальное).
+Подпись отдельно: `pnpm tauri signer sign …\Glagol_0.6.3_x64-setup.exe` —
+«Signing without password», «signed successfully»; расшифровка подписи здесь:
+ID ключа 82D55017631804B2, trusted comment timestamp:1794239218
+file:Glagol_0.6.3_x64-setup.exe. `pnpm release:assets --notes …` —
+latest.json и SHA256SUMS.txt; SHA-256
+4b98afd9a0e98457cbe3159e67190c0a702ab8525cfc431fcbb6c0eb54cdea49.
+Переменные ключа удалены из процесса.
+
+Документы: размер и SHA-256 в docs/releases/v0.6.3.md и README; ранбук выпуска
+дополнен обходом для ключа без пароля. Установка этого установщика ещё не
+проверялась. Далее: PR → CI → merge, GitHub Release v0.6.3 latest с тремя
+файлами, сверка, обновление из программы на ПК (0.6.2) и ноутбуке (0.6.1).
