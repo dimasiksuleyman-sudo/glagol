@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "observed_at": "2026-11-09T16:09:59.000Z",
-  "active_workstream": "ux-help",
+  "observed_at": "2026-11-10T08:25:00.000Z",
+  "active_workstream": "dictation-speed",
   "links": [
     "AGENTS.md",
     "CLAUDE.md",
@@ -65,9 +65,9 @@
       "id": "published",
       "label": "Публикация",
       "status": "observed",
-      "summary": "GitHub Release v0.6.3 опубликован как latest (тег → merge 9c76f51, PR #50, CI success). Установщик 10323165 байт, SHA-256 4b98afd9a0e98457cbe3159e67190c0a702ab8525cfc431fcbb6c0eb54cdea49 совпал с SHA256SUMS; latest.json по адресу программы совпадает; подпись проверена minisign встроенным ключом.",
-      "observed_at": "2026-11-09T16:09:59.000Z",
-      "source": "docs/workstreams/dictation-speed/log.md"
+      "summary": "GitHub Release v0.6.5 опубликован как latest (тег → merge b2492db, PR #51, CI success). Установщик 10348612 байт, SHA-256 df3e5e9f661566eb8c1e2070c1fa670bcedc4cd5112df631ecdc22701fec4e7e совпал с SHA256SUMS; latest.json по адресу программы совпадает, заметки RU/EN целы; подпись проверена minisign встроенным ключом 82D55017631804B2.",
+      "observed_at": "2026-11-10T08:25:00.000Z",
+      "source": "docs/workstreams/ux-help/log.md"
     },
     {
       "id": "qa-environment",
