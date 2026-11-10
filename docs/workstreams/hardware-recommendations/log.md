@@ -52,3 +52,9 @@ check-version — «versions match»). docs/releases/v0.6.5.md EN/RU (реком
 ограничения), CHANGELOG [v0.6.5] — 2026-11-10, заголовки руководств,
 USER_GUIDE.md, README (ссылка v0.6.5, размер — плейсхолдер до сборки).
 cargo test --locked «360 passed», pnpm build exit 0, release-assets pass 3.
+
+## 2026-11-10T06:35:50.000Z — исправление: USER_GUIDE.md
+
+В 53817e4 USER_GUIDE.md оказался пустым: скрипт открыл файл на запись до
+чтения. Замечено по статистике `git pull` пользователя («USER_GUIDE.md | 7 -»).
+Содержимое восстановлено из 0fc3587 с заменой версии на 0.6.5.
