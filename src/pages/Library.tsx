@@ -7,7 +7,7 @@ import { Link } from "react-router-dom";
 import { save } from "@tauri-apps/plugin-dialog";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { toast } from "sonner";
-import { AudioLines, Download, Pencil, Trash2, TriangleAlert } from "lucide-react";
+import { AudioLines, Download, Pencil, Play, Search, Trash2, TriangleAlert, Volume2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -24,10 +24,12 @@ import {
 } from "@/lib/tauri";
 import { formatRelativeTime } from "@/lib/format";
 import { getVoiceLabel } from "@/lib/voices";
+import { markFeatureUsed } from "@/lib/tips";
 
 /**
- * Library page — stacked list of every synthesized document, with
- * native HTML5 audio playback, disk export, and instant delete.
+ * Library page — compact list of every synthesized document with one shared
+ * player for the selected document, disk export, rename and delete. A search
+ * field appears once the list is long.
  *
  * State machine (discriminated union):
  *   loading → ready | empty | error
@@ -46,9 +48,25 @@ type LibraryState =
   | { kind: "ready"; documents: DocumentRecord[] }
   | { kind: "error"; message: string };
 
+/** Show the search field from this many documents. */
+const SEARCH_FROM = 6;
+
 export function Library() {
   useI18n();
   const [state, setState] = useState<LibraryState>({ kind: "loading" });
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [assetUrl, setAssetUrl] = useState<string | null>(null);
+
+  // Only the selected document's audio is resolved and loaded.
+  useEffect(() => {
+    if (selectedId === null) { setAssetUrl(null); return; }
+    let cancelled = false;
+    getAudioPath(selectedId)
+      .then(abs => { if (!cancelled) setAssetUrl(convertFileSrc(abs)); })
+      .catch(err => { if (!cancelled) { setAssetUrl(null); toast.error(stringifyError(err)); } });
+    return () => { cancelled = true; };
+  }, [selectedId]);
 
   async function fetchDocuments() {
     setState({ kind: "loading" });
@@ -68,6 +86,7 @@ export function Library() {
     // Optimistic UI: remove the row first; if the backend complains,
     // resync from server. The reverse order (await then update) would
     // give a sluggish click feel for a single-user app on local IPC.
+    if (selectedId === doc.id) setSelectedId(null);
     if (state.kind === "ready") {
       const filtered = state.documents.filter((d) => d.id !== doc.id);
       setState(
@@ -133,8 +152,13 @@ export function Library() {
     }
   }
 
+  const documents = state.kind === "ready" ? state.documents : [];
+  const needle = query.trim().toLocaleLowerCase(currentLocale());
+  const shown = needle ? documents.filter(d => d.title.toLocaleLowerCase(currentLocale()).includes(needle)) : documents;
+  const selected = documents.find(d => d.id === selectedId) ?? null;
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <Header />
       {state.kind === "loading" && <LoadingSkeleton />}
       {state.kind === "empty" && <EmptyState />}
@@ -142,17 +166,34 @@ export function Library() {
         <ErrorCard message={state.message} onRetry={fetchDocuments} />
       )}
       {state.kind === "ready" && (
-        <div className="space-y-3">
-          {state.documents.map((doc) => (
-            <DocumentRow
-              key={doc.id}
-              document={doc}
-              onDelete={() => handleDelete(doc)}
-              onExport={() => handleExport(doc)}
-              onRename={(next) => handleRename(doc, next)}
-            />
-          ))}
-        </div>
+        <>
+          {documents.length >= SEARCH_FROM && <div className="relative">
+            <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" aria-hidden />
+            <Input value={query} onChange={e => setQuery(e.target.value)} placeholder={t("Search by title")} aria-label={t("Search by title")} className="pl-9" />
+          </div>}
+          <Card data-tour="library" className="py-0">
+            <CardContent className="divide-y p-0">
+              {shown.map((doc) => (
+                <DocumentRow
+                  key={doc.id}
+                  document={doc}
+                  selected={doc.id === selectedId}
+                  onPlay={() => { markFeatureUsed("library"); setSelectedId(doc.id); }}
+                  onDelete={() => handleDelete(doc)}
+                  onExport={() => handleExport(doc)}
+                  onRename={(next) => handleRename(doc, next)}
+                />
+              ))}
+              {shown.length === 0 && <p className="text-muted-foreground p-4 text-sm">{t("Nothing found.")}</p>}
+            </CardContent>
+          </Card>
+          {selected && assetUrl !== null && (
+            <div className="bg-background/95 sticky bottom-0 space-y-2 border-t pt-3 pb-1 backdrop-blur" data-tour="library-player">
+              <p className="flex items-center gap-2 truncate text-sm font-medium"><Volume2 className="h-4 w-4 shrink-0" aria-hidden />{selected.title}</p>
+              <AudioPlayer key={selected.id} src={assetUrl} autoPlay />
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -189,7 +230,7 @@ function LoadingSkeleton() {
 function EmptyState() {
   useI18n();
   return (
-    <Card>
+    <Card data-tour="library">
       <CardContent className="space-y-4 pt-12 pb-12 text-center">
         <AudioLines className="text-muted-foreground mx-auto h-12 w-12" />
         <p className="text-lg">{t("Your synthesized documents will appear here")}</p>
@@ -227,6 +268,9 @@ function ErrorCard({ message, onRetry }: ErrorCardProps) {
 
 interface DocumentRowProps {
   document: DocumentRecord;
+  /** This document is loaded in the shared player. */
+  selected: boolean;
+  onPlay: () => void;
   onDelete: () => void;
   onExport: () => void;
   /** Awaited by the row's save handler before exiting edit mode.
@@ -235,33 +279,8 @@ interface DocumentRowProps {
   onRename: (newTitle: string) => Promise<void>;
 }
 
-function DocumentRow({ document, onDelete, onExport, onRename }: DocumentRowProps) {
+function DocumentRow({ document, selected, onPlay, onDelete, onExport, onRename }: DocumentRowProps) {
   useI18n();
-  // Asset URL is resolved lazily per row: getAudioPath is a cheap IPC
-  // call, and doing it here keeps `list_documents` a thin wrapper.
-  // For Sprint 2 row counts (<= a few dozen) parallel resolution is
-  // fine; Sprint 5 may push paths into list_documents if profiling
-  // shows it.
-  const [assetUrl, setAssetUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (document.audio_path === null) {
-      setAssetUrl(null);
-      return;
-    }
-    let cancelled = false;
-    getAudioPath(document.id)
-      .then((abs) => {
-        if (!cancelled) setAssetUrl(convertFileSrc(abs));
-      })
-      .catch(() => {
-        if (!cancelled) setAssetUrl(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [document.id, document.audio_path]);
-
   // ── Inline title edit state ──────────────────────────────────────
   // `null` = display mode; `string` = edit mode with the current draft.
   // The `inFlight` ref guards against the Enter-then-Blur double-save
@@ -301,9 +320,13 @@ function DocumentRow({ document, onDelete, onExport, onRename }: DocumentRowProp
   const isEditing = draft !== null;
 
   return (
-    <Card>
-      <CardContent className="space-y-3 pt-4">
-        <div className="flex items-start justify-between gap-2">
+    <div className={selected ? "bg-muted/60" : undefined}>
+      <div className="flex items-center gap-3 px-4 py-3">
+          {document.audio_path !== null
+            ? <Button size="icon" variant={selected ? "default" : "outline"} onClick={onPlay} title={t("playAudio")} aria-label={t("playAudio")} aria-pressed={selected}>
+              {selected ? <Volume2 className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+            </Button>
+            : <TriangleAlert className="text-destructive mx-2.5 h-4 w-4 shrink-0" aria-label={t("Error")} />}
           <div className="min-w-0 flex-1">
             {isEditing ? (
               <Input
@@ -329,7 +352,8 @@ function DocumentRow({ document, onDelete, onExport, onRename }: DocumentRowProp
             ) : (
               <p className="truncate font-medium">{document.title}</p>
             )}
-            <p className="text-muted-foreground mt-1 text-sm">
+            <p className="text-muted-foreground mt-0.5 truncate text-xs">
+              {document.audio_duration_ms !== null && <>{formatDuration(document.audio_duration_ms)} · </>}
               {getVoiceLabel(document.voice)} · {charCountLabel} ·{" "}
               {formatRelativeTime(document.created_at)}
               {document.speech_language && <> · {document.speech_language === "en" ? t("English") : t("Russian")}</>}
@@ -365,13 +389,17 @@ function DocumentRow({ document, onDelete, onExport, onRename }: DocumentRowProp
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>
-        </div>
-        {assetUrl !== null && (
-          <AudioPlayer key={document.id} src={assetUrl} />
-        )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
+}
+
+/** 0:42, 12:05 or 1:02:05 for a length in milliseconds. */
+function formatDuration(ms: number): string {
+  const total = Math.round(ms / 1000);
+  const h = Math.floor(total / 3600), m = Math.floor((total % 3600) / 60), s = total % 60;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
 }
 
 function stringifyError(err: unknown): string {

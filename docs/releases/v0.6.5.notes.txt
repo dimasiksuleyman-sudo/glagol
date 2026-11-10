@@ -1,0 +1,1 @@
+Glagol 0.6.5: clearer interface with Settings tabs and built-in Help, hardware recommendation for Russian dictation, reliable dictation indicator. / Понятнее интерфейс: вкладки настроек и встроенная «Справка», рекомендация по железу для русской диктовки, надёжный индикатор диктовки.

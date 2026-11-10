@@ -50,6 +50,11 @@ and modification time of the model, the archive and every runtime file, and is r
 for at most 30 days while they are unchanged. Repair, removal, a failed session open
 or a recognition error delete the receipt and force the full check.
 
+Since 0.6.5 a background startup probe, run only when the runtime is installed and
+no model operation holds the lock, verifies the runtime (a valid receipt of any model
+or the full archive comparison), loads it and enumerates devices without opening a
+model; the first discrete Vulkan GPU feeds the hardware recommendation.
+
 The Russian session uses the CPU by default. Settings can request the Vulkan backend
 of the same pinned runtime (`TRANSCRIBE_BACKEND_VULKAN`, first Vulkan device); if the
 session cannot open there it opens on the CPU, and a recognition error on Vulkan

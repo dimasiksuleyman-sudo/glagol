@@ -1,8 +1,6 @@
-import { currentLocale } from "@/i18n";
 import { t } from "@/i18n";
 import { useI18n } from "@/contexts/PreferencesContext";
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import { listen } from "@tauri-apps/api/event";
 import { toast } from "sonner";
 
@@ -20,8 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { DevicePicker } from "@/components/dictation/DevicePicker";
 import { DictationHistory } from "@/components/dictation/DictationHistory";
 import { HotkeyEditor } from "@/components/dictation/HotkeyEditor";
-import { DictationSection } from "@/components/settings/DictationSection";
-import { pluralizeMinutes } from "@/lib/pluralize";
+import { DictationStatus } from "@/components/dictation/DictationStatus";
 import {
   clearDictationHistory,
   DICTATION_STATE_EVENT,
@@ -197,12 +194,12 @@ export function Dictation() {
 
   return (
     <div className="space-y-6">
-      <DictationSection />
       <div>
         <h2 className="text-2xl font-semibold tracking-tight">{t("Dictation")}</h2>
         <p className="text-muted-foreground mt-1 text-sm">
           {t("Dictate into any application: hold the shortcut, speak, then release it to insert the recognized text into the active window.")}{" "}</p>
       </div>
+      <DictationStatus minutes={minutes} hotkey={settings?.hotkey ?? "Ctrl+Shift+Space"} />
 
       {load.kind === "loading" && (
         <Card>
@@ -233,7 +230,7 @@ export function Dictation() {
                 {t("Choose how recognized text reaches your application and which shortcut starts recording.")}{" "}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="space-y-3">
+              <div className="space-y-3" data-tour="insert-mode">
                 <Label>{t("Insertion mode")}</Label>
                 <RadioGroup
                   value={settings.insertion_mode}
@@ -271,7 +268,7 @@ export function Dictation() {
 
               <Separator />
 
-              <div className="space-y-3">
+              <div className="space-y-3" data-tour="hotkey">
                 <div className="space-y-0.5">
                   <Label>{t("Shortcut")}</Label>
                   <p className="text-muted-foreground text-xs">
@@ -287,7 +284,7 @@ export function Dictation() {
 
               <Separator />
 
-              <div className="space-y-3">
+              <div className="space-y-3" data-tour="microphone">
                 <div className="space-y-0.5">
                   <Label htmlFor="device">{t("Microphone")}</Label>
                   <p className="text-muted-foreground text-xs">
@@ -308,7 +305,7 @@ export function Dictation() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card data-tour="history">
             <CardHeader>
               <CardTitle>{t("Dictation history")}</CardTitle>
               <CardDescription>
@@ -326,24 +323,6 @@ export function Dictation() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>{t("Statistics")}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <p className="text-sm">
-                {t("Total dictated:")}{" "}
-                <span className="font-medium">
-                  {new Intl.NumberFormat(currentLocale()).format(minutes)} {pluralizeMinutes(minutes)}
-                </span>
-              </p>
-              <p className="text-muted-foreground text-xs">
-                {t("Configure the recognition provider and key in")}{" "}
-                <Link to="/settings" className="underline underline-offset-2">
-                  {t("Settings (inline link)")}{" "}</Link>{" "}
-                {t("→ Dictation (STT).")}{" "}</p>
-            </CardContent>
-          </Card>
         </>
       )}
     </div>

@@ -30,16 +30,22 @@ $secure = Read-Host -AsSecureString "Updater key password"
 $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = [Net.NetworkCredential]::new('', $secure).Password
 pnpm tauri build --config src-tauri/tauri.release.conf.json
 Remove-Item Env:TAURI_SIGNING_PRIVATE_KEY, Env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD
-pnpm release:assets --notes "Glagol <version>"
+pnpm release:assets --notes-file docs/releases/v<version>.notes.txt
 ```
 
 Ключ можно не хранить файлом, а вставить его текст в `Read-Host -AsSecureString`.
-Если у ключа нет пароля, `pnpm tauri build` после сборки установщика запрашивает
-пароль и падает с «Wrong password for that key» (0.6.3). Тогда подписать готовый
-установщик отдельно: `pnpm tauri signer sign src-tauri\target\release\bundle\nsis\Glagol_<version>_x64-setup.exe`
-(выводит «Signing without password»), затем `pnpm release:assets`. Перед сборкой
-ключ проверяется подписью тестового файла; ID ключа в `.sig` должен совпасть с
-pubkey в tauri.conf.json (82D55017631804B2).
+У ключа Глагола **есть пароль** (запись 2026-11-10; вывод 2026-11-09 «пароля нет»
+был ошибочным). В 0.6.3 подпись внутри `pnpm tauri build` спросила пароль и упала
+с «Wrong password for that key», хотя пароль был задан в переменной процесса;
+причина не выяснена. Надёжный порядок с 0.6.5: собрать `pnpm tauri build`, затем
+задать `TAURI_SIGNING_PRIVATE_KEY` и `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` через
+`Read-Host -AsSecureString` и подписать готовый установщик:
+`pnpm tauri signer sign src-tauri\target\release\bundle\nsis\Glagol_<version>_x64-setup.exe`,
+затем `pnpm release:assets`. Без пароля подпись падает с той же ошибкой. ID ключа в
+`.sig` должен совпасть с pubkey в tauri.conf.json (82D55017631804B2).
+
+Заметки для окна «Что нового» хранятся в `docs/releases/v<version>.notes.txt` (UTF-8):
+`--notes` из консоли PowerShell терял кириллицу (0.6.5).
 
 Рядом с установщиком появятся `.exe.sig`, `latest.json` и `SHA256SUMS.txt`. К Release
 прикрепить установщик, `latest.json` и `SHA256SUMS.txt`; Release должен быть отмечен

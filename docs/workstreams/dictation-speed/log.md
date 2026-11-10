@@ -369,3 +369,143 @@ latest.json и SHA256SUMS.txt; SHA-256
 дополнен обходом для ключа без пароля. Установка этого установщика ещё не
 проверялась. Далее: PR → CI → merge, GitHub Release v0.6.3 latest с тремя
 файлами, сверка, обновление из программы на ПК (0.6.2) и ноутбуке (0.6.1).
+
+## 2026-11-09T16:00:52.000Z — PR #50 слит; порядок шагов; новые наблюдения
+
+PR https://github.com/dimasiksuleyman-sudo/glagol/pull/50 — CI «Quality gates
+(Windows)» прогон 78 (0fc3587, весь код выпуска) и 79 (8fa5d58) success; слит
+merge-коммитом 9c76f511a8c6a0fa60581775190e6544e9124482 по слову пользователя
+«сливай». Ветка перезапущена от main (9c76f51).
+
+Шаги переставлены: S4 (выпуск) идёт сейчас, S3b (наблюдение индикатора на
+Windows) — после выпуска, по журналам; изменения индикатора вошли в 0.6.3.
+
+Reported (пользователь): у ключа обновлений нет пароля; «сейчас программа
+работает со скоростью звука, ещё быстрее, чем на ноутбуке» (ПК, CTC на
+видеокарте, тестовая сборка; журнала этого прогона нет).
+Создана серия-TODO hardware-recommendations (пауза) и находка GL-008.
+
+## 2026-11-09T16:09:59.000Z — S4 публикация v0.6.3 и сверка
+
+Release https://github.com/dimasiksuleyman-sudo/glagol/releases/tag/v0.6.3 —
+создан пользователем, published 2026-11-09T16:07:11Z, draft=false,
+prerelease=false, latest (get_latest_release → v0.6.3), target main; тег
+refs/tags/v0.6.3 → 9c76f511a8c6a0fa60581775190e6544e9124482 (ls-remote).
+Assets: Glagol_0.6.3_x64-setup.exe 10 323 165 байт (digest sha256:4b98afd9…54cdea49),
+latest.json 1 836 байт, SHA256SUMS.txt 93 байта.
+
+Из контейнера: три файла скачаны curl; `sha256sum -c SHA256SUMS.txt` —
+«Glagol_0.6.3_x64-setup.exe: OK»; releases/latest/download/latest.json
+совпадает с файлом выпуска (cmp); version 0.6.3, обе цели windows-x86_64-nsis
+и windows-x86_64 → установщик v0.6.3. Подпись из latest.json проверена
+`minisign -V` с pubkey из tauri.conf.json — «Signature and comment signature
+verified», trusted comment timestamp:1794239218 file:Glagol_0.6.3_x64-setup.exe,
+exit 0.
+
+Осталось: обновление из программы — ноутбук (0.6.1) и ПК (тестовая 0.6.2) через
+«Проверить обновления»; затем наблюдение индикатора (S3b).
+
+## 2026-11-09T18:54:39.000Z — журнал ПК после выпуска: обновление из программы, CTC+Vulkan, Win+L
+
+Источник: третий журнал ПК glagol.2026-11-09.log (передан пользователем).
+
+Обновление из программы (observed по журналу): 16:12:23Z «update available
+version=0.6.3», 16:14:15Z «installing update version=0.6.3», 16:14:24Z
+«system diagnostics version="0.6.3"» — ПК обновился с тестовой 0.6.2 до 0.6.3
+из программы. Ноутбук (0.6.1) ещё не обновлён — reported.
+
+Скорость: GigaAM v3 CTC, backend=Vulkan0, 4 потока, verification_reused=true;
+10 диктовок 2,1–9,2 с аудио — rtf 0,07–0,14 (9 150 мс аудио → 669 мс).
+Для сравнения: RNNT на CPU rtf ≈1,1, RNNT на Vulkan ≈0,2.
+
+Индикатор (GL-006): после старта 0.6.3 «overlay system watch started
+display_notifications=true session_notifications=true». Win+L: 18:07:00Z
+SessionLock, 18:50:12Z SessionUnlock → «overlay marked for rebuild» →
+18:50:16Z «overlay window rebuilt generation=1», старое окно destroyed, страница
+overlay-1 загружена. Все 10 показов (4 — окно overlay до блокировки, 6 —
+overlay-1 после): topmost=true, cloaked=0, controller_visible=true,
+corrected=false, 224×40. ProcessFailed, FrameMissing, ScriptError — нет;
+DisplayOff/DisplayOn за блокировку не пришли (экран, видимо, не гас — не
+проверено). Пользователь: «пилюля на месте; обычно к этому времени уже
+исчезала» (reported).
+
+Вывод: механизм из исследования (пересоздание по событию сеанса) сработал
+по назначению. Сама поломка в этом журнале не поймана: до пересоздания старое
+окно было «здорово» по всем признакам, поэтому причина GL-006 не доказана;
+пересоздание работает как профилактика. Наблюдение — неделя на обоих
+компьютерах, отдельно сценарий с погасшим экраном.
+
+## 2026-11-09T19:37:32.000Z — GL-006: пропажа индикатора на 0.6.3 (ПК)
+
+Reported: «пропала таблетка» (время не уточнено). Журнал ПК передан; последняя
+запись 19:23:11Z. После пересоздания окна в 18:50:16 (overlay-1) диктовки
+18:51–18:58 и 19:23:05 записаны одинаково: overlay positioned DISPLAY1
+1920×1080, overlay native state topmost=true cloaked=0 controller_visible=true
+corrected=false notified=true 224×40, overlay shown show_ok=true visible=true,
+страница получила все состояния, FramePainted 19–30 мс, Hidden через 1500 мс.
+Между 18:58:07 и 19:23:05 (≈25 мин простоя) — ни одного события дисплея,
+сеанса или ProcessFailed; пересоздание не запускалось. Диктовка и вставка
+работали (CTC, Vulkan0, rtf ≈0,10).
+
+Вывод (observed + inference): при пропаже все программные признаки «видим»
+— совпадает с WebView2Feedback #5673-классом (кадр отрисован, но не
+представлен на экране); ни наши события, ни ProcessFailed этот случай не
+ловят. Профилактика по событиям его не покрывает: причина — простой без
+системных событий. Какая именно диктовка была без индикатора, не уточнено
+(предположительно 19:23:05).
+
+## 2026-11-09T19:53:59.000Z — GL-006: пересоздание после простоя и проверка пикселей (0.6.4)
+
+Согласование: пользователь — «Да, делаем оба». Версия 0.6.4.
+
+Сделано:
+- session.rs: OVERLAY_HIDDEN_SINCE_MS (ставится при скрытии и создании окна,
+  сбрасывается при показе); поток наблюдения помечает окно на пересоздание,
+  если индикатор скрыт ≥10 минут и диктовки нет («hidden for a long idle
+  period»), — при длительном простое окно меняется каждые 10 минут.
+- Через 350 мс после показа отдельный поток (если диктовка идёт и окно
+  видимо) читает 4 пикселя экрана: 3 в верхней полосе пилюли (6 логических px
+  от верха, центр ±12) и 1 в прозрачном углу окна. Решение judge_presence:
+  угол тёмный (все каналы ≤60) → Inconclusive; большинство точек пилюли тёмные →
+  Visible; иначе NotPresented → warn «overlay shown but not presented on
+  screen» (в журнал только максимум яркости 0–255 и решение) и пересоздание
+  после диктовки. Окно не WS_EX_LAYERED (tao: только при ignore cursor events),
+  поэтому GetPixel экранного DC видит его.
+- overlay_native.rs: read_screen_pixels (GetDC/GetPixel/ReleaseDC),
+  presence_points, Presence; тесты judge/points и idle_rebuild_due.
+- Руководства RU/EN, CHANGELOG [Unreleased] Fixed.
+
+Проверки (Linux container, rustc 1.97.0, node v22.23.4, pnpm 10.28.0;
+PDFIUM_LIBRARY_PATH как в S1): check-version 0.6.4; cargo fmt --check,
+clippy --locked -D warnings, cargo test --locked — exit 0, «358 passed»;
+pnpm build — exit 0. Windows: мини-крейт с overlay_native.rs —
+`cargo clippy --target x86_64-pc-windows-msvc -- -D warnings` exit 0.
+На Windows не запускалось.
+
+## 2026-11-09T20:07:32.000Z — контур индикатора для любого фона
+
+Запрос пользователя: «Можно изменить пилюлю так, чтобы она была на любом фоне
+видна?» OverlayPill: border 1px rgba(255,255,255,0.32) и внешнее кольцо
+box-shadow 0 0 0 1px rgba(0,0,0,0.6) поверх прежней тени. Manual (headless
+Chromium, 224×40 @3x, заглушка IPC): пилюля различима на #f5f5f5, #16181d,
+#000 и градиенте. Проверка пикселей не затронута: точки на 6 логических px
+ниже верха, внутри тела пилюли. pnpm build — exit 0. Руководства RU/EN,
+CHANGELOG [Unreleased] Changed.
+
+## 2026-11-09T21:11:52.000Z — тестовая сборка 0.6.4 на ПК
+
+Manual (сообщено пользователем): `pnpm tauri build` на 7091aa1 (ПК) —
+«Finished 1 bundle» Glagol_0.6.4_x64-setup.exe, без подписи; установлена поверх
+0.6.3. «Диктую тебе с новой пилюлей. Заметил отличия. Видно хорошо.» Первая
+полная сборка кода проверки пикселей и пересоздания после простоя на Windows.
+Журнал после установки не передавался: строки «overlay presence check» и
+«hidden for a long idle period» ещё не проверены. Далее: наблюдение,
+журнал за день или при пропаже; затем подписанная сборка и выпуск 0.6.4.
+
+## 2026-11-10T06:22:34.000Z — пауза серии
+
+Reported (пользователь 2026-11-10): «Пилюля работает» на тестовой 0.6.4; журнал
+после установки не передан (строки проверки пикселей не сверены). Пользователь
+переключил работу: «Давай сделаем рекомендации по железу и выложим релиз».
+Серия на паузе: S4 (обновление ноутбука из программы) и S3b (наблюдение
+индикатора) продолжаются после выпуска из серии hardware-recommendations.

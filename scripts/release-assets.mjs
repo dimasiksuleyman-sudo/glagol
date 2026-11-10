@@ -1,7 +1,7 @@
 // Prepare the GitHub Release assets that accompany a signed NSIS build:
 // `latest.json` for the in-app updater and `SHA256SUMS.txt`.
 //
-//   node scripts/release-assets.mjs [--notes "text"] [--dir <bundle/nsis>]
+//   node scripts/release-assets.mjs [--notes "text" | --notes-file <utf-8 file>] [--dir <bundle/nsis>]
 //
 // Requires `Glagol_<version>_x64-setup.exe` and its `.sig` produced by
 // `pnpm tauri build --config src-tauri/tauri.release.conf.json` with the
@@ -33,6 +33,13 @@ export function buildManifest({ version, signature, notes, pubDate }) {
   };
 }
 
+/** Read release notes from a UTF-8 text file (BOM tolerated, trimmed). */
+export function readNotesFile(path) {
+  const text = readFileSync(path, "utf8").replace(/^\uFEFF/, "").trim();
+  if (!text) throw new Error(`empty notes file: ${path}`);
+  return text;
+}
+
 export function prepareReleaseAssets({ base = root, dir, notes = "", now = new Date() } = {}) {
   const version = checkVersions(base);
   const bundle = resolve(base, dir ?? "src-tauri/target/release/bundle/nsis");
@@ -60,7 +67,10 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     return index >= 0 ? args[index + 1] : undefined;
   };
   try {
-    const { version, bundle, digest } = prepareReleaseAssets({ notes: option("--notes"), dir: option("--dir") });
+    // A UTF-8 file avoids console code pages mangling non-ASCII notes.
+    const notesFile = option("--notes-file");
+    const notes = notesFile ? readNotesFile(notesFile) : option("--notes");
+    const { version, bundle, digest } = prepareReleaseAssets({ notes, dir: option("--dir") });
     console.info(`Glagol ${version}: latest.json and SHA256SUMS.txt written to ${bundle}`);
     console.info(`${digest}  ${installerName(version)}`);
   } catch (error) {

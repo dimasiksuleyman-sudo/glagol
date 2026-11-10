@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "observed_at": "2026-11-09T07:31:28.000Z",
-  "active_workstream": "dictation-speed",
+  "observed_at": "2026-11-09T16:09:59.000Z",
+  "active_workstream": "ux-help",
   "links": [
     "AGENTS.md",
     "CLAUDE.md",
@@ -36,7 +36,13 @@
     "docs/workstreams/self-update/README.md",
     "docs/workstreams/self-update/log.md",
     "docs/workstreams/dictation-speed/README.md",
-    "docs/workstreams/dictation-speed/log.md"
+    "docs/workstreams/dictation-speed/log.md",
+    "docs/workstreams/hardware-recommendations/README.md",
+    "docs/workstreams/hardware-recommendations/log.md",
+    "docs/workstreams/ux-help/README.md",
+    "docs/workstreams/ux-help/log.md",
+    "docs/workstreams/modifier-hotkey/README.md",
+    "docs/workstreams/modifier-hotkey/log.md"
   ],
   "observations": [
     {
@@ -59,9 +65,9 @@
       "id": "published",
       "label": "Публикация",
       "status": "observed",
-      "summary": "GitHub Release v0.6.0 опубликован как latest; CI PR success, merge 0dc7822. Установщик 10262171 байт, SHA-256 77ae4ec09fae11fa87989c02b9f588f62fe03fdc14c7cee5b981909837bb2a38 совпал с SHA256SUMS; latest.json доступен по адресу программы; подпись обновления проверена minisign встроенным ключом.",
-      "observed_at": "2026-10-09T09:12:55.000Z",
-      "source": "docs/workstreams/self-update/log.md"
+      "summary": "GitHub Release v0.6.3 опубликован как latest (тег → merge 9c76f51, PR #50, CI success). Установщик 10323165 байт, SHA-256 4b98afd9a0e98457cbe3159e67190c0a702ab8525cfc431fcbb6c0eb54cdea49 совпал с SHA256SUMS; latest.json по адресу программы совпадает; подпись проверена minisign встроенным ключом.",
+      "observed_at": "2026-11-09T16:09:59.000Z",
+      "source": "docs/workstreams/dictation-speed/log.md"
     },
     {
       "id": "qa-environment",

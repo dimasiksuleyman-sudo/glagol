@@ -122,6 +122,18 @@ pub fn cpu_features() -> String {
     }
 }
 
+/// Whether the processor has AVX2, which the fast ggml CPU kernels need.
+pub fn has_avx2() -> bool {
+    #[cfg(target_arch = "x86_64")]
+    {
+        std::arch::is_x86_feature_detected!("avx2")
+    }
+    #[cfg(not(target_arch = "x86_64"))]
+    {
+        false
+    }
+}
+
 /// One startup line describing the machine, so logs from two PCs compare.
 pub fn log_system() {
     tracing::info!(

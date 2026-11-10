@@ -1,0 +1,168 @@
+{
+  "schema_version": 1,
+  "id": "hardware-recommendations",
+  "title": "Рекомендации модели и настроек диктовки по железу",
+  "status": "paused",
+  "next": "R4",
+  "reason": "Пользователь 2026-11-10 добавил перед выпуском перестройку интерфейса и справку (серия ux-help). Продолжение: R4 выполняется как H6 серии ux-help; затем отметить R4 по её результатам.",
+  "claim": null,
+  "links": [
+    "docs/workstreams/hardware-recommendations/README.md",
+    "docs/workstreams/hardware-recommendations/log.md"
+  ],
+  "steps": [
+    {
+      "id": "R1",
+      "title": "Опрос железа заранее (AVX2, Vulkan-видеокарта) без загрузки модели",
+      "status": "done",
+      "depends_on": [],
+      "required": [
+        "rust"
+      ],
+      "checks": [
+        {
+          "id": "rust",
+          "status": "PASS",
+          "method": "command",
+          "command": "cargo fmt --check && cargo clippy --all-targets --locked -- -D warnings && cargo test --locked",
+          "cwd": "src-tauri",
+          "at": "2026-11-10T06:29:42.000Z",
+          "environment": {
+            "os": "Linux container",
+            "rustc": "1.97.0",
+            "node": "v22.23.4",
+            "pnpm": "10.28.0"
+          },
+          "exit_code": 0,
+          "output": "test result: ok. 360 passed; 0 failed; 6 ignored",
+          "evidence": "docs/workstreams/hardware-recommendations/log.md"
+        }
+      ]
+    },
+    {
+      "id": "R2",
+      "title": "Рекомендация при первой настройке и выборе русской локальной модели",
+      "status": "done",
+      "depends_on": [
+        "R1"
+      ],
+      "required": [
+        "rust",
+        "frontend"
+      ],
+      "checks": [
+        {
+          "id": "rust",
+          "status": "PASS",
+          "method": "command",
+          "command": "cargo fmt --check && cargo clippy --all-targets --locked -- -D warnings && cargo test --locked",
+          "cwd": "src-tauri",
+          "at": "2026-11-10T06:29:42.000Z",
+          "environment": {
+            "os": "Linux container",
+            "rustc": "1.97.0",
+            "node": "v22.23.4",
+            "pnpm": "10.28.0"
+          },
+          "exit_code": 0,
+          "output": "test result: ok. 360 passed; 0 failed; 6 ignored",
+          "evidence": "docs/workstreams/hardware-recommendations/log.md"
+        },
+        {
+          "id": "frontend",
+          "status": "PASS",
+          "method": "command",
+          "command": "pnpm build",
+          "cwd": ".",
+          "at": "2026-11-10T06:29:42.000Z",
+          "environment": {
+            "os": "Linux container",
+            "rustc": "1.97.0",
+            "node": "v22.23.4",
+            "pnpm": "10.28.0"
+          },
+          "exit_code": 0,
+          "output": "I18N PASS: 283 keys; ✓ built",
+          "evidence": "docs/workstreams/hardware-recommendations/log.md"
+        }
+      ]
+    },
+    {
+      "id": "R3",
+      "title": "Подсказка по фактической скорости последних диктовок",
+      "status": "done",
+      "depends_on": [
+        "R2"
+      ],
+      "required": [
+        "rust",
+        "frontend",
+        "manual"
+      ],
+      "checks": [
+        {
+          "id": "rust",
+          "status": "PASS",
+          "method": "command",
+          "command": "cargo fmt --check && cargo clippy --all-targets --locked -- -D warnings && cargo test --locked",
+          "cwd": "src-tauri",
+          "at": "2026-11-10T06:29:42.000Z",
+          "environment": {
+            "os": "Linux container",
+            "rustc": "1.97.0",
+            "node": "v22.23.4",
+            "pnpm": "10.28.0"
+          },
+          "exit_code": 0,
+          "output": "test result: ok. 360 passed; 0 failed; 6 ignored",
+          "evidence": "docs/workstreams/hardware-recommendations/log.md"
+        },
+        {
+          "id": "frontend",
+          "status": "PASS",
+          "method": "command",
+          "command": "pnpm build",
+          "cwd": ".",
+          "at": "2026-11-10T06:29:42.000Z",
+          "environment": {
+            "os": "Linux container",
+            "rustc": "1.97.0",
+            "node": "v22.23.4",
+            "pnpm": "10.28.0"
+          },
+          "exit_code": 0,
+          "output": "I18N PASS: 283 keys; ✓ built",
+          "evidence": "docs/workstreams/hardware-recommendations/log.md"
+        },
+        {
+          "id": "manual",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Headless Chromium с заглушкой IPC: блок рекомендации для видеокарты, AVX2-процессора и слабого процессора",
+          "cwd": ".",
+          "at": "2026-11-10T06:29:42.000Z",
+          "environment": {
+            "os": "Linux container",
+            "browser": "Chromium (Playwright)"
+          },
+          "exit_code": null,
+          "output": "три случая отображаются; кнопка только при расхождении с рекомендацией",
+          "evidence": "docs/workstreams/hardware-recommendations/log.md"
+        }
+      ]
+    },
+    {
+      "id": "R4",
+      "title": "Выпуск 0.6.5 (0.6.4 — тестовая сборка на ПК): подписанная сборка, PR, Release, обновление из программы",
+      "status": "pending",
+      "depends_on": [
+        "R3"
+      ],
+      "required": [
+        "nsis",
+        "published"
+      ],
+      "checks": []
+    }
+  ]
+}

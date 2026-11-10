@@ -31,7 +31,7 @@ export function DiagnosticsSection() {
   }
 
   return (
-    <Card>
+    <Card data-tour="diagnostics">
       <CardHeader>
         <CardTitle>{t("Diagnostics")}</CardTitle>
         <CardDescription>

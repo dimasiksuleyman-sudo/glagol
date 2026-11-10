@@ -2,14 +2,10 @@
   "schema_version": 1,
   "id": "dictation-speed",
   "title": "Скорость диктовки и отключение озвучки (0.6.3)",
-  "status": "active",
-  "next": "S3b",
-  "reason": null,
-  "claim": {
-    "owner": "claude",
-    "at": "2026-11-09T14:46:17.000Z",
-    "branch": "claude/optimistic-franklin-cvvbsr"
-  },
+  "status": "paused",
+  "next": "S4",
+  "reason": "Пользователь 2026-11-10 переключил работу на hardware-recommendations и выпуск. Продолжение: S4 — обновление ноутбука из программы (выпуск, следующий после 0.6.3), S3b — наблюдение индикатора по журналам 0.6.4+.",
+  "claim": null,
   "links": [
     "docs/workstreams/dictation-speed/README.md",
     "docs/workstreams/dictation-speed/log.md"
@@ -203,11 +199,68 @@
       ]
     },
     {
-      "id": "S3b",
-      "title": "GL-006: нативные события Windows, WebView2 ProcessFailed, состояние окна, пересоздание индикатора; проверка на ПК",
-      "status": "in_progress",
+      "id": "S4",
+      "title": "Выпуск 0.6.3: подписанная сборка, PR и CI, GitHub Release, обновление из программы",
+      "status": "pending",
       "depends_on": [
         "S3"
+      ],
+      "required": [
+        "nsis",
+        "published",
+        "in-app-update"
+      ],
+      "checks": [
+        {
+          "id": "nsis",
+          "status": "PASS",
+          "method": "manual",
+          "command": "pnpm tauri build --config src-tauri/tauri.release.conf.json; pnpm tauri signer sign <installer>; pnpm release:assets (user-run на ПК)",
+          "cwd": ".",
+          "at": "2026-11-09T15:50:43.000Z",
+          "environment": {
+            "os": "Windows (ПК пользователя)"
+          },
+          "exit_code": null,
+          "output": "Glagol_0.6.3_x64-setup.exe 10323165 байт, SHA-256 4b98afd9a0e98457cbe3159e67190c0a702ab8525cfc431fcbb6c0eb54cdea49, подпись ключом 82D55017631804B2",
+          "evidence": "docs/workstreams/dictation-speed/log.md"
+        },
+        {
+          "id": "published",
+          "status": "PASS",
+          "method": "command",
+          "command": "curl assets v0.6.3 + releases/latest/download/latest.json; sha256sum -c; cmp; minisign -V with embedded pubkey",
+          "cwd": ".",
+          "at": "2026-11-09T16:09:59.000Z",
+          "environment": {
+            "os": "Linux container"
+          },
+          "exit_code": 0,
+          "output": "Glagol_0.6.3_x64-setup.exe: OK; endpoint latest.json identical; Signature and comment signature verified",
+          "evidence": "docs/workstreams/dictation-speed/log.md"
+        },
+        {
+          "id": "in-app-update",
+          "status": "NOT_RUN",
+          "method": "manual",
+          "command": "Проверить обновления → Установить обновление на ноутбуке (0.6.1) и ПК (0.6.2)",
+          "cwd": ".",
+          "at": "2026-11-09T18:54:39.000Z",
+          "environment": {
+            "os": "Windows (ноутбук и ПК пользователя)"
+          },
+          "exit_code": null,
+          "output": "ПК: 0.6.2 → 0.6.3 из программы (журнал 16:12–16:14Z, observed); ноутбук 0.6.1 — ожидает",
+          "evidence": "docs/workstreams/dictation-speed/log.md"
+        }
+      ]
+    },
+    {
+      "id": "S3b",
+      "title": "GL-006 после выпуска: наблюдение индикатора на ПК и ноутбуке по журналам (выключение экрана, Win+L, сброс драйвера)",
+      "status": "pending",
+      "depends_on": [
+        "S4"
       ],
       "required": [
         "rust",
@@ -264,19 +317,6 @@
           "evidence": "docs/workstreams/dictation-speed/log.md"
         }
       ]
-    },
-    {
-      "id": "S4",
-      "title": "Выпуск 0.6.3: подписанная сборка, PR и CI, GitHub Release, обновление из программы",
-      "status": "pending",
-      "depends_on": [
-        "S3b"
-      ],
-      "required": [
-        "nsis",
-        "published"
-      ],
-      "checks": []
     }
   ]
 }

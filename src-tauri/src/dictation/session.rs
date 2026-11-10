@@ -57,6 +57,30 @@ static OVERLAY_GENERATION: AtomicU64 = AtomicU64::new(0);
 /// display/session transitions and WebView2 process failures (GL-006).
 static OVERLAY_STALE: AtomicBool = AtomicBool::new(false);
 
+/// When the overlay was last hidden (Unix ms); 0 while it is shown.
+static OVERLAY_HIDDEN_SINCE_MS: AtomicU64 = AtomicU64::new(0);
+
+/// A pill hidden this long is rebuilt while idle (GL-006: after ~25 minutes of
+/// idle time a WebView2 overlay was seen drawing frames that never reached the
+/// screen, with no system event to react to).
+const OVERLAY_IDLE_REBUILD: Duration = Duration::from_secs(10 * 60);
+
+/// Delay before checking that the shown pill actually reached the screen.
+const PRESENCE_CHECK_DELAY: Duration = Duration::from_millis(350);
+
+fn unix_ms() -> u64 {
+    SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
+}
+
+/// Whether a pill hidden since `hidden_since_ms` is due for an idle rebuild.
+fn idle_rebuild_due(hidden_since_ms: u64, now_ms: u64) -> bool {
+    hidden_since_ms != 0
+        && now_ms.saturating_sub(hidden_since_ms) >= OVERLAY_IDLE_REBUILD.as_millis() as u64
+}
+
 /// Mark the overlay for rebuild at the next idle poll, with the reason.
 fn mark_overlay_stale(reason: &str) {
     if !OVERLAY_STALE.swap(true, Ordering::SeqCst) {
@@ -529,7 +553,9 @@ fn show_overlay(app: &AppHandle) {
         tracing::warn!(generation, "failed to re-assert overlay always-on-top: {e}");
     }
     let shown = window.show();
+    OVERLAY_HIDDEN_SINCE_MS.store(0, Ordering::SeqCst);
     super::overlay_native::check_after_show(&window);
+    spawn_presence_check(app, window.clone(), generation);
     if let Err(e) = &shown {
         tracing::warn!(generation, "failed to show overlay: {e}");
     }
@@ -546,6 +572,62 @@ fn show_overlay(app: &AppHandle) {
         height = size.map(|s| s.height).unwrap_or(0),
         "overlay shown"
     );
+}
+
+/// After the pill is shown, read a few screen pixels where it should be. If the
+/// background shows through, the frame never reached the screen: log it and
+/// rebuild the window once the dictation ends (GL-006).
+fn spawn_presence_check(app: &AppHandle, window: WebviewWindow, generation: u64) {
+    let app = app.clone();
+    let spawned = std::thread::Builder::new()
+        .name("overlay-presence-check".into())
+        .spawn(move || {
+            std::thread::sleep(PRESENCE_CHECK_DELAY);
+            // A tap may already have hidden the pill; then there is nothing to check.
+            if dictation_idle(&app) || !window.is_visible().unwrap_or(false) {
+                return;
+            }
+            let (Ok(position), Ok(size), Ok(scale)) = (
+                window.outer_position(),
+                window.outer_size(),
+                window.scale_factor(),
+            ) else {
+                return;
+            };
+            let (inside, corner) =
+                super::overlay_native::presence_points(position.x, position.y, size.width, scale);
+            let mut points = inside.clone();
+            points.push(corner);
+            let Some(pixels) = super::overlay_native::read_screen_pixels(&points) else {
+                tracing::debug!(generation, "overlay presence check: screen not readable");
+                return;
+            };
+            let (corner_pixel, inside_pixels) = pixels.split_last().expect("corner sampled");
+            let presence = super::overlay_native::judge_presence(inside_pixels, *corner_pixel);
+            let brightness = |p: &(u8, u8, u8)| p.0.max(p.1).max(p.2);
+            let inside_max = inside_pixels.iter().map(brightness).max().unwrap_or(0);
+            match presence {
+                super::overlay_native::Presence::NotPresented => {
+                    tracing::warn!(
+                        generation,
+                        inside_max,
+                        corner = brightness(corner_pixel),
+                        "overlay shown but not presented on screen"
+                    );
+                    mark_overlay_stale("pill not presented on screen");
+                }
+                _ => tracing::debug!(
+                    generation,
+                    ?presence,
+                    inside_max,
+                    corner = brightness(corner_pixel),
+                    "overlay presence check"
+                ),
+            }
+        });
+    if let Err(e) = spawned {
+        tracing::warn!("failed to start overlay presence check: {e}");
+    }
 }
 
 /// What the overlay page reports about itself (GL-006 diagnostics).
@@ -624,6 +706,7 @@ pub fn hide_overlay(app: AppHandle, window: WebviewWindow) {
     if let Err(e) = window.hide() {
         tracing::warn!(window = window.label(), "failed to hide overlay: {e}");
     }
+    OVERLAY_HIDDEN_SINCE_MS.store(unix_ms(), Ordering::SeqCst);
 }
 
 /// Label of the overlay window for a rebuild `generation`: `overlay` for the
@@ -685,6 +768,8 @@ pub fn build_overlay(app: &AppHandle, label: &str) -> tauri::Result<WebviewWindo
     super::overlay_native::install_process_failed(&window, || {
         mark_overlay_stale("webview2 process failed")
     });
+    // A new window starts hidden: its idle period starts now.
+    OVERLAY_HIDDEN_SINCE_MS.store(unix_ms(), Ordering::SeqCst);
     tracing::info!(window = label, "overlay window built");
     Ok(window)
 }
@@ -732,6 +817,12 @@ pub fn spawn_resume_watch(app: AppHandle) {
                 if !settled {
                     settled = true;
                     continue;
+                }
+                if !OVERLAY_STALE.load(Ordering::SeqCst)
+                    && idle_rebuild_due(OVERLAY_HIDDEN_SINCE_MS.load(Ordering::SeqCst), unix_ms())
+                    && dictation_idle(&app)
+                {
+                    mark_overlay_stale("hidden for a long idle period");
                 }
                 if OVERLAY_STALE.load(Ordering::SeqCst) && dictation_idle(&app) {
                     let handle = app.clone();
@@ -949,6 +1040,18 @@ pub(crate) fn mark_tray_notice_shown(conn: &Connection, updated_at: i64) -> rusq
 mod tests {
     use super::*;
     use crate::db::test_connection;
+
+    #[test]
+    fn idle_rebuild_is_due_only_after_ten_hidden_minutes() {
+        let ten_min = 10 * 60 * 1000;
+        assert!(
+            !idle_rebuild_due(0, ten_min * 5),
+            "shown pill is never rebuilt"
+        );
+        assert!(!idle_rebuild_due(1_000, 1_000 + ten_min - 1));
+        assert!(idle_rebuild_due(1_000, 1_000 + ten_min));
+        assert!(!idle_rebuild_due(5_000, 1_000), "clock moved back");
+    }
 
     #[test]
     fn overlay_report_accepts_only_known_states_and_bounded_delays() {

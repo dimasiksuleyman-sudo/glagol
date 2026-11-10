@@ -81,7 +81,7 @@ export function UpdatesSection() {
   const downloading = progress?.kind === "downloading" ? progress : null;
 
   return (
-    <Card>
+    <Card data-tour="updates">
       <CardHeader>
         <CardTitle>{t("Updates")}</CardTitle>
         <CardDescription>
