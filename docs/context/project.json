@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "observed_at": "2026-11-09T16:09:59.000Z",
-  "active_workstream": "dictation-speed",
+  "active_workstream": "hardware-recommendations",
   "links": [
     "AGENTS.md",
     "CLAUDE.md",

@@ -9,6 +9,7 @@ use catalog::{model, MODELS, RUNTIME, RUNTIME_DIR};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{
+    collections::VecDeque,
     io::{Cursor, Read},
     path::{Path, PathBuf},
     sync::{
@@ -30,6 +31,61 @@ pub struct LocalModels {
     /// Set after a recognition error on the graphics card: the CPU is used
     /// until the options are saved again or Glagol restarts.
     gpu_failed: AtomicBool,
+    /// Real-time factors of recent local recognitions (numbers only, memory only).
+    recent_rtf: Mutex<VecDeque<f64>>,
+}
+
+/// Recordings shorter than this are not used to judge speed (fixed overhead).
+const SPEED_SAMPLE_MIN_AUDIO_MS: u64 = 2_000;
+/// How many recent recognitions the speed hint looks at.
+const SPEED_SAMPLES: usize = 5;
+
+/// Why a setup is recommended for this computer.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RecommendationKind {
+    /// A discrete graphics card was found: use it with CTC.
+    GraphicsCard,
+    /// No discrete card, but the processor has AVX2: CTC on the processor.
+    Processor,
+    /// Neither: local recognition will be slow; CTC on the processor, or a
+    /// server/cloud profile.
+    SlowProcessor,
+}
+
+/// The recommended Russian local setup for this computer.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+pub struct Recommendation {
+    pub model: &'static str,
+    pub device: Device,
+    pub kind: RecommendationKind,
+}
+
+/// Recommend a setup from hardware facts. CTC is always the model: its
+/// decoder is cheap on every device (measured on the user's PC, 2026-11-09).
+pub fn recommend(has_avx2: bool, discrete_gpu: bool) -> Recommendation {
+    let (device, kind) = if discrete_gpu {
+        (Device::Gpu, RecommendationKind::GraphicsCard)
+    } else if has_avx2 {
+        (Device::Cpu, RecommendationKind::Processor)
+    } else {
+        (Device::Cpu, RecommendationKind::SlowProcessor)
+    };
+    Recommendation {
+        model: MODELS[0].id,
+        device,
+        kind,
+    }
+}
+
+/// Median of the recent real-time factors, if there are enough samples.
+fn median(samples: &VecDeque<f64>) -> Option<f64> {
+    if samples.len() < 2 {
+        return None;
+    }
+    let mut sorted: Vec<f64> = samples.iter().copied().collect();
+    sorted.sort_by(|a, b| a.total_cmp(b));
+    Some(sorted[sorted.len() / 2])
 }
 
 /// Where the Russian (GigaAM) model computes.
@@ -110,6 +166,14 @@ pub struct EngineState {
     pub gpu_fallback: bool,
     /// A discrete Vulkan graphics card seen by the runtime (after its first load).
     pub gpu_name: Option<String>,
+    /// The processor has AVX2.
+    pub has_avx2: bool,
+    /// The runtime's devices are known (startup probe or a model load done).
+    pub hardware_known: bool,
+    /// The recommended setup for this computer.
+    pub recommendation: Recommendation,
+    /// Median wait per second of speech over recent recognitions (≥2 needed).
+    pub recent_rtf: Option<f64>,
 }
 
 #[derive(Clone, Serialize)]
@@ -159,6 +223,7 @@ impl LocalModels {
             progress: Mutex::new(None),
             options: Mutex::new(EngineOptions::default()),
             gpu_failed: AtomicBool::new(false),
+            recent_rtf: Mutex::new(VecDeque::new()),
         }
     }
 
@@ -189,7 +254,64 @@ impl LocalModels {
             gpu_fallback: options.device == Device::Gpu
                 && (fell_back || self.gpu_failed.load(Ordering::Relaxed)),
             gpu_name: engine::discrete_gpu(),
+            has_avx2: crate::diagnostics::has_avx2(),
+            hardware_known: engine::runtime_loaded(),
+            recommendation: recommend(
+                crate::diagnostics::has_avx2(),
+                engine::discrete_gpu().is_some(),
+            ),
+            recent_rtf: self.recent_rtf.lock().ok().and_then(|s| median(&s)),
         }
+    }
+
+    /// Remember the speed of one recognition for the settings hint.
+    fn record_speed(&self, audio_ms: u64, rtf: f64) {
+        if audio_ms < SPEED_SAMPLE_MIN_AUDIO_MS || !rtf.is_finite() {
+            return;
+        }
+        if let Ok(mut samples) = self.recent_rtf.lock() {
+            if samples.len() == SPEED_SAMPLES {
+                samples.pop_front();
+            }
+            samples.push_back(rtf);
+        }
+    }
+
+    /// Learn the processor and graphics card without opening a model, so the
+    /// recommendation is ready before the first dictation. Runs only when the
+    /// runtime is installed; its files are verified first (a valid receipt of
+    /// any model covers them, otherwise the full archive comparison runs).
+    pub fn probe_hardware(&self) -> Result<bool, String> {
+        if engine::runtime_loaded() {
+            return Ok(false);
+        }
+        if !self
+            .root
+            .join(RUNTIME_DIR)
+            .join(if cfg!(windows) {
+                "transcribe.dll"
+            } else {
+                "libtranscribe.so"
+            })
+            .is_file()
+        {
+            return Ok(false);
+        }
+        let now = chrono::Utc::now().timestamp();
+        let reused = MODELS.iter().any(|m| {
+            match (
+                receipt::current_files(&self.root, m.artifact.file, RUNTIME.file, RUNTIME_DIR),
+                receipt::load(&self.root, m.id),
+            ) {
+                (Some(files), Some(saved)) => receipt::is_valid(&saved, &files, now),
+                _ => false,
+            }
+        });
+        if !reused {
+            verify_runtime(&self.root)?;
+        }
+        engine::probe(&self.root.join(RUNTIME_DIR))?;
+        Ok(true)
     }
 
     /// Whether `gpu`/`threads` are what the session should use now.
@@ -428,6 +550,11 @@ fn install_runtime(root: &Path) -> Result<(), String> {
     std::fs::rename(staging.join(RUNTIME_DIR), target).map_err(|e| e.to_string())?;
     let _ = std::fs::remove_dir(&staging);
     verify_runtime(root)
+}
+
+/// The discrete Vulkan graphics card known to the runtime, if any.
+pub fn discrete_gpu_name() -> Option<String> {
+    engine::discrete_gpu()
 }
 
 /// Options and the loaded backend of the Russian local engine.
@@ -693,6 +820,7 @@ impl SttProvider for LocalProvider {
             let (text, stats, prepare_ms, lock_wait_ms, backend) = models.recognize(&id, &pcm)?;
             let elapsed_ms = (inference.elapsed().as_millis() as u64).saturating_sub(prepare_ms);
             let audio_ms = (pcm.len() / 16) as u64;
+            models.record_speed(audio_ms, elapsed_ms as f64 / audio_ms.max(1) as f64);
             let (_, threads) = models.wanted();
             tracing::info!(
                 model = %id,
@@ -736,6 +864,61 @@ mod tests {
         ] {
             assert!(validate_entry(Path::new(path)).is_err(), "{path}");
         }
+    }
+
+    #[test]
+    fn recommendation_prefers_ctc_and_a_discrete_card() {
+        let gpu = recommend(false, true);
+        assert_eq!(
+            (gpu.model, gpu.device, gpu.kind),
+            (
+                "gigaam-v3-e2e-ctc",
+                Device::Gpu,
+                RecommendationKind::GraphicsCard
+            )
+        );
+        let gpu_avx2 = recommend(true, true);
+        assert_eq!(gpu_avx2.device, Device::Gpu);
+        let cpu = recommend(true, false);
+        assert_eq!(
+            (cpu.device, cpu.kind),
+            (Device::Cpu, RecommendationKind::Processor)
+        );
+        let slow = recommend(false, false);
+        assert_eq!(
+            (slow.model, slow.device, slow.kind),
+            (
+                "gigaam-v3-e2e-ctc",
+                Device::Cpu,
+                RecommendationKind::SlowProcessor
+            )
+        );
+    }
+
+    #[test]
+    fn speed_hint_uses_recent_long_recordings_only() {
+        let models = LocalModels::new(std::env::temp_dir());
+        assert_eq!(models.engine_state().recent_rtf, None);
+        models.record_speed(1_000, 5.0); // too short: ignored
+        models.record_speed(4_000, 1.1);
+        assert_eq!(
+            models.engine_state().recent_rtf,
+            None,
+            "one sample is not enough"
+        );
+        models.record_speed(5_000, 1.0);
+        models.record_speed(6_000, 1.2);
+        assert_eq!(models.engine_state().recent_rtf, Some(1.1));
+        for _ in 0..5 {
+            models.record_speed(5_000, 0.1);
+        }
+        assert_eq!(
+            models.engine_state().recent_rtf,
+            Some(0.1),
+            "only the last five count"
+        );
+        models.record_speed(5_000, f64::NAN);
+        assert_eq!(models.recent_rtf.lock().unwrap().len(), 5);
     }
 
     #[test]

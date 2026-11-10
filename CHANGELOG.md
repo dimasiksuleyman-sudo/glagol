@@ -11,6 +11,10 @@ the per-session master logs under [`docs/day-logs/`](docs/day-logs/).
 
 ## [Unreleased]
 
+### Added
+
+- Hardware recommendation for Russian local dictation: at startup Glagol detects AVX2 and a discrete graphics card (without loading the model) and recommends GigaAM CTC on the graphics card or on the processor, warning when local recognition will be slow; Apply recommendation sets it up in one click. Recognition speed also shows the waiting time per 10 s of speech for recent dictations. / Рекомендация по железу для русской локальной диктовки: при запуске Глагол определяет AVX2 и дискретную видеокарту (не загружая модель) и рекомендует GigaAM CTC на видеокарте или на процессоре, предупреждая, если локально будет медленно; «Применить рекомендацию» настраивает всё одним нажатием. «Скорость распознавания» также показывает время ожидания на 10 с речи у последних диктовок.
+
 ### Changed
 
 - The dictation indicator has a two-tone outline (light inside, dark outside), so it stays visible on both light and dark backgrounds. / У индикатора диктовки двухцветный контур (светлый внутри, тёмный снаружи), поэтому он виден и на светлом, и на тёмном фоне.

@@ -2,14 +2,10 @@
   "schema_version": 1,
   "id": "dictation-speed",
   "title": "Скорость диктовки и отключение озвучки (0.6.3)",
-  "status": "active",
+  "status": "paused",
   "next": "S4",
-  "reason": null,
-  "claim": {
-    "owner": "claude",
-    "at": "2026-11-09T16:00:52.000Z",
-    "branch": "claude/optimistic-franklin-cvvbsr"
-  },
+  "reason": "Пользователь 2026-11-10 переключил работу на hardware-recommendations и выпуск. Продолжение: S4 — обновление ноутбука из программы (выпуск, следующий после 0.6.3), S3b — наблюдение индикатора по журналам 0.6.4+.",
+  "claim": null,
   "links": [
     "docs/workstreams/dictation-speed/README.md",
     "docs/workstreams/dictation-speed/log.md"
@@ -205,7 +201,7 @@
     {
       "id": "S4",
       "title": "Выпуск 0.6.3: подписанная сборка, PR и CI, GitHub Release, обновление из программы",
-      "status": "in_progress",
+      "status": "pending",
       "depends_on": [
         "S3"
       ],

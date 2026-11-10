@@ -14,7 +14,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   getSpeechSettings, saveSpeechSettings, testSpeechSettings, deleteSpeechKey,
   localModelsStatus, downloadLocalModel, cancelModelDownload, removeLocalModel,
-  localEngineState, setLocalEngineOptions,
+  localEngineState, setLocalEngineOptions, DICTATION_STATE_EVENT,
+  type DictationState,
   type SpeechMode, type SpeechProfile, type LocalModelsStatus, type ModelProgress,
   type LocalEngineOptions, type LocalEngineState,
 } from "@/lib/tauri";
@@ -69,6 +70,10 @@ export function DictationSection() {
       if (!cancelled) setProgress(payload);
     });
     const changeListener = listen("local-models-changed", () => { if (!cancelled) void refreshModels().catch(() => {}); });
+    // Refresh the recent-speed line after each finished dictation.
+    const doneListener = listen<DictationState>(DICTATION_STATE_EVENT, ({ payload }) => {
+      if (!cancelled && payload.kind === "done") void localEngineState().then(setEngine).catch(() => undefined);
+    });
     void Promise.all([getSpeechSettings(), localModelsStatus()]).then(([settings, status]) => {
       if (cancelled) return;
       setProfile(settings.profile); setActive(settings.active_mode);
@@ -80,6 +85,7 @@ export function DictationSection() {
       cancelled = true; alive.current = false;
       void progressListener.then(unlisten => unlisten());
       void changeListener.then(unlisten => unlisten());
+      void doneListener.then(unlisten => unlisten());
     };
   }, []);
 
@@ -129,6 +135,14 @@ export function DictationSection() {
     catch (e) { toast.error(errorText(e)); }
     finally { setBusy(false); }
   }
+  async function applyRecommendation() {
+    if (!engine) return;
+    const recommendation = engine.recommendation;
+    const model = models?.models.find(m => m.id === recommendation.model);
+    if (!model) return;
+    if (active !== "local" || activeModel !== recommendation.model) await useModel(model.id, model.installed);
+    if (engine.options.device !== recommendation.device) await changeEngine({ device: recommendation.device });
+  }
   async function changeEngine(change: Partial<LocalEngineOptions>) {
     if (!engine) return;
     setBusy(true); setMessage(t("Applying…"));
@@ -148,6 +162,12 @@ export function DictationSection() {
 
   const locked = busy || progress !== null || dictating;
   const ctc = models?.models.find(m => m.id === "gigaam-v3-e2e-ctc");
+  const recommendationApplied = !!engine && active === "local" && activeModel === engine.recommendation.model && engine.options.device === engine.recommendation.device;
+  const recommendationText = !engine ? "" : engine.recommendation.kind === "graphics_card"
+    ? t("Recommended for this computer: GigaAM CTC on the graphics card ({p0}).", { p0: engine.gpu_name ?? "" })
+    : engine.recommendation.kind === "processor"
+      ? t("Recommended for this computer: GigaAM CTC on the processor (it supports AVX2).")
+      : t("This processor has no AVX2 and no graphics card was found, so local recognition is slow. Recommended: GigaAM CTC on the processor, or an organization server or cloud service.");
   return <Card>
     <CardHeader>
       <CardTitle>{t("Dictation")}</CardTitle>
@@ -205,13 +225,16 @@ export function DictationSection() {
               </Select>
             </div>
             {engine.backend && <p className="text-xs text-muted-foreground">{t("Now computing on: {p0}", { p0: engine.backend })}</p>}
-            {engine.options.device === "cpu" && engine.gpu_name && <SpeedHint
-              text={t("This computer has a graphics card ({p0}). Recognition on it is usually several times faster.", { p0: engine.gpu_name })}
-              action={t("Use the graphics card")} disabled={locked} onClick={() => void changeEngine({ device: "gpu" })} />}
-            {active === "local" && ctc && activeModel !== ctc.id && activeModel.startsWith("gigaam-") && <SpeedHint
-              text={t("GigaAM CTC is faster than RNNT, especially on a graphics card. Compare the quality on your own phrases.")}
-              action={ctc.installed && ctc.download_bytes === 0 ? t("Switch to CTC") : t("Download CTC ({p0})", { p0: size(ctc.download_bytes) })}
-              disabled={locked} onClick={() => void useModel(ctc.id, ctc.installed)} />}
+            {active === "local" && ctc && activeModel.startsWith("gigaam-") && (recommendationApplied
+              ? <p className="text-xs text-muted-foreground">{t("Recommended settings for this computer are in use.")}</p>
+              : <SpeedHint
+                text={recommendationText}
+                action={ctc.installed && ctc.download_bytes === 0 ? t("Apply recommendation") : t("Download CTC and apply ({p0})", { p0: size(ctc.download_bytes) })}
+                disabled={locked} onClick={() => void applyRecommendation()} />)}
+            {recommendationApplied && engine.recommendation.kind === "slow_processor" && <p className="text-xs text-muted-foreground">{recommendationText}</p>}
+            {!engine.hardware_known && <p className="text-xs text-muted-foreground">{t("The graphics card is detected once the local engine has been loaded.")}</p>}
+            {engine.recent_rtf !== null && <p className="text-xs text-muted-foreground">{t("Recent dictations: about {p0} s of waiting per 10 s of speech.", { p0: new Intl.NumberFormat(currentLocale(), { maximumFractionDigits: 1 }).format(engine.recent_rtf * 10) })}</p>}
+            {engine.recent_rtf !== null && engine.recent_rtf > 0.5 && recommendationApplied && engine.recommendation.kind !== "slow_processor" && <p className="text-sm">{t("Recognition is still slow on this computer. An organization server or cloud service can be faster.")}</p>}
             {engine.gpu_fallback && <p role="alert" className="text-sm text-destructive">{t("The graphics card could not be used, so the processor is used. Details are in the log.")}</p>}
           </div>}
           {progress && <div className="space-y-2" role="status">

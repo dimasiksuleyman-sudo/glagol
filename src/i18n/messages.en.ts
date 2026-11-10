@@ -240,9 +240,13 @@ export const messages = {
   "Automatic ({p0})": "Automatic ({p0})",
   "Now computing on: {p0}": "Now computing on: {p0}",
   "The graphics card could not be used, so the processor is used. Details are in the log.": "The graphics card could not be used, so the processor is used. Details are in the log.",
-  "This computer has a graphics card ({p0}). Recognition on it is usually several times faster.": "This computer has a graphics card ({p0}). Recognition on it is usually several times faster.",
-  "Use the graphics card": "Use the graphics card",
-  "GigaAM CTC is faster than RNNT, especially on a graphics card. Compare the quality on your own phrases.": "GigaAM CTC is faster than RNNT, especially on a graphics card. Compare the quality on your own phrases.",
-  "Switch to CTC": "Switch to CTC",
-  "Download CTC ({p0})": "Download CTC ({p0})"
+  "Recommended settings for this computer are in use.": "Recommended settings for this computer are in use.",
+  "Apply recommendation": "Apply recommendation",
+  "Download CTC and apply ({p0})": "Download CTC and apply ({p0})",
+  "The graphics card is detected once the local engine has been loaded.": "The graphics card is detected once the local engine has been loaded.",
+  "Recent dictations: about {p0} s of waiting per 10 s of speech.": "Recent dictations: about {p0} s of waiting per 10 s of speech.",
+  "Recognition is still slow on this computer. An organization server or cloud service can be faster.": "Recognition is still slow on this computer. An organization server or cloud service can be faster.",
+  "Recommended for this computer: GigaAM CTC on the graphics card ({p0}).": "Recommended for this computer: GigaAM CTC on the graphics card ({p0}).",
+  "Recommended for this computer: GigaAM CTC on the processor (it supports AVX2).": "Recommended for this computer: GigaAM CTC on the processor (it supports AVX2).",
+  "This processor has no AVX2 and no graphics card was found, so local recognition is slow. Recommended: GigaAM CTC on the processor, or an organization server or cloud service.": "This processor has no AVX2 and no graphics card was found, so local recognition is slow. Recommended: GigaAM CTC on the processor, or an organization server or cloud service."
 } as const;

@@ -5,17 +5,17 @@
 
 Начало работы: [AGENTS](../AGENTS.md) → этот обзор → состояние и журнал серии.
 
-Выбранная серия: **Скорость диктовки и отключение озвучки (0.6.3)**.
+Выбранная серия: **Рекомендации модели и настроек диктовки по железу**.
 
-**NEXT: S4 — Выпуск 0.6.3: подписанная сборка, PR и CI, GitHub Release, обновление из программы** (in_progress).
+**NEXT: R4 — Выпуск 0.6.5 (0.6.4 — тестовая сборка на ПК): подписанная сборка, PR, Release, обновление из программы** (in_progress).
 
-[Решения](workstreams/dictation-speed/README.md) · [Состояние](workstreams/dictation-speed/state.json) · [Журнал](workstreams/dictation-speed/log.md)
+[Решения](workstreams/hardware-recommendations/README.md) · [Состояние](workstreams/hardware-recommendations/state.json) · [Журнал](workstreams/hardware-recommendations/log.md)
 
-Выполняет: claude; ветка claude/optimistic-franklin-cvvbsr; с 2026-11-09T16:00:52.000Z.
+Выполняет: claude; ветка claude/optimistic-franklin-cvvbsr; с 2026-11-10T06:22:34.000Z.
 
-Последний завершённый шаг серии: **S3 — Ускорение по согласованию: видеокарта (Vulkan), потоки, 30-дневная квитанция проверки; замер на ПК**.
+Последний завершённый шаг серии: **R3 — Подсказка по фактической скорости последних диктовок**.
 
-Проверка 2026-11-09T11:03:13.000Z: test result: ok. 354 passed; 0 failed; 6 ignored ([evidence](../docs/workstreams/dictation-speed/log.md)).
+Проверка 2026-11-10T06:29:42.000Z: test result: ok. 360 passed; 0 failed; 6 ignored ([evidence](../docs/workstreams/hardware-recommendations/log.md)).
 
 ## Доставка и наблюдения
 

@@ -184,7 +184,35 @@ pub fn run() {
                 threads = engine_options.threads,
                 "local STT engine options at startup"
             );
-            app.manage(std::sync::Arc::new(local_models));
+            let local_models = std::sync::Arc::new(local_models);
+            app.manage(local_models.clone());
+            // Learn the graphics card for the recommendation without loading a
+            // model; never while a download or another model operation runs.
+            {
+                let app = app.handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    let Ok(_operation) = local_models.operation.clone().try_lock_owned() else {
+                        return;
+                    };
+                    let started = std::time::Instant::now();
+                    let models = local_models.clone();
+                    match tauri::async_runtime::spawn_blocking(move || models.probe_hardware()).await {
+                        Ok(Ok(true)) => {
+                            tracing::info!(
+                                elapsed_ms = started.elapsed().as_millis() as u64,
+                                gpu = stt::local::discrete_gpu_name().unwrap_or_default(),
+                                avx2 = diagnostics::has_avx2(),
+                                "local STT hardware probe"
+                            );
+                            let _ = app.emit("local-models-changed", ());
+                        }
+                        Ok(Ok(false)) => {}
+                        Ok(Err(_)) | Err(_) => {
+                            tracing::warn!("local STT hardware probe failed; recommendation uses the processor only")
+                        }
+                    }
+                });
+            }
 
             let silero = std::sync::Arc::new(tts::silero::Silero::new(paths::tts_models_root(
                 app.handle(),

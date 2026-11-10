@@ -83,9 +83,20 @@ static NATIVE: OnceLock<Result<Arc<Native>, String>> = OnceLock::new();
 static DISCRETE_GPU: OnceLock<String> = OnceLock::new();
 
 /// The discrete graphics card usable through Vulkan, known after the runtime
-/// has been loaded once in this process (first Russian local model load).
+/// has been loaded once in this process (startup probe or first model load).
 pub fn discrete_gpu() -> Option<String> {
     DISCRETE_GPU.get().cloned()
+}
+
+/// Whether the runtime was loaded and its devices enumerated in this process.
+pub fn runtime_loaded() -> bool {
+    NATIVE.get().is_some_and(|native| native.is_ok())
+}
+
+/// Load the verified runtime and enumerate compute devices without opening a
+/// model. The caller must have verified the runtime files first.
+pub fn probe(dir: &Path) -> Result<(), String> {
+    Native::load(dir).map(|_| ())
 }
 
 /// Copy a runtime-owned C string for diagnostics; NULL becomes empty.
