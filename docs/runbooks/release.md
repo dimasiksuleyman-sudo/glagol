@@ -30,7 +30,7 @@ $secure = Read-Host -AsSecureString "Updater key password"
 $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = [Net.NetworkCredential]::new('', $secure).Password
 pnpm tauri build --config src-tauri/tauri.release.conf.json
 Remove-Item Env:TAURI_SIGNING_PRIVATE_KEY, Env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD
-pnpm release:assets --notes "Glagol <version>"
+pnpm release:assets --notes-file docs/releases/v<version>.notes.txt
 ```
 
 Ключ можно не хранить файлом, а вставить его текст в `Read-Host -AsSecureString`.
@@ -43,6 +43,9 @@ pnpm release:assets --notes "Glagol <version>"
 `pnpm tauri signer sign src-tauri\target\release\bundle\nsis\Glagol_<version>_x64-setup.exe`,
 затем `pnpm release:assets`. Без пароля подпись падает с той же ошибкой. ID ключа в
 `.sig` должен совпасть с pubkey в tauri.conf.json (82D55017631804B2).
+
+Заметки для окна «Что нового» хранятся в `docs/releases/v<version>.notes.txt` (UTF-8):
+`--notes` из консоли PowerShell терял кириллицу (0.6.5).
 
 Рядом с установщиком появятся `.exe.sig`, `latest.json` и `SHA256SUMS.txt`. К Release
 прикрепить установщик, `latest.json` и `SHA256SUMS.txt`; Release должен быть отмечен

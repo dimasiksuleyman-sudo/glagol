@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { buildManifest, prepareReleaseAssets } from "./release-assets.mjs";
+import { buildManifest, prepareReleaseAssets, readNotesFile } from "./release-assets.mjs";
 
 function fixture(version = "1.2.3", { signature = "c2lnbmF0dXJl\n", installer = true } = {}) {
   const base = mkdtempSync(join(tmpdir(), "glagol-release-"));
@@ -48,4 +48,13 @@ test("refuses an unsigned build, an empty signature and a missing installer", ()
   assert.throws(() => prepareReleaseAssets({ base: fixture("1.0.0", { signature: null }).base, dir: "nsis" }), /missing .*\.sig/);
   assert.throws(() => prepareReleaseAssets({ base: fixture("1.0.0", { signature: "  \n" }).base, dir: "nsis" }), /empty updater signature/);
   assert.throws(() => prepareReleaseAssets({ base: fixture("1.0.0", { installer: false }).base, dir: "nsis" }), /missing .*setup\.exe/);
+});
+
+test("reads non-ASCII notes from a UTF-8 file and rejects an empty one", () => {
+  const dir = mkdtempSync(join(tmpdir(), "glagol-notes-"));
+  const file = join(dir, "notes.txt");
+  writeFileSync(file, "﻿Glagol 0.0.0 / Понятнее интерфейс «Справка»\n", "utf8");
+  assert.equal(readNotesFile(file), "Glagol 0.0.0 / Понятнее интерфейс «Справка»");
+  writeFileSync(file, "  \n", "utf8");
+  assert.throws(() => readNotesFile(file), /empty notes file/);
 });

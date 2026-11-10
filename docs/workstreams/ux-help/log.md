@@ -64,3 +64,15 @@ TAURI_SIGNING_PRIVATE_KEY и пустым паролем (по инструкц�
 dictation-speed, ранбук) был ошибочным — вчера пароль был задан переменной из
 шага 6. Ранбук выпуска исправлен: пароль обязателен, порядок «сборка → подпись
 установщика с ключом и паролем → release:assets».
+
+## 2026-11-10T07:49:15.000Z — H6 подпись 0.6.5 и заметки обновления
+
+Manual (вывод пользователя): пароль введён, `pnpm tauri signer sign` — «signed
+successfully»; расшифровка подписи здесь: ID ключа 82D55017631804B2, trusted
+comment timestamp:1794296837 file:Glagol_0.6.5_x64-setup.exe.
+`pnpm release:assets --notes …` — SHA-256
+df3e5e9f661566eb8c1e2070c1fa670bcedc4cd5112df631ecdc22701fec4e7e, 10 348 612 байт.
+В echo аргумента из PowerShell пропала первая буква («онятнее») — текст notes в
+latest.json испорчен. Добавлено `--notes-file` (UTF-8, BOM допускается) и
+docs/releases/v0.6.5.notes.txt; тест release-assets (4 pass); ранбук обновлён.
+latest.json нужно пересоздать из файла перед публикацией.
