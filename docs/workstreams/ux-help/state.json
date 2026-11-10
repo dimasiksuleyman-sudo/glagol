@@ -1,0 +1,159 @@
+{
+  "schema_version": 1,
+  "id": "ux-help",
+  "title": "Интерфейс без «простыни» и интерактивная справка (0.6.5)",
+  "status": "active",
+  "next": "H5",
+  "reason": null,
+  "claim": {
+    "owner": "claude",
+    "at": "2026-11-10T07:06:05.000Z",
+    "branch": "claude/optimistic-franklin-cvvbsr"
+  },
+  "links": [
+    "docs/workstreams/ux-help/README.md",
+    "docs/workstreams/ux-help/log.md"
+  ],
+  "steps": [
+    {
+      "id": "H1",
+      "title": "Вкладки настроек, короткая «Диктовка», сворачивание редкого, порядок озвучки, чистка",
+      "status": "done",
+      "depends_on": [],
+      "required": [
+        "frontend"
+      ],
+      "checks": [
+        {
+          "id": "frontend",
+          "status": "PASS",
+          "method": "command",
+          "command": "pnpm build",
+          "cwd": ".",
+          "at": "2026-11-10T07:14:22.000Z",
+          "environment": {
+            "os": "Linux container",
+            "node": "v22.23.4",
+            "pnpm": "10.28.0"
+          },
+          "exit_code": 0,
+          "output": "I18N PASS: 351 keys; ✓ built",
+          "evidence": "docs/workstreams/ux-help/log.md"
+        }
+      ]
+    },
+    {
+      "id": "H2",
+      "title": "Библиотека: компактные строки, один плеер, поиск",
+      "status": "done",
+      "depends_on": [
+        "H1"
+      ],
+      "required": [
+        "frontend"
+      ],
+      "checks": [
+        {
+          "id": "frontend",
+          "status": "PASS",
+          "method": "command",
+          "command": "pnpm build",
+          "cwd": ".",
+          "at": "2026-11-10T07:14:22.000Z",
+          "environment": {
+            "os": "Linux container",
+            "node": "v22.23.4",
+            "pnpm": "10.28.0"
+          },
+          "exit_code": 0,
+          "output": "I18N PASS: 351 keys; ✓ built",
+          "evidence": "docs/workstreams/ux-help/log.md"
+        }
+      ]
+    },
+    {
+      "id": "H3",
+      "title": "Справка: темы, шаги, «Показать» с подсветкой элементов",
+      "status": "done",
+      "depends_on": [
+        "H2"
+      ],
+      "required": [
+        "frontend"
+      ],
+      "checks": [
+        {
+          "id": "frontend",
+          "status": "PASS",
+          "method": "command",
+          "command": "pnpm build",
+          "cwd": ".",
+          "at": "2026-11-10T07:14:22.000Z",
+          "environment": {
+            "os": "Linux container",
+            "node": "v22.23.4",
+            "pnpm": "10.28.0"
+          },
+          "exit_code": 0,
+          "output": "I18N PASS: 351 keys; ✓ built",
+          "evidence": "docs/workstreams/ux-help/log.md"
+        }
+      ]
+    },
+    {
+      "id": "H4",
+      "title": "Карточка «Знаете ли вы?» с выключателем",
+      "status": "done",
+      "depends_on": [
+        "H3"
+      ],
+      "required": [
+        "frontend"
+      ],
+      "checks": [
+        {
+          "id": "frontend",
+          "status": "PASS",
+          "method": "command",
+          "command": "pnpm build",
+          "cwd": ".",
+          "at": "2026-11-10T07:14:22.000Z",
+          "environment": {
+            "os": "Linux container",
+            "node": "v22.23.4",
+            "pnpm": "10.28.0"
+          },
+          "exit_code": 0,
+          "output": "I18N PASS: 351 keys; ✓ built",
+          "evidence": "docs/workstreams/ux-help/log.md"
+        }
+      ]
+    },
+    {
+      "id": "H5",
+      "title": "Руководства RU/EN, README, CHANGELOG, заметки 0.6.5; визуальная проверка экранов",
+      "status": "in_progress",
+      "depends_on": [
+        "H4"
+      ],
+      "required": [
+        "frontend",
+        "manual"
+      ],
+      "checks": []
+    },
+    {
+      "id": "H6",
+      "title": "Выпуск 0.6.5: CI, подписанная сборка, Release, обновление из программы",
+      "status": "pending",
+      "depends_on": [
+        "H5"
+      ],
+      "required": [
+        "nsis",
+        "published"
+      ],
+      "checks": []
+    }
+  ]
+}

@@ -1,8 +1,8 @@
 import { t } from "@/i18n";
 import { useI18n } from "@/contexts/PreferencesContext";
 import { useEffect, useState } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { AudioLines, ExternalLink, Library, Mic, Settings } from "lucide-react";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { AudioLines, CircleHelp, ExternalLink, Library, Mic, Settings } from "lucide-react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { toast } from "sonner";
 
@@ -11,6 +11,8 @@ import { Separator } from "@/components/ui/separator";
 import { Toaster } from "@/components/ui/sonner";
 import { LanguageSwitch } from "@/components/LanguageSwitch";
 import { UpdateReminderToast } from "@/components/UpdateReminderToast";
+import { Coachmark } from "@/components/help/Coachmark";
+import { TipCard } from "@/components/help/TipCard";
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { getUpdateSettings } from "@/lib/tauri";
 import { changeAutoCheck, runStartupUpdateCheck, runUpdateCheck } from "@/lib/updates";
@@ -29,7 +31,11 @@ const navItems = (ttsEnabled: boolean): readonly NavItem[] => [
   { to: "/library", label: t("Library"), Icon: Library },
   { to: "/dictation", label: t("Dictation"), Icon: Mic },
   { to: "/settings", label: t("Settings"), Icon: Settings },
+  { to: "/help", label: t("helpTitle"), Icon: CircleHelp },
 ];
+
+/** Screens where the «Did you know?» card may appear. */
+const TIP_ROUTES = ["/synthesize", "/dictation", "/library"];
 
 /**
  * App-wide layout: a fixed sidebar with three navigation entries and
@@ -42,13 +48,14 @@ export function AppShell() {
   useI18n();
   const { error, preferences } = usePreferences();
   const navigate = useNavigate();
+  const location = useLocation();
   const [version, setVersion] = useState<string | null>(null);
 
   useEffect(() => {
     getUpdateSettings().then((settings) => setVersion(settings.currentVersion)).catch(() => {});
     const showUpdate = (version: string) =>
       toast(t("Version {version} is available.", { version }), {
-        action: { label: t("Show"), onClick: () => navigate("/settings") },
+        action: { label: t("Show"), onClick: () => navigate("/settings/general", { state: { tour: "updates" } }) },
         duration: 15000,
       });
     void runStartupUpdateCheck().then((result) => {
@@ -135,10 +142,12 @@ export function AppShell() {
       <main className="flex-1 overflow-y-auto">
         <div className="mx-auto w-full max-w-2xl px-8 py-10">
           {error && <p role="alert" className="mb-4 text-destructive">{error}</p>}
+          {TIP_ROUTES.includes(location.pathname) && <div className="mb-6"><TipCard key={location.pathname} /></div>}
           <Outlet />
         </div>
       </main>
 
+      <Coachmark />
       <Toaster richColors position="top-right" />
     </div>
   );

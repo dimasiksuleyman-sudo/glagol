@@ -5,17 +5,17 @@
 
 Начало работы: [AGENTS](../AGENTS.md) → этот обзор → состояние и журнал серии.
 
-Выбранная серия: **Рекомендации модели и настроек диктовки по железу**.
+Выбранная серия: **Интерфейс без «простыни» и интерактивная справка (0.6.5)**.
 
-**NEXT: R4 — Выпуск 0.6.5 (0.6.4 — тестовая сборка на ПК): подписанная сборка, PR, Release, обновление из программы** (in_progress).
+**NEXT: H5 — Руководства RU/EN, README, CHANGELOG, заметки 0.6.5; визуальная проверка экранов** (in_progress).
 
-[Решения](workstreams/hardware-recommendations/README.md) · [Состояние](workstreams/hardware-recommendations/state.json) · [Журнал](workstreams/hardware-recommendations/log.md)
+[Решения](workstreams/ux-help/README.md) · [Состояние](workstreams/ux-help/state.json) · [Журнал](workstreams/ux-help/log.md)
 
-Выполняет: claude; ветка claude/optimistic-franklin-cvvbsr; с 2026-11-10T06:22:34.000Z.
+Выполняет: claude; ветка claude/optimistic-franklin-cvvbsr; с 2026-11-10T07:06:05.000Z.
 
-Последний завершённый шаг серии: **R3 — Подсказка по фактической скорости последних диктовок**.
+Последний завершённый шаг серии: **H4 — Карточка «Знаете ли вы?» с выключателем**.
 
-Проверка 2026-11-10T06:29:42.000Z: test result: ok. 360 passed; 0 failed; 6 ignored ([evidence](../docs/workstreams/hardware-recommendations/log.md)).
+Проверка 2026-11-10T07:14:22.000Z: I18N PASS: 351 keys; ✓ built ([evidence](../docs/workstreams/ux-help/log.md)).
 
 ## Доставка и наблюдения
 
@@ -70,5 +70,7 @@
 - [docs/workstreams/dictation-speed/log.md](../docs/workstreams/dictation-speed/log.md)
 - [docs/workstreams/hardware-recommendations/README.md](../docs/workstreams/hardware-recommendations/README.md)
 - [docs/workstreams/hardware-recommendations/log.md](../docs/workstreams/hardware-recommendations/log.md)
+- [docs/workstreams/ux-help/README.md](../docs/workstreams/ux-help/README.md)
+- [docs/workstreams/ux-help/log.md](../docs/workstreams/ux-help/log.md)
 
 PASS в старом журнале — результат той даты, не новая проверка. Сборка, установка и публикация учитываются отдельно.

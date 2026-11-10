@@ -162,6 +162,8 @@ export function DictationSection() {
 
   const locked = busy || progress !== null || dictating;
   const ctc = models?.models.find(m => m.id === "gigaam-v3-e2e-ctc");
+  const visibleModels = models?.models.filter(m => m.language === (preferences?.stt_language ?? "en") || m.installed) ?? [];
+  const activeLocalModel = active === "local" ? models?.models.find(m => m.id === activeModel && m.installed && m.download_bytes === 0) : undefined;
   const recommendationApplied = !!engine && active === "local" && activeModel === engine.recommendation.model && engine.options.device === engine.recommendation.device;
   const recommendationText = !engine ? "" : engine.recommendation.kind === "graphics_card"
     ? t("Recommended for this computer: GigaAM CTC on the graphics card ({p0}).", { p0: engine.gpu_name ?? "" })
@@ -170,7 +172,7 @@ export function DictationSection() {
       : t("This processor has no AVX2 and no graphics card was found, so local recognition is slow. Recommended: GigaAM CTC on the processor, or an organization server or cloud service.");
   return <Card>
     <CardHeader>
-      <CardTitle>{t("Dictation")}</CardTitle>
+      <CardTitle>{t("Speech recognition")}</CardTitle>
       <CardDescription>{t("Recognize speech on this computer, on your organization's server, or in the cloud.")}</CardDescription>
     </CardHeader>
     <CardContent className="space-y-4">
@@ -178,35 +180,27 @@ export function DictationSection() {
       {!profile && !loadError && <Skeleton className="h-32 w-full" />}
       {profile && <>
         <div className="space-y-2">
-          <Label htmlFor="speech-mode">{t("Where to recognize speech")}</Label>
+          <Label htmlFor="speech-mode" data-tour="speech-mode">{t("Where to recognize speech")}</Label>
           <Select value={profile.mode} onValueChange={v => void chooseMode(v as SpeechMode)} disabled={locked}>
             <SelectTrigger id="speech-mode" className="w-full"><SelectValue /></SelectTrigger>
             <SelectContent>{Object.entries(MODES).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent>
           </Select>
-          <p className="text-xs text-muted-foreground">{t("Currently using:")}{" "}{MODES[active]}.</p>
+          {profile.mode !== active && <p className="text-xs text-muted-foreground">{t("Currently using:")}{" "}{MODES[active]}.</p>}
         </div>
         {profile.mode === "local" ? <>
           <SttLanguageSwitch disabled={locked} />
-          <p className="text-sm text-muted-foreground">{t("Download a model once to recognize speech offline on this computer. Glagol updates preserve downloaded models.")}</p>
           {models && !models.supported && <p role="alert">{t("Local models currently require Windows x64. Server connections also work on other systems.")}</p>}
-          {models?.models.filter(m => m.language === (preferences?.stt_language ?? "en") || m.installed).map(m => {
-            const selected = active === "local" && activeModel === m.id && m.installed && m.download_bytes === 0;
-            return <div key={m.id} className="rounded-lg border p-4 space-y-2">
-              <div className="flex flex-wrap justify-between gap-2"><span className="font-medium">{m.name}</span><span className="text-sm text-muted-foreground">{size(m.bytes)}{selected ? t(" · In use") : m.installed ? t(" · Downloaded") : ""}</span></div>
-              <p className="text-sm text-muted-foreground">{m.description}</p>
-              <p className="text-xs text-muted-foreground">{t("downloadRequired", { size: new Intl.NumberFormat(currentLocale(), { maximumFractionDigits: 1 }).format(m.download_bytes / 1_000_000) })}</p>
-              <div className="flex flex-wrap gap-2">
-                <Button disabled={locked || !models.supported || selected} onClick={() => void useModel(m.id, m.installed)}>
-                  {selected ? t("Selected") : m.installed ? t("Use") : m.partial_bytes > 0 ? t("Resume and use") : t("Download and use")}
-                </Button>
-                {selected && <Button variant="outline" disabled={locked} onClick={() => void useModel(m.id, false)}>{t("Verify files and repair")}</Button>}
-                {(m.installed || m.partial_bytes > 0) && <Button variant="outline" disabled={locked || selected} onClick={() => void remove(m.id)}>{t("Remove ·")}{" "}{size(m.installed ? m.bytes : m.partial_bytes)}</Button>}
-              </div>
-            </div>;
-          })}
-          {preferences?.stt_language === "ru" && engine && models?.supported && <div className="rounded-lg border p-4 space-y-3">
+          {activeLocalModel && <p className="text-sm" data-tour="active-model">{t("Model in use: {p0}", { p0: activeLocalModel.name })}</p>}
+          {preferences?.stt_language === "ru" && engine && models?.supported && <div className="rounded-lg border p-4 space-y-3" data-tour="speed">
             <p className="font-medium">{t("Recognition speed")}</p>
-            <p className="text-xs text-muted-foreground">{t("For the Russian model. Try the graphics card on a computer with an older processor; if it fails, Glagol uses the processor.")}</p>
+            {active === "local" && ctc && activeModel.startsWith("gigaam-") && (recommendationApplied
+              ? <p className="text-xs text-muted-foreground" data-tour="recommendation">{t("Recommended settings for this computer are in use.")}</p>
+              : <SpeedHint
+                tour="recommendation"
+                text={recommendationText}
+                action={ctc.installed && ctc.download_bytes === 0 ? t("Apply recommendation") : t("Download CTC and apply ({p0})", { p0: size(ctc.download_bytes) })}
+                disabled={locked} onClick={() => void applyRecommendation()} />)}
+            {recommendationApplied && engine.recommendation.kind === "slow_processor" && <p className="text-xs text-muted-foreground">{recommendationText}</p>}
             <div className="space-y-2">
               <Label htmlFor="stt-device">{t("Compute on")}</Label>
               <Select value={engine.options.device} onValueChange={device => void changeEngine({ device: device as LocalEngineOptions["device"] })} disabled={locked}>
@@ -214,29 +208,48 @@ export function DictationSection() {
                 <SelectContent><SelectItem value="cpu">{t("Processor")}</SelectItem><SelectItem value="gpu">{t("Graphics card (Vulkan)")}</SelectItem></SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="stt-threads">{t("Processor threads")}</Label>
-              <Select value={String(engine.options.threads)} onValueChange={threads => void changeEngine({ threads: Number(threads) })} disabled={locked}>
-                <SelectTrigger id="stt-threads" className="w-full"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="0">{t("Automatic ({p0})", { p0: engine.default_threads })}</SelectItem>
-                  {Array.from({ length: Math.min(engine.logical_cpus, 64) }, (_, i) => i + 1).map(n => <SelectItem key={n} value={String(n)}>{String(n)}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
             {engine.backend && <p className="text-xs text-muted-foreground">{t("Now computing on: {p0}", { p0: engine.backend })}</p>}
-            {active === "local" && ctc && activeModel.startsWith("gigaam-") && (recommendationApplied
-              ? <p className="text-xs text-muted-foreground">{t("Recommended settings for this computer are in use.")}</p>
-              : <SpeedHint
-                text={recommendationText}
-                action={ctc.installed && ctc.download_bytes === 0 ? t("Apply recommendation") : t("Download CTC and apply ({p0})", { p0: size(ctc.download_bytes) })}
-                disabled={locked} onClick={() => void applyRecommendation()} />)}
-            {recommendationApplied && engine.recommendation.kind === "slow_processor" && <p className="text-xs text-muted-foreground">{recommendationText}</p>}
             {!engine.hardware_known && <p className="text-xs text-muted-foreground">{t("The graphics card is detected once the local engine has been loaded.")}</p>}
             {engine.recent_rtf !== null && <p className="text-xs text-muted-foreground">{t("Recent dictations: about {p0} s of waiting per 10 s of speech.", { p0: new Intl.NumberFormat(currentLocale(), { maximumFractionDigits: 1 }).format(engine.recent_rtf * 10) })}</p>}
             {engine.recent_rtf !== null && engine.recent_rtf > 0.5 && recommendationApplied && engine.recommendation.kind !== "slow_processor" && <p className="text-sm">{t("Recognition is still slow on this computer. An organization server or cloud service can be faster.")}</p>}
             {engine.gpu_fallback && <p role="alert" className="text-sm text-destructive">{t("The graphics card could not be used, so the processor is used. Details are in the log.")}</p>}
+            <details className="text-sm">
+              <summary className="cursor-pointer text-muted-foreground">{t("Advanced")}</summary>
+              <div className="mt-3 space-y-2">
+                <p className="text-xs text-muted-foreground">{t("For the Russian model. Try the graphics card on a computer with an older processor; if it fails, Glagol uses the processor.")}</p>
+                <Label htmlFor="stt-threads">{t("Processor threads")}</Label>
+                <Select value={String(engine.options.threads)} onValueChange={threads => void changeEngine({ threads: Number(threads) })} disabled={locked}>
+                  <SelectTrigger id="stt-threads" className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">{t("Automatic ({p0})", { p0: engine.default_threads })}</SelectItem>
+                    {Array.from({ length: Math.min(engine.logical_cpus, 64) }, (_, i) => i + 1).map(n => <SelectItem key={n} value={String(n)}>{String(n)}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </details>
           </div>}
+          <details className="rounded-lg border" open={!activeLocalModel} data-tour="models">
+            <summary className="cursor-pointer p-4 font-medium">{t("Manage models")}</summary>
+            <div className="space-y-3 px-4 pb-4">
+              <p className="text-sm text-muted-foreground">{t("Download a model once to recognize speech offline on this computer. Glagol updates preserve downloaded models.")}</p>
+              {visibleModels.map(m => {
+                const selected = active === "local" && activeModel === m.id && m.installed && m.download_bytes === 0;
+                return <div key={m.id} className="rounded-md border p-3 space-y-2">
+                  <div className="flex flex-wrap justify-between gap-2"><span className="font-medium">{m.name}</span><span className="text-sm text-muted-foreground">{size(m.bytes)}{selected ? t(" · In use") : m.installed ? t(" · Downloaded") : ""}</span></div>
+                  <p className="text-xs text-muted-foreground">{m.description}</p>
+                  {m.download_bytes > 0 && <p className="text-xs text-muted-foreground">{t("downloadRequired", { size: new Intl.NumberFormat(currentLocale(), { maximumFractionDigits: 1 }).format(m.download_bytes / 1_000_000) })}</p>}
+                  <div className="flex flex-wrap gap-2">
+                    {selected
+                      ? <Button size="sm" variant="outline" disabled={locked} onClick={() => void useModel(m.id, false)}>{t("Verify files and repair")}</Button>
+                      : <Button size="sm" disabled={locked || !models?.supported} onClick={() => void useModel(m.id, m.installed)}>
+                        {m.installed ? t("Use") : m.partial_bytes > 0 ? t("Resume and use") : t("Download and use")}
+                      </Button>}
+                    {!selected && (m.installed || m.partial_bytes > 0) && <Button size="sm" variant="outline" disabled={locked} onClick={() => void remove(m.id)}>{t("Remove ·")}{" "}{size(m.installed ? m.bytes : m.partial_bytes)}</Button>}
+                  </div>
+                </div>;
+              })}
+            </div>
+          </details>
           {progress && <div className="space-y-2" role="status">
             <p className="text-sm">{progress.stage === "verifying" ? t("Verifying files…") : t("Downloaded {p0} of {p1}", { p0: size(progress.downloaded), p1: size(progress.total) })}</p>
             <progress className="h-2 w-full accent-primary" value={progress.downloaded} max={progress.total} aria-label={t("Model download")} />
@@ -286,8 +299,8 @@ export function DictationSection() {
 }
 
 /** A recommendation with a one-click action inside «Recognition speed». */
-function SpeedHint({ text, action, disabled, onClick }: { text: string; action: string; disabled: boolean; onClick: () => void }) {
-  return <div className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-muted p-3">
+function SpeedHint({ text, action, disabled, onClick, tour }: { text: string; action: string; disabled: boolean; onClick: () => void; tour?: string }) {
+  return <div className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-muted p-3" data-tour={tour}>
     <p className="text-sm">{text}</p>
     <Button size="sm" variant="outline" disabled={disabled} onClick={onClick}>{action}</Button>
   </div>;

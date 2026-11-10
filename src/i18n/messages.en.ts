@@ -248,5 +248,17 @@ export const messages = {
   "Recognition is still slow on this computer. An organization server or cloud service can be faster.": "Recognition is still slow on this computer. An organization server or cloud service can be faster.",
   "Recommended for this computer: GigaAM CTC on the graphics card ({p0}).": "Recommended for this computer: GigaAM CTC on the graphics card ({p0}).",
   "Recommended for this computer: GigaAM CTC on the processor (it supports AVX2).": "Recommended for this computer: GigaAM CTC on the processor (it supports AVX2).",
-  "This processor has no AVX2 and no graphics card was found, so local recognition is slow. Recommended: GigaAM CTC on the processor, or an organization server or cloud service.": "This processor has no AVX2 and no graphics card was found, so local recognition is slow. Recommended: GigaAM CTC on the processor, or an organization server or cloud service."
+  "This processor has no AVX2 and no graphics card was found, so local recognition is slow. Recommended: GigaAM CTC on the processor, or an organization server or cloud service.": "This processor has no AVX2 and no graphics card was found, so local recognition is slow. Recommended: GigaAM CTC on the processor, or an organization server or cloud service.",
+  "Model in use: {p0}": "Model in use: {p0}",
+  "Advanced": "Advanced",
+  "Manage models": "Manage models",
+  "Speech recognition": "Speech recognition",
+  "Components and license": "Components and license",
+  "General": "General",
+  "graphics card": "graphics card",
+  "processor": "processor",
+  "Ready: hold {p0} and speak.": "Ready: hold {p0} and speak.",
+  "Glagol has a faster setup for this computer.": "Glagol has a faster setup for this computer.",
+  "Search by title": "Search by title",
+  "Nothing found.": "Nothing found."
 } as const;

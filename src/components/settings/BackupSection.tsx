@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { listen } from "@tauri-apps/api/event";
 import { toast } from "sonner";
+import { markFeatureUsed } from "@/lib/tips";
 import { Archive, Upload } from "lucide-react";
 
 import {
@@ -92,6 +93,7 @@ export function BackupSection() {
     try {
       const fullPath = await createBackup(folder);
       const filename = fullPath.split(/[\\/]/).pop() ?? fullPath;
+      markFeatureUsed("backup");
       toast.success(t("Backup created: {p0}", { p0: filename }));
     } catch (err) {
       toast.error(t("Could not create backup: {p0}", { p0: stringifyError(err) }));
@@ -170,7 +172,7 @@ export function BackupSection() {
   const progressVerb = activeOp === "restore" ? t("Restoring") : t("Creating backup");
 
   return (
-    <Card>
+    <Card data-tour="backup">
       <CardHeader>
         <CardTitle>{t("Backup")}</CardTitle>
         <CardDescription>

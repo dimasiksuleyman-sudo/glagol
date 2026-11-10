@@ -2,14 +2,10 @@
   "schema_version": 1,
   "id": "hardware-recommendations",
   "title": "Рекомендации модели и настроек диктовки по железу",
-  "status": "active",
+  "status": "paused",
   "next": "R4",
-  "reason": null,
-  "claim": {
-    "owner": "claude",
-    "at": "2026-11-10T06:22:34.000Z",
-    "branch": "claude/optimistic-franklin-cvvbsr"
-  },
+  "reason": "Пользователь 2026-11-10 добавил перед выпуском перестройку интерфейса и справку (серия ux-help). Продолжение: R4 выполняется как H6 серии ux-help; затем отметить R4 по её результатам.",
+  "claim": null,
   "links": [
     "docs/workstreams/hardware-recommendations/README.md",
     "docs/workstreams/hardware-recommendations/log.md"
@@ -158,7 +154,7 @@
     {
       "id": "R4",
       "title": "Выпуск 0.6.5 (0.6.4 — тестовая сборка на ПК): подписанная сборка, PR, Release, обновление из программы",
-      "status": "in_progress",
+      "status": "pending",
       "depends_on": [
         "R3"
       ],

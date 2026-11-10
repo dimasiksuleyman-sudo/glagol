@@ -249,5 +249,17 @@ export const messages: {[K in keyof typeof en]: string} = {
   "Recognition is still slow on this computer. An organization server or cloud service can be faster.": "На этом компьютере распознавание всё ещё медленное. Быстрее может быть сервер организации или облачный сервис.",
   "Recommended for this computer: GigaAM CTC on the graphics card ({p0}).": "Рекомендуется для этого компьютера: GigaAM CTC на видеокарте ({p0}).",
   "Recommended for this computer: GigaAM CTC on the processor (it supports AVX2).": "Рекомендуется для этого компьютера: GigaAM CTC на процессоре (он поддерживает AVX2).",
-  "This processor has no AVX2 and no graphics card was found, so local recognition is slow. Recommended: GigaAM CTC on the processor, or an organization server or cloud service.": "У процессора нет AVX2, и видеокарта не найдена, поэтому локальное распознавание медленное. Рекомендуется: GigaAM CTC на процессоре или сервер организации либо облачный сервис."
+  "This processor has no AVX2 and no graphics card was found, so local recognition is slow. Recommended: GigaAM CTC on the processor, or an organization server or cloud service.": "У процессора нет AVX2, и видеокарта не найдена, поэтому локальное распознавание медленное. Рекомендуется: GigaAM CTC на процессоре или сервер организации либо облачный сервис.",
+  "Model in use: {p0}": "Используется модель: {p0}",
+  "Advanced": "Дополнительно",
+  "Manage models": "Управление моделями",
+  "Speech recognition": "Распознавание речи",
+  "Components and license": "Компоненты и лицензия",
+  "General": "Общие",
+  "graphics card": "видеокарта",
+  "processor": "процессор",
+  "Ready: hold {p0} and speak.": "Готово: удерживайте {p0} и говорите.",
+  "Glagol has a faster setup for this computer.": "Для этого компьютера есть более быстрая настройка.",
+  "Search by title": "Поиск по названию",
+  "Nothing found.": "Ничего не найдено."
 };

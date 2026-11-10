@@ -190,7 +190,7 @@ export function Synthesize() {
           </CardHeader>
           <CardContent>
             <Button asChild>
-              <Link to="/settings">{t("Go to Settings →")}</Link>
+              <Link to="/settings/speech">{t("Go to Settings →")}</Link>
             </Button>
           </CardContent>
         </Card>
@@ -205,7 +205,7 @@ export function Synthesize() {
 
   return (
     <div className="space-y-6">
-      <Header disabled={isLoading || preparationActive} />
+      <Header language={false} />
 
       <Card>
         <CardContent className="space-y-4 pt-6">
@@ -224,6 +224,7 @@ export function Synthesize() {
             <div className="flex items-center justify-between gap-2">
               <Label htmlFor="text">{t("Text")}</Label>
               <Button
+                data-tour="choose-file"
                 type="button"
                 variant="outline"
                 size="sm"
@@ -246,7 +247,8 @@ export function Synthesize() {
               {trimmedTextLength.toLocaleString(currentLocale())} {t("characters")}{" "}</p>
           </div>
 
-          <div className="space-y-2">
+          <TtsLanguageSwitch disabled={isLoading || preparationActive} />
+          <div className="space-y-2" data-tour="synth-voice">
             <Label htmlFor="voice">{t("Voice")}</Label>
             <Select value={voice} onValueChange={value => { void setTtsVoice(value).catch(e => toast.error(String(e))); }} disabled={isLoading}>
               <SelectTrigger id="voice" className="w-full">
@@ -291,11 +293,11 @@ export function Synthesize() {
   );
 }
 
-function Header({ disabled = false }: { disabled?: boolean }) {
+function Header({ disabled = false, language = true }: { disabled?: boolean; language?: boolean }) {
   useI18n();
   return (
     <div>
-      <TtsLanguageSwitch disabled={disabled} />
+      {language && <TtsLanguageSwitch disabled={disabled} />}
       <h2 className="text-2xl font-semibold tracking-tight">{t("Synthesize")}</h2>
       <p className="text-muted-foreground mt-1 text-sm">
         {t("Your text will become a WAV file in your library.")}{" "}</p>

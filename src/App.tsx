@@ -4,6 +4,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { Dictation } from "@/pages/Dictation";
 import { Library } from "@/pages/Library";
 import { Settings } from "@/pages/Settings";
+import { Help } from "@/pages/Help";
 import { Synthesize } from "@/pages/Synthesize";
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { Onboarding } from "@/components/Onboarding";
@@ -29,7 +30,9 @@ function App() {
         <Route path="/synthesize" element={ttsEnabled ? <Synthesize /> : <Navigate to="/dictation" replace />} />
         <Route path="/library" element={<Library />} />
         <Route path="/dictation" element={<Dictation />} />
-        <Route path="/settings" element={<Settings />} />
+        <Route path="/settings" element={<Navigate to="/settings/dictation" replace />} />
+        <Route path="/settings/:tab" element={<Settings />} />
+        <Route path="/help" element={<Help />} />
         <Route path="*" element={<Navigate to={home} replace />} />
       </Route>
     </Routes>

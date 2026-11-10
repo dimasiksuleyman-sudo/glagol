@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "observed_at": "2026-11-09T16:09:59.000Z",
-  "active_workstream": "hardware-recommendations",
+  "active_workstream": "ux-help",
   "links": [
     "AGENTS.md",
     "CLAUDE.md",
@@ -38,7 +38,9 @@
     "docs/workstreams/dictation-speed/README.md",
     "docs/workstreams/dictation-speed/log.md",
     "docs/workstreams/hardware-recommendations/README.md",
-    "docs/workstreams/hardware-recommendations/log.md"
+    "docs/workstreams/hardware-recommendations/log.md",
+    "docs/workstreams/ux-help/README.md",
+    "docs/workstreams/ux-help/log.md"
   ],
   "observations": [
     {
