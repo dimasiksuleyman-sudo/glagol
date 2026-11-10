@@ -43,3 +43,12 @@ cargo test --locked — exit 0, «360 passed» (новые: рекомендац
 pnpm build — exit 0, «I18N PASS: 283 keys». Manual (headless Chromium, заглушка):
 три случая (ПК: видеокарта, RNNT/CPU → кнопка; ноутбук: AVX2 CTC/CPU → «используются
 рекомендуемые»; слабый CPU → предупреждение). На Windows не проверено.
+
+## 2026-11-10T06:31:23.000Z — R4 подготовка выпуска 0.6.5
+
+Версия 0.6.5 (package.json, Cargo.toml, Cargo.lock, tauri.conf.json;
+check-version — «versions match»). docs/releases/v0.6.5.md EN/RU (рекомендация,
+скорость, индикатор: пересоздание после простоя, проверка пикселей, контур;
+ограничения), CHANGELOG [v0.6.5] — 2026-11-10, заголовки руководств,
+USER_GUIDE.md, README (ссылка v0.6.5, размер — плейсхолдер до сборки).
+cargo test --locked «360 passed», pnpm build exit 0, release-assets pass 3.
