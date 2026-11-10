@@ -40,7 +40,9 @@
     "docs/workstreams/hardware-recommendations/README.md",
     "docs/workstreams/hardware-recommendations/log.md",
     "docs/workstreams/ux-help/README.md",
-    "docs/workstreams/ux-help/log.md"
+    "docs/workstreams/ux-help/log.md",
+    "docs/workstreams/modifier-hotkey/README.md",
+    "docs/workstreams/modifier-hotkey/log.md"
   ],
   "observations": [
     {

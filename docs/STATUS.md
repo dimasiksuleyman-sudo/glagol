@@ -72,5 +72,7 @@
 - [docs/workstreams/hardware-recommendations/log.md](../docs/workstreams/hardware-recommendations/log.md)
 - [docs/workstreams/ux-help/README.md](../docs/workstreams/ux-help/README.md)
 - [docs/workstreams/ux-help/log.md](../docs/workstreams/ux-help/log.md)
+- [docs/workstreams/modifier-hotkey/README.md](../docs/workstreams/modifier-hotkey/README.md)
+- [docs/workstreams/modifier-hotkey/log.md](../docs/workstreams/modifier-hotkey/log.md)
 
 PASS в старом журнале — результат той даты, не новая проверка. Сборка, установка и публикация учитываются отдельно.

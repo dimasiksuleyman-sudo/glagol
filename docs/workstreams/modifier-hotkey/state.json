@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "id": "modifier-hotkey",
+  "title": "Диктовка по удержанию только модификаторов (Ctrl+Win)",
+  "status": "paused",
+  "next": "M1",
+  "reason": "TODO от пользователя 2026-11-10: начинать после выпуска 0.6.5; объём согласовать перед M1; продолжение — README серии.",
+  "claim": null,
+  "links": ["docs/workstreams/modifier-hotkey/README.md", "docs/workstreams/modifier-hotkey/log.md"],
+  "steps": [
+    {"id": "M1", "title": "Прототип хука модификаторов: старт/стоп, отмена при другой клавише, без «Пуска»", "status": "pending", "depends_on": [], "required": ["rust", "manual"], "checks": []},
+    {"id": "M2", "title": "Режим в настройках, документация RU/EN, проверка на Windows 10 и 11", "status": "pending", "depends_on": ["M1"], "required": ["rust", "frontend", "manual"], "checks": []}
+  ]
+}
