@@ -7,7 +7,7 @@ Offline English and Russian dictation and text-to-speech for Windows 10/11 x64.
 
 **Download Glagol 0.6.5 / Скачать Глагол 0.6.5:**
 [Windows x64 installer](https://github.com/dimasiksuleyman-sudo/glagol/releases/download/v0.6.5/Glagol_0.6.5_x64-setup.exe)
-([release notes and SHA-256](docs/releases/v0.6.5.md), {{INSTALLER_BYTES_EN}} bytes). From 0.6.0, later versions install from Settings → Updates. / С 0.6.0 следующие версии ставятся из «Настройки» → «Обновления».
+([release notes and SHA-256](docs/releases/v0.6.5.md), {{INSTALLER_BYTES_EN}} bytes). From 0.6.0, later versions install from Settings → General → Updates. / С 0.6.0 следующие версии ставятся из «Настройки» → «Общие» → «Обновления».
 
 ## English
 
@@ -48,6 +48,8 @@ local dictation. Upgrades retain modes, server addresses, credentials and voices
 - Paste text or import TXT/MD/DOCX/PDF. Long documents use a sequential WAV pipeline.
   Library, rename, localized player, 0.5–2× playback, WAV export and backups.
   Existing recordings and their metadata remain usable.
+- Settings in Dictation, Text to speech and General tabs; built-in Help with short steps,
+  Show buttons that highlight the real control, and optional «Did you know?» tips.
 
 ### Install only the components you need
 
@@ -91,7 +93,7 @@ Data stays in `%LOCALAPPDATA%\app.glagol.desktop\`: `glagol.db`, `audio_cache`,
 `speech_models`, `tts_models`. Library backups exclude models, runtime, OS credentials
 and Silero consent. User text, document names and old history are never translated
 when changing the interface language. Daily logs (`logs`, kept 7 days) record timings,
-hardware and errors, never speech, recognized text or keys; Settings → Diagnostics
+hardware and errors, never speech, recognized text or keys; Settings → General → Diagnostics
 opens the folder and offers an optional Detailed log.
 
 ### Development and validation
@@ -139,6 +141,8 @@ the development machine; importing pinned files was exercised separately.
 - Текст или TXT/MD/DOCX/PDF; последовательная озвучка длинных документов в WAV.
   Библиотека, переименование, локализованный плеер, скорость 0.5–2×, экспорт и бэкапы.
   Старые записи и метаданные остаются доступны.
+- Настройки на вкладках «Диктовка», «Озвучка» и «Общие»; встроенная «Справка» с короткими
+  шагами, кнопкой «Показать», подсвечивающей нужный элемент, и подсказками «Знаете ли вы?».
 
 ### Только нужные компоненты
 
@@ -183,7 +187,7 @@ Python/PyTorch и словарей произношения. Начальную 
 OS-ключи и согласие Silero. При смене интерфейса тексты пользователя, названия
 документов и прежняя история не переводятся. Ежедневные журналы (`logs`, хранятся
 7 дней) содержат время этапов, сведения об оборудовании и ошибки, но не речь,
-распознанный текст и ключи; «Настройки» → «Диагностика» открывает папку и
+распознанный текст и ключи; «Настройки» → «Общие» → «Диагностика» открывает папку и
 предлагает необязательный «Подробный журнал».
 
 ### Разработка и проверка

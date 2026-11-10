@@ -13,8 +13,10 @@ CC BY-NC-SA 4.0 для некоммерческого использования
 | `src/i18n`, `contexts/PreferencesContext.tsx` | Типизированные EN/RU словари, fallback EN, Intl, live broadcast языка |
 | `components/Onboarding.tsx`, `DictationSetupCard.tsx`, `*LanguageSwitch.tsx` | Первый выбор языка, необязательные установки, независимые переключатели |
 | `pages/Synthesize.tsx` | Текст/файлы, голос, прогресс, отмена, экспорт |
-| `pages/Library.tsx`, `components/AudioPlayer.tsx` | Библиотека и локализованный плеер |
-| `pages/Dictation.tsx` | Горячая клавиша, микрофон, история |
+| `pages/Library.tsx`, `components/AudioPlayer.tsx` | Компактная библиотека, один общий плеер, поиск |
+| `pages/Dictation.tsx`, `components/dictation/DictationStatus.tsx` | Строка готовности, горячая клавиша, микрофон, режим вставки, история |
+| `pages/Settings.tsx` | Вкладки `/settings/dictation`, `/settings/speech`, `/settings/general` |
+| `pages/Help.tsx`, `components/help/Coachmark.tsx`, `components/help/TipCard.tsx`, `lib/tours.ts`, `lib/tips.ts` | Справка: темы с шагами, подсветка элементов по `data-tour`, «Знаете ли вы?» (localStorage) |
 | `components/settings/DictationSection.tsx` | Local/server/cloud STT, модели и ключи |
 | `components/settings/TtsSection.tsx` | Переключатель «Озвучка», лицензия, скачивание/импорт, восстановление, удаление, голоса |
 | `components/settings/DiagnosticsSection.tsx` | «Подробный журнал» и открытие папки журналов |

@@ -7,15 +7,15 @@
 
 Выбранная серия: **Интерфейс без «простыни» и интерактивная справка (0.6.5)**.
 
-**NEXT: H5 — Руководства RU/EN, README, CHANGELOG, заметки 0.6.5; визуальная проверка экранов** (in_progress).
+**NEXT: H6 — Выпуск 0.6.5: CI, подписанная сборка, Release, обновление из программы** (in_progress).
 
 [Решения](workstreams/ux-help/README.md) · [Состояние](workstreams/ux-help/state.json) · [Журнал](workstreams/ux-help/log.md)
 
 Выполняет: claude; ветка claude/optimistic-franklin-cvvbsr; с 2026-11-10T07:06:05.000Z.
 
-Последний завершённый шаг серии: **H4 — Карточка «Знаете ли вы?» с выключателем**.
+Последний завершённый шаг серии: **H5 — Руководства RU/EN, README, CHANGELOG, заметки 0.6.5; визуальная проверка экранов**.
 
-Проверка 2026-11-10T07:14:22.000Z: I18N PASS: 351 keys; ✓ built ([evidence](../docs/workstreams/ux-help/log.md)).
+Проверка 2026-11-10T07:15:52.000Z: I18N PASS: 351 keys; ✓ built ([evidence](../docs/workstreams/ux-help/log.md)).
 
 ## Доставка и наблюдения
 

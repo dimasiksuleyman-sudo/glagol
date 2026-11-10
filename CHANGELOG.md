@@ -17,10 +17,12 @@ the per-session master logs under [`docs/day-logs/`](docs/day-logs/).
 
 ### Added
 
+- Built-in Help with short steps per task and Show, which opens the screen and highlights the real control; an optional «Did you know?» card about unused features (weekly in the first month, then monthly). / Встроенная «Справка» с короткими шагами и кнопкой «Показать», которая открывает экран и подсвечивает нужный элемент; необязательная карточка «Знаете ли вы?» о неиспользованных функциях (раз в неделю в первый месяц, потом раз в месяц).
 - Hardware recommendation for Russian local dictation: at startup Glagol detects AVX2 and a discrete graphics card (without loading the model) and recommends GigaAM CTC on the graphics card or on the processor, warning when local recognition will be slow; Apply recommendation sets it up in one click. Recognition speed also shows the waiting time per 10 s of speech for recent dictations. / Рекомендация по железу для русской локальной диктовки: при запуске Глагол определяет AVX2 и дискретную видеокарту (не загружая модель) и рекомендует GigaAM CTC на видеокарте или на процессоре, предупреждая, если локально будет медленно; «Применить рекомендацию» настраивает всё одним нажатием. «Скорость распознавания» также показывает время ожидания на 10 с речи у последних диктовок.
 
 ### Changed
 
+- Settings are split into Dictation, Text to speech and General tabs; model management, advanced options and Silero components and license are collapsed. The Dictation page starts with a readiness line and keeps daily controls only; the Library is a compact list with one shared player and search. / Настройки разделены на вкладки «Диктовка», «Озвучка» и «Общие»; управление моделями, дополнительные параметры и компоненты и лицензия Silero свёрнуты. «Диктовка» начинается со строки готовности и содержит только ежедневное; «Библиотека» — компактный список с одним плеером и поиском.
 - The dictation indicator has a two-tone outline (light inside, dark outside), so it stays visible on both light and dark backgrounds. / У индикатора диктовки двухцветный контур (светлый внутри, тёмный снаружи), поэтому он виден и на светлом, и на тёмном фоне.
 
 ### Fixed

@@ -3,7 +3,7 @@
   "id": "ux-help",
   "title": "Интерфейс без «простыни» и интерактивная справка (0.6.5)",
   "status": "active",
-  "next": "H5",
+  "next": "H6",
   "reason": null,
   "claim": {
     "owner": "claude",
@@ -132,7 +132,7 @@
     {
       "id": "H5",
       "title": "Руководства RU/EN, README, CHANGELOG, заметки 0.6.5; визуальная проверка экранов",
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [
         "H4"
       ],
@@ -140,12 +140,44 @@
         "frontend",
         "manual"
       ],
-      "checks": []
+      "checks": [
+        {
+          "id": "frontend",
+          "status": "PASS",
+          "method": "command",
+          "command": "pnpm build",
+          "cwd": ".",
+          "at": "2026-11-10T07:15:52.000Z",
+          "environment": {
+            "os": "Linux container",
+            "node": "v22.23.4",
+            "pnpm": "10.28.0"
+          },
+          "exit_code": 0,
+          "output": "I18N PASS: 351 keys; ✓ built",
+          "evidence": "docs/workstreams/ux-help/log.md"
+        },
+        {
+          "id": "manual",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Headless Chromium, заглушка IPC, 800×600: все экраны RU/EN, справка, «Показать» dictate/speed/diagnostics, карточка «Знаете ли вы?»",
+          "cwd": ".",
+          "at": "2026-11-10T07:15:52.000Z",
+          "environment": {
+            "os": "Linux container",
+            "browser": "Chromium (Playwright)"
+          },
+          "exit_code": null,
+          "output": "раскладка без простыни; подсветка открывает экран и обводит элемент",
+          "evidence": "docs/workstreams/ux-help/log.md"
+        }
+      ]
     },
     {
       "id": "H6",
       "title": "Выпуск 0.6.5: CI, подписанная сборка, Release, обновление из программы",
-      "status": "pending",
+      "status": "in_progress",
       "depends_on": [
         "H5"
       ],

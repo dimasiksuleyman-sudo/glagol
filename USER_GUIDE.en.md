@@ -26,7 +26,7 @@ language. Switch interface language in the shell or Settings without restarting.
 
 ## Updating an existing installation
 
-From 0.6.0 the current version is shown in the sidebar and in Settings → Updates.
+From 0.6.0 the current version is shown in the sidebar and in Settings → General → Updates.
 Check for updates asks GitHub whether a newer version exists. Check automatically at
 startup is off by default; when on, Glagol checks once after it starts and shows a
 notification about a new version. While it is off, a reminder with Check now and
@@ -51,6 +51,22 @@ Installation, live-microphone and listening checks of this candidate remain sepa
 from automated tests; see the [work log](docs/workstreams/english-first/log.md).
 [Current 0.5.0 screenshots](docs/screenshots/0.5.0/README.md) show English synthesis, local
 dictation and the library, plus completed synthesis in the Russian interface. Older [0.4.0 screenshots](docs/screenshots/windows10-0.4.0/README.md) are historical.
+
+## Interface and help
+
+The sidebar has Synthesize, Library, Dictation, Settings and Help. The Dictation page
+starts with a readiness line (where speech is recognized, model, device, shortcut) with a
+Change button, followed by insertion mode, shortcut, microphone and history. Settings are
+split into Dictation, Text to speech and General tabs (interface language, updates,
+backup, diagnostics); rarely used parts are collapsed: Manage models, Advanced, and
+Components and license.
+
+Help collects short steps for common tasks in Dictation, Text to speech and General
+groups. Show opens the right screen and highlights the real button or switch; Got it, a
+click outside the hint or Esc closes it. A «Did you know?» card on Synthesize, Dictation
+and Library occasionally describes a feature you have not used yet: at most once a week
+in the first month, then once a month. Close it, or turn tips off with the card's check
+box or the Show tips switch in Help. What you have seen is stored only on this computer.
 
 ## Optional Silero synthesis
 
@@ -83,8 +99,7 @@ failure trigger full verification. Opening Synthesize preloads the selected mode
 status shows preparation. Warm models unload after 15 idle minutes or on exit.
 Installed local synthesis works offline. This is process isolation, not an OS sandbox.
 
-If you only dictate, turn off the Text to speech switch in Settings → Local text to
-speech — Silero. Glagol then stops verifying Silero files at startup and preloading
+If you only dictate, turn off the Text to speech switch in Settings → Text to speech. Glagol then stops verifying Silero files at startup and preloading
 the model, hides the Synthesize page and opens Dictation first; a loaded model is
 unloaded immediately. Models, acknowledgement and your library are kept — turn the
 switch back on to use speech again.
@@ -102,8 +117,9 @@ English text uses English number/abbreviation handling; Russian retains its exis
 stress and Latin-letter conversion. Dates and unusual notation may be read component
 by component: listen to important text. Choosing a language is not translation.
 
-The Library supports play/pause, seek, 0.5–2× playback speed, volume, rename, WAV
-export and delete. User titles, document contents and
+The Library is a compact list: ▶ next to a document plays it in the shared player at the
+bottom (pause, seek, 0.5–2× speed, volume); the icons rename, export the WAV or delete.
+With six or more documents a search by title appears. User titles, document contents and
 historical records are not translated when changing the interface.
 
 ## Dictation
@@ -138,7 +154,7 @@ speech language remembers its local model and voice.
 
 **Russian local model speed.** On a computer with an older processor (for example,
 without AVX2) GigaAM recognizes at roughly the speed of speech. In Settings → Dictation →
-Recognition speed, choose Compute on: Graphics card (Vulkan) and, if you like, the number
+Recognition speed, choose Compute on: Graphics card (Vulkan) and, if you like, under Advanced the number
 of Processor threads (Automatic by default, up to 8). The change applies immediately, and
 Now computing on shows the actual device. If the graphics card cannot be used, Glagol
 uses the processor and shows a warning; the reason is in the log. At startup Glagol
@@ -149,7 +165,8 @@ otherwise CTC on the processor; without AVX2 and without a graphics card, an hon
 note that local recognition will be slow and a suggestion to try an organization server
 or the cloud. Apply recommendation downloads CTC if needed and selects the device;
 nothing changes until you click. Recent dictations shows how many seconds of waiting
-there are per 10 seconds of speech. The block appears in Settings and on the Dictation page. The full SHA-256 check
+there are per 10 seconds of speech. The status line on the Dictation page tells you when
+a faster setup is available for the computer. The full SHA-256 check
 of the GigaAM files runs on the first load and is then reused for up to 30 days while file
 sizes and dates are unchanged; Verify files and repair, a load error or a recognition
 error trigger the full check again.
@@ -182,7 +199,7 @@ the tray and send the log from that day: it records these events and the indicat
 ## Backup, data and troubleshooting
 
 Data remains in `%LOCALAPPDATA%\app.glagol.desktop\`: SQLite `glagol.db`, WAVs in
-`audio_cache`, STT in `speech_models`, Silero in `tts_models`. Settings → Create backup
+`audio_cache`, STT in `speech_models`, Silero in `tts_models`. Settings → General → Create backup
 writes a ZIP of the library. Restore shows a confirmation, makes a protective backup
 and restarts the app after replacing the library. Old libraries/backups remain readable.
 Models, runtime, OS credentials, previews and Silero consent are excluded; enable speech
@@ -194,7 +211,7 @@ voice. For recognition errors, retry after checking microphone/model, and verify
 if needed. Close Glagol through the tray before collecting logs so they are flushed;
 never attach private speech, documents or credentials.
 
-Logs: Settings → Diagnostics → Open log folder (`%LOCALAPPDATA%\app.glagol.desktop\logs`,
+Logs: Settings → General → Diagnostics → Open log folder (`%LOCALAPPDATA%\app.glagol.desktop\logs`,
 one file per day, kept for 7 days). The log always records the processor, model load
 time and the time of each recognition stage, and how the dictation indicator was shown:
 on which monitor, where, and whether it painted. If dictation is slow or the indicator disappears, turn on Detailed log,
