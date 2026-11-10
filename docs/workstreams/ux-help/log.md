@@ -52,3 +52,15 @@ CHANGELOG [v0.6.5]: интерфейс и справка (EN/RU), 351 ключ.
 PROJECT_STRUCTURE: Help, Coachmark, TipCard, tours/tips, DictationStatus, вкладки.
 pnpm build — exit 0, «I18N PASS: 351 keys»; cargo fmt --check — OK (Rust не
 менялся после 0e504bb… кроме версии).
+
+## 2026-11-10T07:47:04.000Z — H6 сборка 0.6.5 на ПК, ключ с паролем
+
+Manual (вывод пользователя), ПК, D:\Projects\glagol на 02334d2: `pnpm tauri
+build` — check-version 0.6.5, I18N 351, release-профиль 2 м 50 с, «Finished 1
+bundle» Glagol_0.6.5_x64-setup.exe. Подпись `pnpm tauri signer sign …` с ключом в
+TAURI_SIGNING_PRIVATE_KEY и пустым паролем (по инструкции «нажмите Enter») —
+«Wrong password for that key», exit 1. Пользователь: «У приватного ключа всё же
+есть пароль». Исправление записи: вывод 2026-11-09 о ключе без пароля (журнал
+dictation-speed, ранбук) был ошибочным — вчера пароль был задан переменной из
+шага 6. Ранбук выпуска исправлен: пароль обязателен, порядок «сборка → подпись
+установщика с ключом и паролем → release:assets».
