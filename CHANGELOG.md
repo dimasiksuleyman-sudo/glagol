@@ -11,6 +11,10 @@ the per-session master logs under [`docs/day-logs/`](docs/day-logs/).
 
 ## [Unreleased]
 
+### Fixed
+
+- The dictation indicator check missed a lost indicator over dark windows: it trusted only light backgrounds. It now compares the screen with the colours the indicator can take, so it works on light, dark and black backgrounds, and a lost indicator is rebuilt and shown again during the same dictation instead of after it (once per dictation, GL-006). / Проверка индикатора диктовки не замечала пропажу над тёмными окнами: она доверяла только светлому фону. Теперь она сравнивает экран с цветами, которые может иметь индикатор, поэтому работает на светлом, тёмном и чёрном фоне, а пропавший индикатор пересоздаётся и показывается снова в той же диктовке, а не после неё (один раз за диктовку, GL-006).
+
 ## [v0.6.5] — 2026-11-10
 
 [Release notes, validation and limits / проверка и ограничения](docs/releases/v0.6.5.md). Version 0.6.4 was an unpublished test build. / Версия 0.6.4 была неопубликованной тестовой сборкой.

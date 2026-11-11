@@ -84,26 +84,51 @@ pub fn display_event(previous: Option<u32>, state: u32) -> Option<SystemEvent> {
 pub enum Presence {
     /// The dark pill is on screen.
     Visible,
-    /// The pill area shows the background: the frame was not presented.
+    /// The pill area cannot be the pill: the frame was not presented.
     NotPresented,
-    /// The background is itself dark, so the check cannot tell.
+    /// The background is itself pill-coloured, so the check cannot tell.
     Inconclusive,
 }
 
-/// The pill is `rgba(20, 22, 28, 0.94)`; any channel above this is not pill.
-const DARK_MAX: u8 = 60;
+/// The pill background, `rgba(20, 22, 28, 0.94)` in `OverlayPill.tsx`.
+const PILL_RGB: [f64; 3] = [20.0, 22.0, 28.0];
+const PILL_ALPHA: f64 = 0.94;
+
+/// Rounding and colour-management slack per channel when comparing with the
+/// pill's possible colours (measured on Windows: 29 expected 29.2, 41 vs 41.6).
+const PILL_TOLERANCE: f64 = 4.0;
+
+/// Whether `pixel` is a colour the 94 %-opaque pill can take over *some*
+/// background: per channel within `[α·pill, α·pill + (1-α)·255]`. Any pixel
+/// outside that range cannot be the pill, whatever lies behind it.
+fn pill_coloured(pixel: (u8, u8, u8)) -> bool {
+    [pixel.0, pixel.1, pixel.2]
+        .iter()
+        .zip(PILL_RGB)
+        .all(|(&value, pill)| {
+            let low = PILL_ALPHA * pill;
+            let high = low + (1.0 - PILL_ALPHA) * 255.0;
+            (low - PILL_TOLERANCE..=high + PILL_TOLERANCE).contains(&f64::from(value))
+        })
+}
 
 /// Decide from pixels inside the pill's top band and one pixel in the
 /// window's transparent corner (the background behind the overlay).
+///
+/// The pill covers the band with a known colour at 94 % opacity, so a band
+/// pixel outside every colour the pill can take means the frame never reached
+/// the screen — on light, dark or black backgrounds alike (0.6.5 trusted only
+/// light backgrounds and missed a pill lost over a dark window). When the band
+/// looks like the pill but the background corner is itself pill-coloured, the
+/// pixels could be the background, so the answer is [`Presence::Inconclusive`].
 pub fn judge_presence(inside: &[(u8, u8, u8)], corner: (u8, u8, u8)) -> Presence {
-    let dark = |p: &(u8, u8, u8)| p.0.max(p.1).max(p.2) <= DARK_MAX;
-    if dark(&corner) {
-        return Presence::Inconclusive;
-    }
-    if inside.iter().filter(|p| dark(p)).count() * 2 > inside.len() {
-        Presence::Visible
-    } else {
+    let pill_like = inside.iter().filter(|p| pill_coloured(**p)).count();
+    if (inside.len() - pill_like) * 2 > inside.len() {
         Presence::NotPresented
+    } else if pill_coloured(corner) {
+        Presence::Inconclusive
+    } else {
+        Presence::Visible
     }
 }
 
@@ -485,10 +510,55 @@ mod tests {
             judge_presence(&[pill, pill, light], light),
             Presence::Visible
         );
+        // Black and pill-free dark backgrounds are judged too.
         assert_eq!(
             judge_presence(&[pill, pill, pill], (10, 10, 10)),
+            Presence::Visible
+        );
+        // A pill-coloured background cannot be told apart from the pill.
+        assert_eq!(
+            judge_presence(&[pill, pill, pill], (24, 26, 32)),
             Presence::Inconclusive
         );
+    }
+
+    #[test]
+    fn presence_on_a_dark_window_matches_the_pc_log() {
+        // 2026-11-11, PC, dark grey window (48): the pill read 29, then the
+        // band read the background 48 while dictation went on — the 0.6.5
+        // check called both «Inconclusive».
+        let background = (48, 48, 48);
+        let pill_over_background = (21, 23, 29);
+        assert_eq!(
+            judge_presence(&[pill_over_background; 3], background),
+            Presence::Visible
+        );
+        assert_eq!(
+            judge_presence(&[background; 3], background),
+            Presence::NotPresented
+        );
+        // Pill over white (measured 41 for the brightest channel) and over black.
+        assert_eq!(
+            judge_presence(&[(34, 36, 41); 3], (255, 255, 255)),
+            Presence::Visible
+        );
+        assert_eq!(
+            judge_presence(&[(19, 21, 26); 3], (0, 0, 0)),
+            Presence::Visible
+        );
+        assert_eq!(
+            judge_presence(&[(0, 0, 0); 3], (0, 0, 0)),
+            Presence::NotPresented
+        );
+        // A bright colour under the band is never the pill, whatever the corner.
+        assert_eq!(
+            judge_presence(&[(200, 40, 40); 3], (24, 26, 32)),
+            Presence::NotPresented
+        );
+    }
+
+    #[test]
+    fn presence_points_follow_position_and_scale() {
         let (inside, corner) = presence_points(848, 960, 224, 1.0);
         assert_eq!(inside, vec![(948, 966), (960, 966), (972, 966)]);
         assert_eq!(corner, (849, 961));

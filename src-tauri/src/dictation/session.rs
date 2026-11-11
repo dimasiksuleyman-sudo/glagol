@@ -21,6 +21,7 @@
 //! is ever lost.
 
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::Mutex;
 use std::time::{Duration, SystemTime};
 
 use rusqlite::Connection;
@@ -67,6 +68,35 @@ const OVERLAY_IDLE_REBUILD: Duration = Duration::from_secs(10 * 60);
 
 /// Delay before checking that the shown pill actually reached the screen.
 const PRESENCE_CHECK_DELAY: Duration = Duration::from_millis(350);
+
+/// Delay before checking a window rebuilt during dictation: its page has to
+/// load and fetch the current state first.
+const REPAIRED_PRESENCE_CHECK_DELAY: Duration = Duration::from_millis(1500);
+
+/// Dictation session token whose pill was already rebuilt on the spot; at most
+/// one immediate repair per session, so a covered pill cannot cause a loop.
+static OVERLAY_REPAIRED_TOKEN: AtomicU64 = AtomicU64::new(0);
+
+/// The last state broadcast to the overlay, for a page that starts mid-session.
+static OVERLAY_LAST_STATE: Mutex<Option<DictationState>> = Mutex::new(None);
+
+/// Remember the state just broadcast to the overlay (see [`overlay_state`]).
+pub fn remember_overlay_state(state: &DictationState) {
+    if let Ok(mut last) = OVERLAY_LAST_STATE.lock() {
+        *last = Some(state.clone());
+    }
+}
+
+/// The current dictation state for an overlay page that has just started, or
+/// `None` when no dictation is running. A window rebuilt during dictation
+/// (GL-006) uses it to show the state it missed.
+#[tauri::command]
+pub fn overlay_state(app: AppHandle) -> Option<DictationState> {
+    if dictation_idle(&app) {
+        return None;
+    }
+    OVERLAY_LAST_STATE.lock().ok().and_then(|last| last.clone())
+}
 
 fn unix_ms() -> u64 {
     SystemTime::now()
@@ -544,6 +574,11 @@ fn position_overlay(app: &AppHandle) {
 /// ([`report_overlay_event`]) then tell whether its page received the state and
 /// painted a frame.
 fn show_overlay(app: &AppHandle) {
+    show_overlay_checked_after(app, PRESENCE_CHECK_DELAY);
+}
+
+/// [`show_overlay`] with the delay before its on-screen presence check.
+fn show_overlay_checked_after(app: &AppHandle, check_delay: Duration) {
     let generation = OVERLAY_GENERATION.load(Ordering::SeqCst);
     let Some(window) = current_overlay(app) else {
         tracing::warn!(generation, "overlay window missing — cannot show");
@@ -555,7 +590,7 @@ fn show_overlay(app: &AppHandle) {
     let shown = window.show();
     OVERLAY_HIDDEN_SINCE_MS.store(0, Ordering::SeqCst);
     super::overlay_native::check_after_show(&window);
-    spawn_presence_check(app, window.clone(), generation);
+    spawn_presence_check(app, window.clone(), generation, check_delay);
     if let Err(e) = &shown {
         tracing::warn!(generation, "failed to show overlay: {e}");
     }
@@ -575,16 +610,21 @@ fn show_overlay(app: &AppHandle) {
 }
 
 /// After the pill is shown, read a few screen pixels where it should be. If the
-/// background shows through, the frame never reached the screen: log it and
-/// rebuild the window once the dictation ends (GL-006).
-fn spawn_presence_check(app: &AppHandle, window: WebviewWindow, generation: u64) {
+/// pill is not there, the frame never reached the screen (GL-006): log it,
+/// rebuild the window on the spot once per dictation and show it again, and
+/// keep it marked for a rebuild after the dictation if that fails.
+fn spawn_presence_check(app: &AppHandle, window: WebviewWindow, generation: u64, delay: Duration) {
     let app = app.clone();
     let spawned = std::thread::Builder::new()
         .name("overlay-presence-check".into())
         .spawn(move || {
-            std::thread::sleep(PRESENCE_CHECK_DELAY);
-            // A tap may already have hidden the pill; then there is nothing to check.
-            if dictation_idle(&app) || !window.is_visible().unwrap_or(false) {
+            std::thread::sleep(delay);
+            // A tap may already have hidden the pill, or the window was replaced;
+            // then there is nothing to check.
+            if dictation_idle(&app)
+                || OVERLAY_GENERATION.load(Ordering::SeqCst) != generation
+                || !window.is_visible().unwrap_or(false)
+            {
                 return;
             }
             let (Ok(position), Ok(size), Ok(scale)) = (
@@ -615,6 +655,7 @@ fn spawn_presence_check(app: &AppHandle, window: WebviewWindow, generation: u64)
                         "overlay shown but not presented on screen"
                     );
                     mark_overlay_stale("pill not presented on screen");
+                    request_overlay_repair(&app);
                 }
                 _ => tracing::debug!(
                     generation,
@@ -859,12 +900,21 @@ fn rebuild_overlay(app: &AppHandle) {
     if !OVERLAY_STALE.swap(false, Ordering::SeqCst) {
         return;
     }
+    if let Some(next) = replace_overlay(app) {
+        tracing::info!(generation = next, "overlay window rebuilt");
+    }
+}
+
+/// Build the next overlay window, make it current and destroy the old one.
+/// Returns the new generation, or `None` (old window kept, still marked
+/// stale) when the build failed.
+fn replace_overlay(app: &AppHandle) -> Option<u64> {
     let old = current_overlay(app);
     let next = OVERLAY_GENERATION.load(Ordering::SeqCst).wrapping_add(1);
     if let Err(e) = build_overlay(app, &overlay_label(next)) {
         tracing::warn!("failed to rebuild overlay window: {e}");
         OVERLAY_STALE.store(true, Ordering::SeqCst);
-        return;
+        return None;
     }
     OVERLAY_GENERATION.store(next, Ordering::SeqCst);
     if let Some(old) = old {
@@ -872,7 +922,46 @@ fn rebuild_overlay(app: &AppHandle) {
             tracing::warn!("failed to destroy previous overlay window: {e}");
         }
     }
-    tracing::info!(generation = next, "overlay window rebuilt");
+    Some(next)
+}
+
+/// Whether a dictation session `token` may still get its one immediate
+/// overlay repair; records the claim.
+fn claim_overlay_repair(repaired: &AtomicU64, token: u64) -> bool {
+    repaired.swap(token, Ordering::SeqCst) != token
+}
+
+/// Schedule an immediate rebuild of a pill that did not reach the screen
+/// during dictation, at most once per session (GL-006).
+fn request_overlay_repair(app: &AppHandle) {
+    let token = app
+        .state::<AppState>()
+        .dictation_generation
+        .load(Ordering::SeqCst);
+    if !claim_overlay_repair(&OVERLAY_REPAIRED_TOKEN, token) {
+        tracing::debug!("overlay repair already used in this dictation");
+        return;
+    }
+    let handle = app.clone();
+    if let Err(e) = app.run_on_main_thread(move || repair_overlay_now(&handle)) {
+        tracing::warn!("failed to schedule overlay repair: {e}");
+    }
+}
+
+/// Replace the overlay window while dictation runs and show the new one at
+/// the same place. Its page fetches the current state with [`overlay_state`].
+fn repair_overlay_now(app: &AppHandle) {
+    if dictation_idle(app) {
+        // The dictation ended meanwhile; the idle watcher rebuilds the window.
+        return;
+    }
+    OVERLAY_STALE.store(false, Ordering::SeqCst);
+    let Some(next) = replace_overlay(app) else {
+        return;
+    };
+    tracing::info!(generation = next, "overlay window rebuilt during dictation");
+    position_overlay(app);
+    show_overlay_checked_after(app, REPAIRED_PRESENCE_CHECK_DELAY);
 }
 
 // ── Tray ────────────────────────────────────────────────────────────────
@@ -1051,6 +1140,26 @@ mod tests {
         assert!(!idle_rebuild_due(1_000, 1_000 + ten_min - 1));
         assert!(idle_rebuild_due(1_000, 1_000 + ten_min));
         assert!(!idle_rebuild_due(5_000, 1_000), "clock moved back");
+    }
+
+    #[test]
+    fn immediate_overlay_repair_is_claimed_once_per_dictation() {
+        let repaired = AtomicU64::new(0);
+        assert!(claim_overlay_repair(&repaired, 1));
+        assert!(
+            !claim_overlay_repair(&repaired, 1),
+            "second loss, same dictation"
+        );
+        assert!(claim_overlay_repair(&repaired, 2), "next dictation");
+    }
+
+    #[test]
+    fn overlay_remembers_the_last_broadcast_state() {
+        remember_overlay_state(&DictationState::Recording);
+        assert_eq!(
+            OVERLAY_LAST_STATE.lock().unwrap().clone(),
+            Some(DictationState::Recording)
+        );
     }
 
     #[test]

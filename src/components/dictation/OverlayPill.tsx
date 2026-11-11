@@ -7,6 +7,7 @@ import {
   DICTATION_LEVEL_EVENT,
   DICTATION_STATE_EVENT,
   hideOverlay,
+  overlayState,
   reportOverlayEvent,
   type DictationDisposition,
   type DictationLevelPayload,
@@ -116,8 +117,10 @@ export function OverlayPill() {
       }, delay);
     };
 
-    const stateUnlisten = listen<DictationState>(DICTATION_STATE_EVENT, (event) => {
-      const next = event.payload;
+    let stateSeen = false;
+    let disposed = false;
+    const applyState = (next: DictationState) => {
+      stateSeen = true;
       setState(next);
       reportOverlayEvent("state_received", next.kind);
       // A terminal state may hide the window at once; only check visible states.
@@ -128,13 +131,25 @@ export function OverlayPill() {
       } else if (next.kind === "done" || next.kind === "error") {
         scheduleHide(next);
       }
-    });
+    };
+
+    const stateUnlisten = listen<DictationState>(DICTATION_STATE_EVENT, (event) => applyState(event.payload));
 
     const levelUnlisten = listen<DictationLevelPayload>(DICTATION_LEVEL_EVENT, (event) => {
       setLevel(event.payload.level);
     });
 
+    // A window rebuilt during dictation (GL-006) missed the state broadcast
+    // before it existed: once listening, ask Rust for the current one.
+    void Promise.all([stateUnlisten, levelUnlisten])
+      .then(() => overlayState())
+      .then((current) => {
+        if (current && !stateSeen && !disposed) applyState(current);
+      })
+      .catch(() => undefined);
+
     return () => {
+      disposed = true;
       frameCheck++;
       window.removeEventListener("error", onError);
       window.removeEventListener("unhandledrejection", onError);

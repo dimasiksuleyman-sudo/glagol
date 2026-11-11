@@ -3,9 +3,13 @@
   "id": "dictation-speed",
   "title": "Скорость диктовки и отключение озвучки (0.6.3)",
   "status": "active",
-  "next": "S4",
-  "reason": "Следующий шаг после выпуска 0.6.5: S4 — обновление ноутбука (0.6.1) из программы до 0.6.5; затем S3b — наблюдение индикатора по журналам 0.6.5.",
-  "claim": null,
+  "next": "S3c",
+  "reason": "Пользователь 2026-11-11 сообщил о пропаже индикатора на 0.6.5 (ПК); серия продолжена шагом S3c (0.6.6). Затем S4 — обновление ноутбука из программы и S3b — наблюдение.",
+  "claim": {
+    "owner": "Claude Code (cloud session)",
+    "at": "2026-11-11T14:40:00.000Z",
+    "branch": "claude/optimistic-franklin-cvvbsr"
+  },
   "links": [
     "docs/workstreams/dictation-speed/README.md",
     "docs/workstreams/dictation-speed/log.md"
@@ -194,6 +198,69 @@
           },
           "exit_code": null,
           "output": "Vulkan0: rtf 0,20 (26 920 мс аудио → 5 515 мс) против CPU 1,11; 4 и 8 потоков CPU одинаково",
+          "evidence": "docs/workstreams/dictation-speed/log.md"
+        }
+      ]
+    },
+    {
+      "id": "S3c",
+      "title": "GL-006 0.6.6: проверка присутствия на любом фоне и починка индикатора в той же диктовке",
+      "status": "in_progress",
+      "depends_on": [
+        "S3"
+      ],
+      "required": [
+        "rust",
+        "frontend",
+        "pc-test"
+      ],
+      "checks": [
+        {
+          "id": "rust",
+          "status": "PASS",
+          "method": "command",
+          "command": "cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test",
+          "cwd": "src-tauri",
+          "at": "2026-11-11T14:40:00.000Z",
+          "environment": {
+            "os": "Linux container",
+            "rustc": "1.97.0",
+            "node": "v22.23.4",
+            "pnpm": "10.28.0"
+          },
+          "exit_code": 0,
+          "output": "test result: ok. 364 passed; 0 failed; 6 ignored",
+          "evidence": "docs/workstreams/dictation-speed/log.md"
+        },
+        {
+          "id": "frontend",
+          "status": "PASS",
+          "method": "command",
+          "command": "pnpm build && node scripts/check-version.mjs",
+          "cwd": ".",
+          "at": "2026-11-11T14:40:00.000Z",
+          "environment": {
+            "os": "Linux container",
+            "rustc": "1.97.0",
+            "node": "v22.23.4",
+            "pnpm": "10.28.0"
+          },
+          "exit_code": 0,
+          "output": "I18N PASS: 351 keys; ✓ built; versions 0.6.6 match",
+          "evidence": "docs/workstreams/dictation-speed/log.md"
+        },
+        {
+          "id": "pc-test",
+          "status": "NOT_RUN",
+          "method": "manual",
+          "command": "Сборка 0.6.6 на ПК: обычная работа на тёмных окнах несколько дней; в журнале «not presented» и «rebuilt during dictation», индикатор возвращается в той же диктовке",
+          "cwd": ".",
+          "at": "2026-11-11T14:40:00.000Z",
+          "environment": {
+            "os": "Windows (ПК пользователя)"
+          },
+          "exit_code": null,
+          "output": "Ожидает сборки и журнала пользователя",
           "evidence": "docs/workstreams/dictation-speed/log.md"
         }
       ]

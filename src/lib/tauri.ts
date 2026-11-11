@@ -577,3 +577,5 @@ export const reportOverlayEvent = (event: OverlayEvent, state?: DictationState["
   invoke<void>("report_overlay_event", { event, state: state ?? null, delayMs: delayMs === undefined ? null : Math.round(delayMs) }).catch(() => undefined);
 /** Ask Rust to hide this overlay window unless a new dictation already started. */
 export const hideOverlay = () => invoke<void>("hide_overlay").catch(() => undefined);
+/** The running dictation's state for a pill window rebuilt mid-session, or `null` when idle. */
+export const overlayState = () => invoke<DictationState | null>("overlay_state").catch(() => null);
