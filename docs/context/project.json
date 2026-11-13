@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "observed_at": "2026-11-10T08:25:00.000Z",
-  "active_workstream": "filler-sounds",
+  "observed_at": "2026-11-13T20:05:00.000Z",
+  "active_workstream": "dictation-speed",
   "links": [
     "AGENTS.md",
     "CLAUDE.md",
@@ -65,9 +65,9 @@
       "id": "published",
       "label": "Публикация",
       "status": "observed",
-      "summary": "GitHub Release v0.6.5 опубликован как latest (тег → merge b2492db, PR #51, CI success). Установщик 10348612 байт, SHA-256 df3e5e9f661566eb8c1e2070c1fa670bcedc4cd5112df631ecdc22701fec4e7e совпал с SHA256SUMS; latest.json по адресу программы совпадает, заметки RU/EN целы; подпись проверена minisign встроенным ключом 82D55017631804B2.",
-      "observed_at": "2026-11-10T08:25:00.000Z",
-      "source": "docs/workstreams/ux-help/log.md"
+      "summary": "GitHub Release v0.6.6 опубликован как latest (тег → merge e687e62, PR #52, CI success). Установщик 10355410 байт, SHA-256 6f48efde5c9852cbcaa2c603b10ee8a24292779c0a0d7e3b4f14a837c45392d2 совпал с SHA256SUMS; latest.json по адресу программы совпадает, заметки RU/EN целы; подпись проверена minisign встроенным ключом 82D55017631804B2.",
+      "observed_at": "2026-11-13T20:05:00.000Z",
+      "source": "docs/workstreams/filler-sounds/log.md"
     },
     {
       "id": "qa-environment",

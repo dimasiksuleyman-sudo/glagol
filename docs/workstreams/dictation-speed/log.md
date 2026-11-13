@@ -551,3 +551,9 @@ pnpm build — I18N PASS 351, ✓ built; check-version 0.6.6. Код Windows-onl
 интенсивной диктовки; выпуск 0.6.6 — шаг F3 серии filler-sounds. Журналы 12–13.11
 не переданы: срабатывание «rebuilt during dictation» не подтверждено, S3c pc-test
 остаётся NOT_RUN.
+
+## 2026-11-13T20:05:00.000Z — серия снова активна после выпуска 0.6.6
+
+Выпуск 0.6.6 опубликован и проверен (docs/workstreams/filler-sounds/log.md).
+Дальше: S3c — журналы ПК с 0.6.6 (ищем «not presented on screen» и «rebuilt
+during dictation»), S4 — обновление ноутбука из программы, S3b — наблюдение.
