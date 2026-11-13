@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "id": "filler-sounds",
+  "title": "Чистка звуков-заминок в диктовке (э-э, эм, м-м)",
+  "status": "active",
+  "next": "F3",
+  "reason": null,
+  "claim": {
+    "owner": "Claude Code (cloud session)",
+    "at": "2026-11-13T12:00:00.000Z",
+    "branch": "claude/optimistic-franklin-cvvbsr"
+  },
+  "links": [
+    "docs/workstreams/filler-sounds/README.md",
+    "docs/workstreams/filler-sounds/log.md"
+  ],
+  "steps": [
+    {
+      "id": "F1",
+      "title": "Фильтр звуков-заминок RU/EN, настройка «Убирать звуки-заминки» (по умолчанию вкл.), документация; автоматические гейты",
+      "status": "done",
+      "depends_on": [],
+      "required": [
+        "rust",
+        "frontend"
+      ],
+      "checks": [
+        {
+          "id": "rust",
+          "status": "PASS",
+          "method": "command",
+          "command": "cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test",
+          "cwd": "src-tauri",
+          "at": "2026-11-13T09:40:00.000Z",
+          "environment": {
+            "os": "Linux container",
+            "rustc": "1.97.0",
+            "node": "v22.23.4",
+            "pnpm": "10.28.0"
+          },
+          "exit_code": 0,
+          "output": "test result: ok. 373 passed; 0 failed; 6 ignored",
+          "evidence": "docs/workstreams/filler-sounds/log.md"
+        },
+        {
+          "id": "frontend",
+          "status": "PASS",
+          "method": "command",
+          "command": "pnpm exec tsc --noEmit && pnpm build",
+          "cwd": ".",
+          "at": "2026-11-13T09:40:00.000Z",
+          "environment": {
+            "os": "Linux container",
+            "rustc": "1.97.0",
+            "node": "v22.23.4",
+            "pnpm": "10.28.0"
+          },
+          "exit_code": 0,
+          "output": "I18N PASS: 353 keys; ✓ built",
+          "evidence": "docs/workstreams/filler-sounds/log.md"
+        }
+      ]
+    },
+    {
+      "id": "F2",
+      "title": "Проверка на ПК: диктовка с «эм-м», «э-э», «хм» и обычной речью; включение и выключение настройки",
+      "status": "done",
+      "depends_on": [
+        "F1"
+      ],
+      "required": [
+        "pc-test"
+      ],
+      "checks": [
+        {
+          "id": "pc-test",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Сборка 0.6.6 (ac6b70e) на ПК: диктовка с «эм-м», «э-э», «хм» и обычной речью",
+          "cwd": ".",
+          "at": "2026-11-13T12:00:00.000Z",
+          "environment": {
+            "os": "Windows (ПК пользователя)"
+          },
+          "exit_code": null,
+          "output": "Пользователь: «Проверил, работает.» (reported, без журнала и примеров текста)",
+          "evidence": "docs/workstreams/filler-sounds/log.md"
+        }
+      ]
+    },
+    {
+      "id": "F3",
+      "title": "Выпуск 0.6.6: заметки, PR и CI, подписанная сборка, GitHub Release, проверка опубликованного",
+      "status": "in_progress",
+      "depends_on": [
+        "F2"
+      ],
+      "required": [
+        "nsis",
+        "published"
+      ],
+      "checks": [
+        {
+          "id": "nsis",
+          "status": "PASS",
+          "method": "manual",
+          "command": "pnpm tauri build; tauri signer sign <installer> (ключ и пароль через Read-Host); pnpm release:assets --notes-file docs/releases/v0.6.6.notes.txt (user-run на ПК)",
+          "cwd": ".",
+          "at": "2026-11-13T15:30:00.000Z",
+          "environment": {
+            "os": "Windows (ПК пользователя)"
+          },
+          "exit_code": null,
+          "output": "Glagol_0.6.6_x64-setup.exe 10355410 байт, SHA-256 6f48efde5c9852cbcaa2c603b10ee8a24292779c0a0d7e3b4f14a837c45392d2, подпись ключом 82D55017631804B2",
+          "evidence": "docs/workstreams/filler-sounds/log.md"
+        }
+      ]
+    }
+  ]
+}

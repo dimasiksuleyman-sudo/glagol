@@ -30,6 +30,7 @@
 //! [`LevelSink`] seams keep the whole path testable without hardware; a live
 //! `#[ignore]` microphone test (see `recorder`) is the manual gate (D14).
 
+pub mod fillers;
 pub mod insert;
 pub mod overlay_native;
 pub mod pipeline;

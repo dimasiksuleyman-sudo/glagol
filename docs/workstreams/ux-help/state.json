@@ -2,14 +2,10 @@
   "schema_version": 1,
   "id": "ux-help",
   "title": "Интерфейс без «простыни» и интерактивная справка (0.6.5)",
-  "status": "active",
-  "next": "H6",
-  "reason": null,
-  "claim": {
-    "owner": "claude",
-    "at": "2026-11-10T07:06:05.000Z",
-    "branch": "claude/optimistic-franklin-cvvbsr"
-  },
+  "status": "done",
+  "next": null,
+  "reason": "Серия завершена: выпуск 0.6.5 опубликован и проверен 2026-11-10.",
+  "claim": null,
   "links": [
     "docs/workstreams/ux-help/README.md",
     "docs/workstreams/ux-help/log.md"
@@ -177,7 +173,7 @@
     {
       "id": "H6",
       "title": "Выпуск 0.6.5: CI, подписанная сборка, Release, обновление из программы",
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [
         "H5"
       ],
@@ -185,7 +181,36 @@
         "nsis",
         "published"
       ],
-      "checks": []
+      "checks": [
+        {
+          "id": "nsis",
+          "status": "PASS",
+          "method": "manual",
+          "command": "pnpm tauri build --config src-tauri/tauri.release.conf.json; pnpm tauri signer sign <installer> (ключ и пароль); pnpm release:assets --notes-file docs/releases/v0.6.5.notes.txt (user-run на ПК)",
+          "cwd": ".",
+          "at": "2026-11-10T07:50:13.000Z",
+          "environment": {
+            "os": "Windows (ПК пользователя)"
+          },
+          "exit_code": null,
+          "output": "Glagol_0.6.5_x64-setup.exe 10348612 байт, SHA-256 df3e5e9f661566eb8c1e2070c1fa670bcedc4cd5112df631ecdc22701fec4e7e, подпись ключом 82D55017631804B2",
+          "evidence": "docs/workstreams/ux-help/log.md"
+        },
+        {
+          "id": "published",
+          "status": "PASS",
+          "method": "command",
+          "command": "curl assets v0.6.5 + releases/latest/download/latest.json; sha256sum -c; cmp; minisign -V with embedded pubkey",
+          "cwd": ".",
+          "at": "2026-11-10T08:25:00.000Z",
+          "environment": {
+            "os": "Linux container"
+          },
+          "exit_code": 0,
+          "output": "Glagol_0.6.5_x64-setup.exe: OK; endpoint latest.json identical; Signature and comment signature verified; notes RU/EN без потерь; тег v0.6.5 → b2492db",
+          "evidence": "docs/workstreams/ux-help/log.md"
+        }
+      ]
     }
   ]
 }

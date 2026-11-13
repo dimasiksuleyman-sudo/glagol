@@ -94,6 +94,8 @@ impl dictation::pipeline::DictationEmitter for tauri::AppHandle {
             self,
             matches!(state, dictation::pipeline::DictationState::Recording),
         );
+        // A pill window rebuilt mid-dictation (GL-006) asks for this state.
+        dictation::session::remember_overlay_state(&state);
         let _ = self.emit(dictation::pipeline::DICTATION_STATE_EVENT, state);
     }
 }
@@ -297,6 +299,7 @@ pub fn run() {
             commands::preferences::set_tts_enabled,
             dictation::session::report_overlay_event,
             dictation::session::hide_overlay,
+            dictation::session::overlay_state,
             commands::diagnostics::get_diagnostics_settings,
             commands::diagnostics::set_detailed_logging,
             commands::diagnostics::open_log_folder,

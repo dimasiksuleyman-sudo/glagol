@@ -260,5 +260,7 @@ export const messages = {
   "Ready: hold {p0} and speak.": "Ready: hold {p0} and speak.",
   "Glagol has a faster setup for this computer.": "Glagol has a faster setup for this computer.",
   "Search by title": "Search by title",
-  "Nothing found.": "Nothing found."
+  "Nothing found.": "Nothing found.",
+  "Remove hesitation sounds": "Remove hesitation sounds",
+  "Drops sounds like «uh», «um», «hmm» or «эм», «э-э», «м-м» from the text. Words such as «like» or «ну» are kept.": "Drops sounds like “uh”, “um”, “hmm” or “эм”, “э-э”, “м-м” from the text. Words such as “like” or “ну” are kept."
 } as const;

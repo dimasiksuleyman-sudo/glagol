@@ -76,3 +76,19 @@ df3e5e9f661566eb8c1e2070c1fa670bcedc4cd5112df631ecdc22701fec4e7e, 10 348 612 б�
 latest.json испорчен. Добавлено `--notes-file` (UTF-8, BOM допускается) и
 docs/releases/v0.6.5.notes.txt; тест release-assets (4 pass); ранбук обновлён.
 latest.json нужно пересоздать из файла перед публикацией.
+
+## 2026-11-10T08:25:00.000Z — H6 выпуск 0.6.5 опубликован и проверен
+
+Пользователь опубликовал GitHub Release v0.6.5 (latest; тег v0.6.5 → b2492db,
+merge PR #51 после зелёного CI). Проверка здесь (Linux-контейнер): скачаны
+установщик, latest.json и SHA256SUMS.txt выпуска и latest.json по адресу
+обновлений программы (`releases/latest/download/latest.json`).
+`sha256sum -c` — «Glagol_0.6.5_x64-setup.exe: OK» (10 348 612 байт, SHA-256
+df3e5e9f…4e7e); `cmp` latest.json выпуска и адреса программы — совпадают;
+version 0.6.5, платформы windows-x86_64 и windows-x86_64-nsis с одинаковой
+подписью; notes содержат «Понятнее» — кириллица целая. `minisign -V` с ключом из
+tauri.conf.json (ID 82D55017631804B2) — «Signature and comment signature
+verified», trusted comment file:Glagol_0.6.5_x64-setup.exe.
+H6 выполнен, серия ux-help завершена; R4 серии hardware-recommendations закрыт
+этим же выпуском. Обновление из программы на ноутбуке (0.6.1 → 0.6.5) —
+шаг S4 серии dictation-speed, ставшей активной.

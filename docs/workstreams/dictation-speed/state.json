@@ -3,8 +3,8 @@
   "id": "dictation-speed",
   "title": "Скорость диктовки и отключение озвучки (0.6.3)",
   "status": "paused",
-  "next": "S4",
-  "reason": "Пользователь 2026-11-10 переключил работу на hardware-recommendations и выпуск. Продолжение: S4 — обновление ноутбука из программы (выпуск, следующий после 0.6.3), S3b — наблюдение индикатора по журналам 0.6.4+.",
+  "next": "S3c",
+  "reason": "Пользователь 2026-11-13: «Двое суток интенсивной диктовки полёт нормальный» на сборке 0.6.6 (reported, без журнала) и переключил работу на чистку звуков-заминок (серия filler-sounds). Продолжение: S3c — журналы за 12–13.11, чтобы увидеть, срабатывала ли починка; затем S4 и S3b.",
   "claim": null,
   "links": [
     "docs/workstreams/dictation-speed/README.md",
@@ -199,6 +199,69 @@
       ]
     },
     {
+      "id": "S3c",
+      "title": "GL-006 0.6.6: проверка присутствия на любом фоне и починка индикатора в той же диктовке",
+      "status": "pending",
+      "depends_on": [
+        "S3"
+      ],
+      "required": [
+        "rust",
+        "frontend",
+        "pc-test"
+      ],
+      "checks": [
+        {
+          "id": "rust",
+          "status": "PASS",
+          "method": "command",
+          "command": "cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test",
+          "cwd": "src-tauri",
+          "at": "2026-11-11T14:40:00.000Z",
+          "environment": {
+            "os": "Linux container",
+            "rustc": "1.97.0",
+            "node": "v22.23.4",
+            "pnpm": "10.28.0"
+          },
+          "exit_code": 0,
+          "output": "test result: ok. 364 passed; 0 failed; 6 ignored",
+          "evidence": "docs/workstreams/dictation-speed/log.md"
+        },
+        {
+          "id": "frontend",
+          "status": "PASS",
+          "method": "command",
+          "command": "pnpm build && node scripts/check-version.mjs",
+          "cwd": ".",
+          "at": "2026-11-11T14:40:00.000Z",
+          "environment": {
+            "os": "Linux container",
+            "rustc": "1.97.0",
+            "node": "v22.23.4",
+            "pnpm": "10.28.0"
+          },
+          "exit_code": 0,
+          "output": "I18N PASS: 351 keys; ✓ built; versions 0.6.6 match",
+          "evidence": "docs/workstreams/dictation-speed/log.md"
+        },
+        {
+          "id": "pc-test",
+          "status": "NOT_RUN",
+          "method": "manual",
+          "command": "Сборка 0.6.6 на ПК: обычная работа на тёмных окнах несколько дней; в журнале «not presented» и «rebuilt during dictation», индикатор возвращается в той же диктовке",
+          "cwd": ".",
+          "at": "2026-11-11T14:40:00.000Z",
+          "environment": {
+            "os": "Windows (ПК пользователя)"
+          },
+          "exit_code": null,
+          "output": "Ожидает сборки и журнала пользователя",
+          "evidence": "docs/workstreams/dictation-speed/log.md"
+        }
+      ]
+    },
+    {
       "id": "S4",
       "title": "Выпуск 0.6.3: подписанная сборка, PR и CI, GitHub Release, обновление из программы",
       "status": "pending",
@@ -243,14 +306,14 @@
           "id": "in-app-update",
           "status": "NOT_RUN",
           "method": "manual",
-          "command": "Проверить обновления → Установить обновление на ноутбуке (0.6.1) и ПК (0.6.2)",
+          "command": "Проверить обновления → Установить обновление на ноутбуке (0.6.1 → 0.6.5)",
           "cwd": ".",
           "at": "2026-11-09T18:54:39.000Z",
           "environment": {
             "os": "Windows (ноутбук и ПК пользователя)"
           },
           "exit_code": null,
-          "output": "ПК: 0.6.2 → 0.6.3 из программы (журнал 16:12–16:14Z, observed); ноутбук 0.6.1 — ожидает",
+          "output": "ПК: 0.6.2 → 0.6.3 из программы (журнал 16:12–16:14Z, observed); ноутбук 0.6.1 — ожидает обновления до 0.6.5",
           "evidence": "docs/workstreams/dictation-speed/log.md"
         }
       ]

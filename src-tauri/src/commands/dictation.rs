@@ -63,6 +63,8 @@ const KEY_DEVICE: &str = "dictation_device";
 const KEY_HISTORY_ENABLED: &str = "dictation_history_enabled";
 /// STT provider preset name (D3). Informational label for the Settings UI.
 const KEY_PROVIDER: &str = "stt_provider";
+/// Remove hesitation sounds («эм», «э-э», "um") before insertion. Default on.
+const KEY_REMOVE_FILLERS: &str = "dictation_remove_fillers";
 
 /// Default push-to-talk hotkey (D3/D7). `CmdOrCtrl` resolves to `Control` on
 /// Windows/Linux and `Cmd` on macOS via global-shortcut's parser.
@@ -71,6 +73,9 @@ pub(crate) const DEFAULT_HOTKEY: &str = "CmdOrCtrl+Shift+Space";
 const DEFAULT_PROVIDER: &str = "aitunnel";
 /// Default history state: **off** (D4/Q3).
 const DEFAULT_HISTORY_ENABLED: bool = false;
+/// Default hesitation-sound removal: **on** (filler-sounds F1). Only sounds,
+/// never words, are removed, and the switch is in Settings → Dictation.
+const DEFAULT_REMOVE_FILLERS: bool = true;
 /// Persisted representation of an enabled/disabled boolean setting.
 const BOOL_TRUE: &str = "true";
 const BOOL_FALSE: &str = "false";
@@ -123,6 +128,8 @@ pub struct DictationSettings {
     pub model: String,
     /// `"paste"` | `"clipboard_only"` — the effective auto-insertion mode (D12).
     pub insertion_mode: String,
+    /// Remove hesitation sounds before insertion.
+    pub remove_fillers: bool,
 }
 
 // ── Tauri command wrappers ─────────────────────────────────────────────
@@ -220,6 +227,25 @@ pub(crate) fn read_history_enabled(conn: &Connection) -> rusqlite::Result<bool> 
     })
 }
 
+/// Read the hesitation-sound switch. Absent → [`DEFAULT_REMOVE_FILLERS`] (on);
+/// an unknown value is a loud fallback to the default.
+pub(crate) fn read_remove_fillers(conn: &Connection) -> rusqlite::Result<bool> {
+    Ok(match repository::get_setting(conn, KEY_REMOVE_FILLERS)? {
+        None => DEFAULT_REMOVE_FILLERS,
+        Some(raw) => match raw.as_str() {
+            BOOL_TRUE => true,
+            BOOL_FALSE => false,
+            other => {
+                tracing::error!(
+                    value = other,
+                    "unknown dictation_remove_fillers; falling back to the default"
+                );
+                DEFAULT_REMOVE_FILLERS
+            }
+        },
+    })
+}
+
 /// Read the pinned input device name (D6). An absent or whitespace-only value
 /// means "system default" → `None`.
 pub(crate) fn read_device_setting(conn: &Connection) -> rusqlite::Result<Option<String>> {
@@ -257,6 +283,7 @@ pub(crate) fn get_dictation_settings_impl(
         )?
         .unwrap_or_else(|| DEFAULT_MODEL.to_string()),
         insertion_mode: insertion_mode_str(read_insertion_mode(conn)?).to_string(),
+        remove_fillers: read_remove_fillers(conn)?,
     })
 }
 
@@ -278,6 +305,14 @@ pub(crate) fn set_dictation_setting_impl(
             if value != BOOL_TRUE && value != BOOL_FALSE {
                 return Err(
                     "Недопустимое значение переключателя истории (ожидается true или false)."
+                        .to_string(),
+                );
+            }
+        }
+        KEY_REMOVE_FILLERS => {
+            if value != BOOL_TRUE && value != BOOL_FALSE {
+                return Err(
+                    "Недопустимое значение переключателя звуков-заминок (ожидается true или false)."
                         .to_string(),
                 );
             }
@@ -903,6 +938,24 @@ mod tests {
         assert_eq!(s.provider, DEFAULT_PROVIDER);
         assert_eq!(s.model, DEFAULT_MODEL);
         assert_eq!(s.insertion_mode, INSERTION_MODE_PASTE);
+        assert!(s.remove_fillers, "hesitation sounds are removed by default");
+    }
+
+    #[test]
+    fn remove_fillers_switch_validates_and_persists() {
+        let conn = crate::db::test_connection();
+        set_dictation_setting_impl(&conn, KEY_REMOVE_FILLERS, "false", 1).unwrap();
+        assert!(!read_remove_fillers(&conn).unwrap());
+        assert!(set_dictation_setting_impl(&conn, KEY_REMOVE_FILLERS, "maybe", 2).is_err());
+        assert!(
+            !read_remove_fillers(&conn).unwrap(),
+            "invalid value not written"
+        );
+        repository::set_setting(&conn, KEY_REMOVE_FILLERS, "garbage", 3).unwrap();
+        assert!(
+            read_remove_fillers(&conn).unwrap(),
+            "corrupt value falls back to on"
+        );
     }
 
     #[test]

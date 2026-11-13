@@ -112,6 +112,10 @@
     "ru": "Недопустимое значение переключателя истории (ожидается true или false)."
   },
   {
+    "en": "Invalid hesitation-sound setting (expected true or false).",
+    "ru": "Недопустимое значение переключателя звуков-заминок (ожидается true или false)."
+  },
+  {
     "en": "Invalid insertion mode (expected paste or clipboard_only).",
     "ru": "Недопустимый режим вставки (ожидается paste или clipboard_only)."
   },

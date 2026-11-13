@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
 import { DevicePicker } from "@/components/dictation/DevicePicker";
 import { DictationHistory } from "@/components/dictation/DictationHistory";
 import { HotkeyEditor } from "@/components/dictation/HotkeyEditor";
@@ -170,6 +171,18 @@ export function Dictation() {
     }
   }
 
+  async function handleFillersToggle(enabled: boolean) {
+    if (!settings) return;
+    const prev = settings.remove_fillers;
+    setSettings({ ...settings, remove_fillers: enabled }); // optimistic
+    try {
+      await setDictationSetting("dictation_remove_fillers", enabled ? "true" : "false");
+    } catch (err) {
+      setSettings((s) => (s ? { ...s, remove_fillers: prev } : s)); // revert
+      toast.error(stringifyError(err));
+    }
+  }
+
   async function handleHistoryClear() {
     setBusy(true);
     try {
@@ -264,6 +277,23 @@ export function Dictation() {
                     </span>
                   </label>
                 </RadioGroup>
+              </div>
+
+              <div className="flex items-start justify-between gap-4" data-tour="fillers">
+                <div className="space-y-0.5">
+                  <label htmlFor="fillers-toggle" className="text-sm font-medium">
+                    {t("Remove hesitation sounds")}
+                  </label>
+                  <p className="text-muted-foreground text-xs">
+                    {t("Drops sounds like «uh», «um», «hmm» or «эм», «э-э», «м-м» from the text. Words such as «like» or «ну» are kept.")}
+                  </p>
+                </div>
+                <Switch
+                  id="fillers-toggle"
+                  checked={settings.remove_fillers}
+                  onCheckedChange={handleFillersToggle}
+                  disabled={busy}
+                />
               </div>
 
               <Separator />

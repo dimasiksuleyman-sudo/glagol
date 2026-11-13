@@ -1,14 +1,14 @@
-# Glagol user guide — 0.6.5
+# Glagol user guide — 0.6.6
 
 [Русский](USER_GUIDE.ru.md) · [README](README.md)
 
 Glagol reads English and Russian documents aloud and turns dictation into text.
-This guide describes [Glagol 0.6.5](docs/releases/v0.6.5.md).
+This guide describes [Glagol 0.6.6](docs/releases/v0.6.6.md).
 The GitHub link at the bottom of the sidebar opens the author's profile in your browser.
 
 ## Installation
 
-Windows 10/11 x64 is required. Run the locally built `Glagol_0.6.5_x64-setup.exe`.
+Windows 10/11 x64 is required. Run the locally built `Glagol_0.6.6_x64-setup.exe`.
 The installer offers English and Russian, starts with Windows' language and uses
 English as fallback. The unsigned installer may trigger SmartScreen: check the
 artifact's source and SHA-256 before choosing More info → Run anyway. Installation
@@ -132,6 +132,13 @@ is filtered. Queue overflow or an engine failure discards the attempt with an er
 instead of inserting a truncated transcript.
 
 On Dictation choose language, microphone, hotkey and Auto-paste or Clipboard only.
+Remove hesitation sounds (on by default) drops the sounds people make while thinking:
+"uh", "um", "er", "hmm" and the Russian «эм», «э-э», «м-м», «хм», «аа». Spaces, commas
+and capitalization are repaired afterwards; if a dictation contained only such sounds,
+nothing is inserted. Words such as "like" or «ну», «вот», «типа» are kept: they are real
+words and cannot be told apart from their ordinary use without understanding the
+sentence. Single «м», «а», «у» are kept too. Cleaning runs on the computer, without the
+network, for every recognition method; history receives the cleaned text.
 History is off by default; enabling it retains the last 10 transcripts. Turning it
 off stops additions; Clear history removes existing entries. Total dictated is a
 lifetime duration counter. UI, dictation and TTS languages are independent; each
@@ -181,8 +188,11 @@ a remote desktop connects or disconnects, the display configuration changes, or 
 indicator's WebView2 process fails, Glagol rebuilds the hidden indicator window within
 a few seconds (on Windows). The window is also rebuilt when the indicator has not been
 shown for more than 10 minutes, and after each show Glagol reads a few screen pixels
-within the indicator itself to confirm it is really visible; if not, it logs a warning
-and rebuilds the window right after that dictation. The pixels are not stored. The
+within the indicator itself to confirm it is really visible — on light, dark and black
+backgrounds. If the indicator is not on screen, Glagol logs a warning, rebuilds the window
+at once and shows the indicator again during the same dictation (in about half a second;
+once per dictation). Only a background of almost the same colour as the indicator cannot
+be judged. The pixels are not stored. The
 indicator has a light and a dark outline, so it stands out on light and dark backgrounds. If the indicator ever stays invisible, restart Glagol from
 the tray and send the log from that day: it records these events and the indicator state.
 

@@ -11,6 +11,18 @@ the per-session master logs under [`docs/day-logs/`](docs/day-logs/).
 
 ## [Unreleased]
 
+## [v0.6.6] — 2026-11-13
+
+[Release notes, validation and limits / проверка и ограничения](docs/releases/v0.6.6.md).
+
+### Added
+
+- Remove hesitation sounds (Dictation page, on by default): sounds such as "uh", "um", "er", "hmm" and «эм», «э-э», «м-м», «хм» are dropped from the dictated text, with spaces, commas and capitalization repaired; real words like "like" or «ну», «вот» are kept. Works locally for every recognition method. / «Убирать звуки-заминки» (страница «Диктовка», по умолчанию включено): звуки вроде «эм», «э-э», «м-м», «хм» и «uh», «um» убираются из надиктованного текста с исправлением пробелов, запятых и заглавной буквы; настоящие слова вроде «ну», «вот» остаются. Работает локально для любого способа распознавания.
+
+### Fixed
+
+- The dictation indicator check missed a lost indicator over dark windows: it trusted only light backgrounds. It now compares the screen with the colours the indicator can take, so it works on light, dark and black backgrounds, and a lost indicator is rebuilt and shown again during the same dictation instead of after it (once per dictation, GL-006). / Проверка индикатора диктовки не замечала пропажу над тёмными окнами: она доверяла только светлому фону. Теперь она сравнивает экран с цветами, которые может иметь индикатор, поэтому работает на светлом, тёмном и чёрном фоне, а пропавший индикатор пересоздаётся и показывается снова в той же диктовке, а не после неё (один раз за диктовку, GL-006).
+
 ## [v0.6.5] — 2026-11-10
 
 [Release notes, validation and limits / проверка и ограничения](docs/releases/v0.6.5.md). Version 0.6.4 was an unpublished test build. / Версия 0.6.4 была неопубликованной тестовой сборкой.
