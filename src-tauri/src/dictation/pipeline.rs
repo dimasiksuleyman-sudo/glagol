@@ -234,6 +234,9 @@ pub struct DictationOpts {
     /// How to deliver the transcript (D12). Read from `stt_insertion_mode`.
     pub mode: InsertionMode,
     pub watchdog: Duration,
+    /// Drop hesitation sounds («эм», «э-э», "um") before delivery
+    /// ([`crate::dictation::fillers`]). Read from `dictation_remove_fillers`.
+    pub remove_fillers: bool,
 }
 
 impl DictationOpts {
@@ -245,7 +248,14 @@ impl DictationOpts {
             lang,
             mode,
             watchdog: DEFAULT_WATCHDOG,
+            remove_fillers: false,
         }
+    }
+
+    /// The same options with hesitation-sound removal switched on or off.
+    pub fn with_remove_fillers(mut self, remove_fillers: bool) -> Self {
+        self.remove_fillers = remove_fillers;
+        self
     }
 }
 
@@ -417,7 +427,15 @@ where
     // A provider can return empty text for a clip that passed the RMS gate
     // (breath, a click). Nothing to deliver — discard silently rather than
     // stamping an empty clipboard.
-    let text = text.trim();
+    // Hesitation sounds («эм-м», "um") go before the emptiness check, so a
+    // dictation of sounds only inserts nothing.
+    let cleaned;
+    let text = if opts.remove_fillers {
+        cleaned = super::fillers::remove_fillers(&text);
+        cleaned.as_str()
+    } else {
+        text.trim()
+    };
     if text.is_empty() {
         tracing::debug!("provider returned empty transcript; discarding");
         return discard(&deps, DiscardReason::EmptyTranscript);
@@ -654,6 +672,7 @@ mod tests {
                 lang: Some("ru".into()),
                 mode: InsertionMode::ClipboardOnly,
                 watchdog: DEFAULT_WATCHDOG,
+                remove_fillers: false,
             },
             rx,
         )
@@ -820,6 +839,47 @@ mod tests {
         )
         .await;
         assert_eq!(clipboard.content(), Some("привет".to_string()));
+    }
+
+    /// Run with filler removal switched on.
+    async fn run_removing_fillers(text: &str, clipboard: &FakeClipboard) -> DictationOutcome {
+        let recorder = FakeRecorder::ok(Ok(loud_clip(1000, 8000, false)));
+        let provider = FakeStt::text(text);
+        let (tx, rx) = oneshot::channel();
+        tx.send(()).unwrap();
+        run_dictation(
+            DictationDeps {
+                recorder: &recorder,
+                provider: &provider,
+                inserter: &FakeInserter::default(),
+                clipboard,
+                emitter: &FakeEmitter::default(),
+                phase: &Mutex::new(DictationPhase::Idle),
+            },
+            DictationOpts::new(None, None, InsertionMode::ClipboardOnly).with_remove_fillers(true),
+            rx,
+        )
+        .await
+    }
+
+    #[tokio::test]
+    async fn removes_hesitation_sounds_when_enabled() {
+        let clipboard = FakeClipboard::empty();
+        let outcome = run_removing_fillers("Эм-м, давай завтра.", &clipboard).await;
+        assert!(matches!(outcome, DictationOutcome::Delivered { .. }));
+        assert_eq!(clipboard.content(), Some("Давай завтра.".to_string()));
+    }
+
+    #[tokio::test]
+    async fn sounds_only_dictation_inserts_nothing() {
+        let clipboard = FakeClipboard::empty();
+        let outcome = run_removing_fillers("Э-э... хм.", &clipboard).await;
+        assert!(matches!(outcome, DictationOutcome::Discarded(_)));
+        assert_eq!(
+            clipboard.content(),
+            None,
+            "nothing written to the clipboard"
+        );
     }
 
     // ── silence filter (D8) ──
@@ -1106,6 +1166,7 @@ mod tests {
                 lang: None,
                 mode: InsertionMode::ClipboardOnly,
                 watchdog: Duration::from_millis(10),
+                remove_fillers: false,
             },
             rx,
         )
@@ -1209,6 +1270,7 @@ mod tests {
                 lang: None,
                 mode,
                 watchdog: DEFAULT_WATCHDOG,
+                remove_fillers: false,
             },
             rx,
         )

@@ -459,6 +459,8 @@ export interface DictationSettings {
   model: string;
   /** `"paste" | "clipboard_only"` — the effective auto-insertion mode. */
   insertion_mode: string;
+  /** Remove hesitation sounds («эм», «э-э», "um") before insertion (default on). */
+  remove_fillers: boolean;
 }
 
 /**
@@ -490,7 +492,7 @@ export async function getDictationSettings(): Promise<DictationSettings> {
 
 /**
  * Persist a single dictation-page setting by whitelisted `name`
- * (`stt_insertion_mode`, `dictation_device`, `dictation_history_enabled`,
+ * (`stt_insertion_mode`, `dictation_device`, `dictation_history_enabled`, `dictation_remove_fillers`,
  * `stt_model`, `stt_provider`). The hotkey is **not** settable here — it goes
  * through {@link setDictationHotkey}. Rejects with a Russian-language string on
  * an invalid value or an unknown key; nothing is written unless it validates.

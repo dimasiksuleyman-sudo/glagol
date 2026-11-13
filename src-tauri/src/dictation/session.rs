@@ -34,7 +34,9 @@ use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
 use tauri_plugin_global_shortcut::{Code, Modifiers, Shortcut, ShortcutState};
 use tokio::sync::oneshot;
 
-use crate::commands::dictation::{read_device_setting, read_history_enabled, read_insertion_mode};
+use crate::commands::dictation::{
+    read_device_setting, read_history_enabled, read_insertion_mode, read_remove_fillers,
+};
 use crate::db::repository;
 use crate::dictation::insert::{ArboardClipboard, EnigoInserter, InsertionMode};
 use crate::dictation::pipeline::{
@@ -251,7 +253,7 @@ fn on_released(app: &AppHandle) {
 async fn run_session(app: AppHandle, release_rx: oneshot::Receiver<()>, token: u64) {
     let state = app.state::<AppState>();
 
-    let (provider, device, language, mode) = match build_provider(&app, &state) {
+    let (provider, device, language, mode, remove_fillers) = match build_provider(&app, &state) {
         Ok(setup) => setup,
         Err(message) => {
             // No key / bad config — surface it in the pill and stand down. The
@@ -271,7 +273,7 @@ async fn run_session(app: AppHandle, release_rx: oneshot::Receiver<()>, token: u
     let clipboard = ArboardClipboard;
     // Pass the pinned device (D6); the recorder falls back to the system default
     // and reports it if the device is gone.
-    let opts = DictationOpts::new(device, language, mode);
+    let opts = DictationOpts::new(device, language, mode).with_remove_fillers(remove_fillers);
     let recorder = SessionRecorder {
         recorder: &state.recorder,
         provider: &provider,
@@ -411,7 +413,14 @@ fn finish_session(app: &AppHandle, state: &AppState, token: u64) {
 /// auto-insertion mode (D12). Returns a user-facing Russian error when the
 /// configuration is unusable — most importantly when a remote endpoint has no
 /// API key (D13).
-type SessionSetup = (SttBackend, Option<String>, Option<String>, InsertionMode);
+/// Provider, pinned device, language, insertion mode and hesitation-sound removal.
+type SessionSetup = (
+    SttBackend,
+    Option<String>,
+    Option<String>,
+    InsertionMode,
+    bool,
+);
 
 struct SessionRecorder<'a> {
     recorder: &'a super::RecorderHandle,
@@ -435,7 +444,7 @@ impl super::pipeline::RecorderControl for SessionRecorder<'_> {
 }
 
 fn build_provider(app: &AppHandle, state: &AppState) -> Result<SessionSetup, String> {
-    let (provider, settings, mode, device) = {
+    let (provider, settings, mode, device, remove_fillers) = {
         let conn = state
             .db
             .lock()
@@ -445,10 +454,18 @@ fn build_provider(app: &AppHandle, state: &AppState) -> Result<SessionSetup, Str
             .map_err(|e| format!("Не удалось прочитать режим вставки: {e}"))?;
         let device = read_device_setting(&conn)
             .map_err(|e| format!("Не удалось прочитать устройство ввода: {e}"))?;
-        (provider, settings, mode, device)
+        let remove_fillers = read_remove_fillers(&conn)
+            .map_err(|e| format!("Не удалось прочитать настройки диктовки: {e}"))?;
+        (provider, settings, mode, device, remove_fillers)
     };
 
-    Ok((provider, device, resolve_language(&settings.language), mode))
+    Ok((
+        provider,
+        device,
+        resolve_language(&settings.language),
+        mode,
+        remove_fillers,
+    ))
 }
 
 /// Advisory write of recognition seconds to `api_usage` for the current month

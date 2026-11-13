@@ -5,17 +5,15 @@
 
 Начало работы: [AGENTS](../AGENTS.md) → этот обзор → состояние и журнал серии.
 
-Выбранная серия: **Скорость диктовки и отключение озвучки (0.6.3)**.
+Выбранная серия: **Чистка звуков-заминок в диктовке (э-э, эм, м-м)**.
 
-**NEXT: S3c — GL-006 0.6.6: проверка присутствия на любом фоне и починка индикатора в той же диктовке** (in_progress).
+**NEXT: F2 — Проверка на ПК: диктовка с «эм-м», «э-э», «хм» и обычной речью; включение и выключение настройки** (pending).
 
-[Решения](workstreams/dictation-speed/README.md) · [Состояние](workstreams/dictation-speed/state.json) · [Журнал](workstreams/dictation-speed/log.md)
+[Решения](workstreams/filler-sounds/README.md) · [Состояние](workstreams/filler-sounds/state.json) · [Журнал](workstreams/filler-sounds/log.md)
 
-Выполняет: Claude Code (cloud session); ветка claude/optimistic-franklin-cvvbsr; с 2026-11-11T14:40:00.000Z.
+Последний завершённый шаг серии: **F1 — Фильтр звуков-заминок RU/EN, настройка «Убирать звуки-заминки» (по умолчанию вкл.), документация; автоматические гейты**.
 
-Последний завершённый шаг серии: **S3 — Ускорение по согласованию: видеокарта (Vulkan), потоки, 30-дневная квитанция проверки; замер на ПК**.
-
-Проверка 2026-11-09T11:03:13.000Z: test result: ok. 354 passed; 0 failed; 6 ignored ([evidence](../docs/workstreams/dictation-speed/log.md)).
+Проверка 2026-11-13T09:40:00.000Z: test result: ok. 373 passed; 0 failed; 6 ignored ([evidence](../docs/workstreams/filler-sounds/log.md)).
 
 ## Доставка и наблюдения
 

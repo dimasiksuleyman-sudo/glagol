@@ -132,6 +132,13 @@ is filtered. Queue overflow or an engine failure discards the attempt with an er
 instead of inserting a truncated transcript.
 
 On Dictation choose language, microphone, hotkey and Auto-paste or Clipboard only.
+Remove hesitation sounds (on by default) drops the sounds people make while thinking:
+"uh", "um", "er", "hmm" and the Russian «эм», «э-э», «м-м», «хм», «аа». Spaces, commas
+and capitalization are repaired afterwards; if a dictation contained only such sounds,
+nothing is inserted. Words such as "like" or «ну», «вот», «типа» are kept: they are real
+words and cannot be told apart from their ordinary use without understanding the
+sentence. Single «м», «а», «у» are kept too. Cleaning runs on the computer, without the
+network, for every recognition method; history receives the cleaned text.
 History is off by default; enabling it retains the last 10 transcripts. Turning it
 off stops additions; Clear history removes existing entries. Total dictated is a
 lifetime duration counter. UI, dictation and TTS languages are independent; each

@@ -2,14 +2,10 @@
   "schema_version": 1,
   "id": "dictation-speed",
   "title": "Скорость диктовки и отключение озвучки (0.6.3)",
-  "status": "active",
+  "status": "paused",
   "next": "S3c",
-  "reason": "Пользователь 2026-11-11 сообщил о пропаже индикатора на 0.6.5 (ПК); серия продолжена шагом S3c (0.6.6). Затем S4 — обновление ноутбука из программы и S3b — наблюдение.",
-  "claim": {
-    "owner": "Claude Code (cloud session)",
-    "at": "2026-11-11T14:40:00.000Z",
-    "branch": "claude/optimistic-franklin-cvvbsr"
-  },
+  "reason": "Пользователь 2026-11-13: «Двое суток интенсивной диктовки полёт нормальный» на сборке 0.6.6 (reported, без журнала) и переключил работу на чистку звуков-заминок (серия filler-sounds). Продолжение: S3c — журналы за 12–13.11, чтобы увидеть, срабатывала ли починка; затем S4 и S3b.",
+  "claim": null,
   "links": [
     "docs/workstreams/dictation-speed/README.md",
     "docs/workstreams/dictation-speed/log.md"
@@ -205,7 +201,7 @@
     {
       "id": "S3c",
       "title": "GL-006 0.6.6: проверка присутствия на любом фоне и починка индикатора в той же диктовке",
-      "status": "in_progress",
+      "status": "pending",
       "depends_on": [
         "S3"
       ],

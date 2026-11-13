@@ -261,5 +261,7 @@ export const messages: {[K in keyof typeof en]: string} = {
   "Ready: hold {p0} and speak.": "Готово: удерживайте {p0} и говорите.",
   "Glagol has a faster setup for this computer.": "Для этого компьютера есть более быстрая настройка.",
   "Search by title": "Поиск по названию",
-  "Nothing found.": "Ничего не найдено."
+  "Nothing found.": "Ничего не найдено.",
+  "Remove hesitation sounds": "Убирать звуки-заминки",
+  "Drops sounds like «uh», «um», «hmm» or «эм», «э-э», «м-м» from the text. Words such as «like» or «ну» are kept.": "Убирает из текста звуки вроде «эм», «э-э», «м-м», «хм» или «uh», «um». Слова вроде «ну» и «вот» остаются."
 };
