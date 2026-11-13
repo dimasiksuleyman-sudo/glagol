@@ -16,6 +16,7 @@
 | GL-007 | Performance / open | 0.6.1: на ПК пользователя локальное распознавание очень долгое, на ноутбуке быстрое; модель/язык/железо не уточнены, причина unknown | [Dictation speed](../workstreams/dictation-speed/log.md) | Журналы 0.6.2 с одной фразой на обеих машинах; причина по данным или явное unknown |
 | GL-008 | Feature / planned | Пользователь просит, чтобы Глагол сам рекомендовал модель и настройки диктовки по железу (CTC, видеокарта, потоки); сейчас подсказки появляются только после первой загрузки модели | [Hardware recommendations](../workstreams/hardware-recommendations/README.md) | Серия hardware-recommendations R1–R3 после dictation-speed |
 | GL-009 | Feature / planned | Пользователь просит диктовку по удержанию только модификаторов (Ctrl+Win), как привычно по Wispr Flow; RegisterHotKey этого не умеет | [Modifier hotkey](../workstreams/modifier-hotkey/README.md) | Серия modifier-hotkey M1–M2 после выпуска 0.6.5 |
+| GL-010 | Feature / planned | Пользователь спрашивает, можно ли поставить Глагол на ноутбук и использовать как сервер распознавания для других компьютеров; сейчас Глагол только клиент «Сервера организации». Записано как TODO, делать пока не будем | [LAN server](../workstreams/lan-server/README.md) | Серия lan-server L1–L3 по отдельной просьбе пользователя |
 
 Якоря GL-001: installer/hooks.nsh, TtsSection, DictationSection и runtime worker;
 GL-002: stt/local downloader + tts/silero/catalog; GL-003: package manager/build;
