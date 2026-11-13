@@ -99,7 +99,22 @@
         "nsis",
         "published"
       ],
-      "checks": []
+      "checks": [
+        {
+          "id": "nsis",
+          "status": "PASS",
+          "method": "manual",
+          "command": "pnpm tauri build; tauri signer sign <installer> (ключ и пароль через Read-Host); pnpm release:assets --notes-file docs/releases/v0.6.6.notes.txt (user-run на ПК)",
+          "cwd": ".",
+          "at": "2026-11-13T15:30:00.000Z",
+          "environment": {
+            "os": "Windows (ПК пользователя)"
+          },
+          "exit_code": null,
+          "output": "Glagol_0.6.6_x64-setup.exe 10355410 байт, SHA-256 6f48efde5c9852cbcaa2c603b10ee8a24292779c0a0d7e3b4f14a837c45392d2, подпись ключом 82D55017631804B2",
+          "evidence": "docs/workstreams/filler-sounds/log.md"
+        }
+      ]
     }
   ]
 }

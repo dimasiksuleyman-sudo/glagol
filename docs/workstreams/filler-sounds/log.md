@@ -41,3 +41,20 @@ dictation-speed остаётся открытым).
 F3: заметки docs/releases/v0.6.6.md и v0.6.6.notes.txt, CHANGELOG [v0.6.6],
 версии в README/руководствах. Размер и SHA-256 установщика — заглушки до
 подписанной сборки на ПК; до их записи PR не сливается.
+
+## 2026-11-13T15:30:00.000Z — F3 сборка и подпись 0.6.6 на ПК
+
+Manual (вывод пользователя), ПК, D:\Projects\glagol на cff9440: `pnpm tauri build`
+— check-version 0.6.6, I18N PASS 353, release-профиль 3 м 03 с, «Finished 1
+bundle» Glagol_0.6.6_x64-setup.exe. Ключ и пароль заданы через
+`Read-Host -AsSecureString` (первая попытка ключа — длина 0, повтор — 348
+символов). Первая команда подписи потеряла первую букву имени при вставке
+(«lagol_…», os error 2, как «П» в 0.6.5); повтор через
+`.\node_modules\.bin\tauri.cmd signer sign "…Glagol_0.6.6_x64-setup.exe"` —
+«signed successfully»; расшифровка публичной подписи здесь: ID ключа
+82D55017631804B2, trusted comment timestamp:1794599033
+file:Glagol_0.6.6_x64-setup.exe. `pnpm release:assets --notes-file
+docs/releases/v0.6.6.notes.txt` — SHA-256
+6f48efde5c9852cbcaa2c603b10ee8a24292779c0a0d7e3b4f14a837c45392d2;
+`(Get-Item …).Length` — 10 355 410 байт. Размер и SHA вписаны в README и
+docs/releases/v0.6.6.md.
