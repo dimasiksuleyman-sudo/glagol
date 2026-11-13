@@ -3,9 +3,13 @@
   "id": "filler-sounds",
   "title": "Чистка звуков-заминок в диктовке (э-э, эм, м-м)",
   "status": "active",
-  "next": "F2",
+  "next": "F3",
   "reason": null,
-  "claim": null,
+  "claim": {
+    "owner": "Claude Code (cloud session)",
+    "at": "2026-11-13T12:00:00.000Z",
+    "branch": "claude/optimistic-franklin-cvvbsr"
+  },
   "links": [
     "docs/workstreams/filler-sounds/README.md",
     "docs/workstreams/filler-sounds/log.md"
@@ -60,12 +64,40 @@
     {
       "id": "F2",
       "title": "Проверка на ПК: диктовка с «эм-м», «э-э», «хм» и обычной речью; включение и выключение настройки",
-      "status": "pending",
+      "status": "done",
       "depends_on": [
         "F1"
       ],
       "required": [
         "pc-test"
+      ],
+      "checks": [
+        {
+          "id": "pc-test",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Сборка 0.6.6 (ac6b70e) на ПК: диктовка с «эм-м», «э-э», «хм» и обычной речью",
+          "cwd": ".",
+          "at": "2026-11-13T12:00:00.000Z",
+          "environment": {
+            "os": "Windows (ПК пользователя)"
+          },
+          "exit_code": null,
+          "output": "Пользователь: «Проверил, работает.» (reported, без журнала и примеров текста)",
+          "evidence": "docs/workstreams/filler-sounds/log.md"
+        }
+      ]
+    },
+    {
+      "id": "F3",
+      "title": "Выпуск 0.6.6: заметки, PR и CI, подписанная сборка, GitHub Release, проверка опубликованного",
+      "status": "in_progress",
+      "depends_on": [
+        "F2"
+      ],
+      "required": [
+        "nsis",
+        "published"
       ],
       "checks": []
     }

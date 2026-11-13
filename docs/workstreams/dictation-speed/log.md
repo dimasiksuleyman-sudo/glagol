@@ -544,3 +544,10 @@ corner=48» — пилюля на экране; с 13:57:40Z «inside_max=48 cor
 Гейты: cargo fmt --check, clippy -D warnings, cargo test — 364 passed, 6 ignored;
 pnpm build — I18N PASS 351, ✓ built; check-version 0.6.6. Код Windows-only
 (overlay_native::imp) не менялся. Проверка на ПК — NOT_RUN.
+
+## 2026-11-13T12:00:00.000Z — наблюдение индикатора на 0.6.6 (reported)
+
+Пользователь: индикатор на тестовой сборке 0.6.6 не пропадал около трёх суток
+интенсивной диктовки; выпуск 0.6.6 — шаг F3 серии filler-sounds. Журналы 12–13.11
+не переданы: срабатывание «rebuilt during dictation» не подтверждено, S3c pc-test
+остаётся NOT_RUN.

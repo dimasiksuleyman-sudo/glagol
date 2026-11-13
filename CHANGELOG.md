@@ -11,6 +11,10 @@ the per-session master logs under [`docs/day-logs/`](docs/day-logs/).
 
 ## [Unreleased]
 
+## [v0.6.6] — 2026-11-13
+
+[Release notes, validation and limits / проверка и ограничения](docs/releases/v0.6.6.md).
+
 ### Added
 
 - Remove hesitation sounds (Dictation page, on by default): sounds such as "uh", "um", "er", "hmm" and «эм», «э-э», «м-м», «хм» are dropped from the dictated text, with spaces, commas and capitalization repaired; real words like "like" or «ну», «вот» are kept. Works locally for every recognition method. / «Убирать звуки-заминки» (страница «Диктовка», по умолчанию включено): звуки вроде «эм», «э-э», «м-м», «хм» и «uh», «um» убираются из надиктованного текста с исправлением пробелов, запятых и заглавной буквы; настоящие слова вроде «ну», «вот» остаются. Работает локально для любого способа распознавания.

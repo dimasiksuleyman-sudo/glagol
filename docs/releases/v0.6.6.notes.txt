@@ -1,0 +1,1 @@
+Glagol 0.6.6: hesitation sounds («uh», «um», «эм», «э-э») are removed from dictated text, and a lost dictation indicator is detected on any background and restored during the same dictation. / Звуки-заминки («эм», «э-э», «uh», «um») убираются из надиктованного текста, а пропавший индикатор диктовки замечается на любом фоне и возвращается в той же диктовке.
