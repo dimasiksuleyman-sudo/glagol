@@ -13,6 +13,7 @@ export const en = {
   languageNote: "You can change it later. Speech languages are selected separately.",
   setupSpeech: "Set up speech",
   setupNote: "Downloads are optional. You can install speech models later in Settings.",
+  ttsOffSetupNote: "Text to speech for documents is off. You can turn it on later in Settings → Text to speech.",
   upgradeNote: "Your existing speech settings have been preserved. Review them below.",
   continue: "Continue to Glagol",
   loading: "Loading…",

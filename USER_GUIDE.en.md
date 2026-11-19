@@ -15,9 +15,12 @@ artifact's source and SHA-256 before choosing More info → Run anyway. Installa
 and removal do not download speech models or accept Silero's terms.
 
 On first launch choose **English / Русский** using the large buttons. Your choice
-is saved immediately. Then choose dictation and synthesis independently on two
-speech cards. Install either, both or neither; Continue opens the app without
-requiring a download. Closing and reopening resumes the saved setup step. With no
+is saved immediately. Then set up dictation. A new installation starts with text to
+speech for documents turned off: instead of its card you see a note that it can be
+turned on later in Settings → Text to speech; Silero models are neither offered nor
+verified, and there is no Synthesize page. After an upgrade your previous choice is
+kept: if text to speech was on, both cards are shown at this step. You can install
+nothing; Continue opens the app without requiring a download. Closing and reopening resumes the saved setup step. With no
 network you can still skip setup and use the library or existing local components.
 
 On a new installation, both speech languages initially match the chosen interface;
@@ -75,10 +78,12 @@ under [CC BY-NC-SA 4.0](docs/third-party/Silero-LICENSE.txt), by Silero Team. Gl
 itself is MIT licensed; dictation does not require Silero. Cloud providers have their
 own terms. This version has no commercial TTS provider or SaluteSpeech integration.
 
-1. Choose the synthesis language on Synthesize or in Settings.
-2. Read and explicitly acknowledge the selected model's license.
-3. Download and enable, or select the exact previously downloaded model file.
-4. Pick a voice and preview it. English offers EN 0, EN 1, EN 2, EN 3 (default EN 0).
+1. If text to speech is off (a new installation starts that way), turn on the Text to
+   speech switch in Settings → Text to speech.
+2. Choose the synthesis language on Synthesize or in Settings.
+3. Read and explicitly acknowledge the selected model's license.
+4. Download and enable, or select the exact previously downloaded model file.
+5. Pick a voice and preview it. English offers EN 0, EN 1, EN 2, EN 3 (default EN 0).
    Russian offers Aidar, Baya, Kseniya, Xenia and Eugene. Numerical English voice
    IDs do not imply a guaranteed gender or US/UK accent.
 

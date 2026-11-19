@@ -5,15 +5,15 @@
 
 Начало работы: [AGENTS](../AGENTS.md) → этот обзор → состояние и журнал серии.
 
-Выбранная серия: **Скорость диктовки и отключение озвучки (0.6.3)**.
+Выбранная серия: **Озвучка выключена по умолчанию при новой установке**.
 
-**NEXT: S3c — GL-006 0.6.6: проверка присутствия на любом фоне и починка индикатора в той же диктовке** (pending).
+**NEXT: T2 — Ручная проверка чистой установки на Windows в отдельном профиле/ВМ и обновления поверх 0.6.x** (pending).
 
-[Решения](workstreams/dictation-speed/README.md) · [Состояние](workstreams/dictation-speed/state.json) · [Журнал](workstreams/dictation-speed/log.md)
+[Решения](workstreams/tts-default-off/README.md) · [Состояние](workstreams/tts-default-off/state.json) · [Журнал](workstreams/tts-default-off/log.md)
 
-Последний завершённый шаг серии: **S3 — Ускорение по согласованию: видеокарта (Vulkan), потоки, 30-дневная квитанция проверки; замер на ПК**.
+Последний завершённый шаг серии: **T1 — Новая установка: tts_enabled=0, строка-подсказка вместо карточки озвучки на первом запуске; тест, i18n, документация RU/EN; автоматические гейты**.
 
-Проверка 2026-11-09T11:03:13.000Z: test result: ok. 354 passed; 0 failed; 6 ignored ([evidence](../docs/workstreams/dictation-speed/log.md)).
+Проверка 2026-11-19T10:40:00.000Z: test result: ok. 375 passed; 0 failed; 6 ignored ([evidence](../docs/workstreams/tts-default-off/log.md)).
 
 ## Доставка и наблюдения
 

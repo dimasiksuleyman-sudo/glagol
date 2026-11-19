@@ -104,6 +104,12 @@ pub fn initialize(conn: &Connection, existing: bool) -> rusqlite::Result<()> {
     put(&tx, "tts_language", if existing { "ru" } else { "en" })?;
     put(&tx, "tts_voice_ru", "xenia")?;
     put(&tx, "tts_voice_en", "en_0")?;
+    // A new installation starts with dictation only: text to speech (Silero,
+    // hundreds of MB) stays off until turned on in Settings. Upgrades keep the
+    // previous default (on) or the switch the user already saved.
+    if !existing {
+        put(&tx, "tts_enabled", "0")?;
+    }
     tx.commit()
 }
 
@@ -247,6 +253,30 @@ mod tests {
         finish_onboarding(&c).unwrap();
         assert_eq!(get(&c).unwrap().onboarding_stage, "complete");
     }
+    #[test]
+    fn new_installation_starts_with_text_to_speech_off() {
+        let c = db();
+        initialize(&c, false).unwrap();
+        assert!(!get(&c).unwrap().tts_enabled, "fresh install: TTS off");
+        set_tts_enabled(&c, true).unwrap();
+        initialize(&c, true).unwrap(); // restart keeps the user's choice
+        assert!(get(&c).unwrap().tts_enabled);
+    }
+
+    #[test]
+    fn upgraded_installation_keeps_its_text_to_speech_choice() {
+        // 0.6.x database already initialized, switch never touched: stays on.
+        let c = db();
+        initialize(&c, true).unwrap();
+        assert!(get(&c).unwrap().tts_enabled);
+        // A database initialized before 0.6.6 that saved «off» keeps it.
+        let c = db();
+        put(&c, "preferences_v1", "1").unwrap();
+        put(&c, "tts_enabled", "0").unwrap();
+        initialize(&c, false).unwrap();
+        assert!(!get(&c).unwrap().tts_enabled);
+    }
+
     #[test]
     fn tts_is_enabled_by_default_and_the_switch_survives_restart() {
         let c = db();

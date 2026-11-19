@@ -11,6 +11,10 @@ the per-session master logs under [`docs/day-logs/`](docs/day-logs/).
 
 ## [Unreleased]
 
+### Changed
+
+- A new installation starts with text to speech off: the first-launch screen shows dictation setup and a note that text to speech can be turned on later in Settings → Text to speech; Silero is not offered or verified until then. Upgrades keep their previous choice. / Новая установка начинает с выключенной озвучкой: на первом запуске — настройка диктовки и подсказка, что озвучку можно включить позже в «Настройки» → «Озвучка»; до этого Silero не предлагается и не проверяется. После обновления прежний выбор сохраняется.
+
 ## [v0.6.6] — 2026-11-13
 
 [Release notes, validation and limits / проверка и ограничения](docs/releases/v0.6.6.md).
