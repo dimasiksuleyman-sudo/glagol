@@ -3,7 +3,7 @@
   "id": "lan-server",
   "title": "Сервер распознавания внутри Глагола для офиса (русский, GigaAM)",
   "status": "active",
-  "next": "L3",
+  "next": "L5",
   "reason": null,
   "claim": null,
   "links": [
@@ -69,7 +69,7 @@
     {
       "id": "L3",
       "title": "Хост: настройки, блок «Сервер для других компьютеров», код подключения, адрес в сети, не засыпать, брандмауэр; документы",
-      "status": "pending",
+      "status": "done",
       "depends_on": [
         "L2"
       ],
@@ -77,12 +77,47 @@
         "rust",
         "frontend"
       ],
-      "checks": []
+      "checks": [
+        {
+          "id": "rust",
+          "status": "PASS",
+          "method": "command",
+          "command": "cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test",
+          "cwd": "src-tauri",
+          "at": "2026-11-19T19:30:00.000Z",
+          "environment": {
+            "os": "Linux container",
+            "rustc": "1.97.0",
+            "node": "v22.23.4",
+            "pnpm": "10.28.0"
+          },
+          "exit_code": 0,
+          "output": "test result: ok. 403 passed; 0 failed; 6 ignored",
+          "evidence": "docs/workstreams/lan-server/log.md"
+        },
+        {
+          "id": "frontend",
+          "status": "PASS",
+          "method": "command",
+          "command": "pnpm exec tsc --noEmit && pnpm build",
+          "cwd": ".",
+          "at": "2026-11-19T19:30:00.000Z",
+          "environment": {
+            "os": "Linux container",
+            "rustc": "1.97.0",
+            "node": "v22.23.4",
+            "pnpm": "10.28.0"
+          },
+          "exit_code": 0,
+          "output": "I18N PASS: 385 keys; ✓ built",
+          "evidence": "docs/workstreams/lan-server/log.md"
+        }
+      ]
     },
     {
       "id": "L4",
       "title": "Клиент: «Вставить код подключения» и проверка в одно действие",
-      "status": "pending",
+      "status": "done",
       "depends_on": [
         "L3"
       ],
@@ -90,7 +125,42 @@
         "rust",
         "frontend"
       ],
-      "checks": []
+      "checks": [
+        {
+          "id": "rust",
+          "status": "PASS",
+          "method": "command",
+          "command": "cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test",
+          "cwd": "src-tauri",
+          "at": "2026-11-19T19:30:00.000Z",
+          "environment": {
+            "os": "Linux container",
+            "rustc": "1.97.0",
+            "node": "v22.23.4",
+            "pnpm": "10.28.0"
+          },
+          "exit_code": 0,
+          "output": "test result: ok. 403 passed; 0 failed; 6 ignored",
+          "evidence": "docs/workstreams/lan-server/log.md"
+        },
+        {
+          "id": "frontend",
+          "status": "PASS",
+          "method": "command",
+          "command": "pnpm exec tsc --noEmit && pnpm build",
+          "cwd": ".",
+          "at": "2026-11-19T19:30:00.000Z",
+          "environment": {
+            "os": "Linux container",
+            "rustc": "1.97.0",
+            "node": "v22.23.4",
+            "pnpm": "10.28.0"
+          },
+          "exit_code": 0,
+          "output": "I18N PASS: 385 keys; ✓ built",
+          "evidence": "docs/workstreams/lan-server/log.md"
+        }
+      ]
     },
     {
       "id": "L5",

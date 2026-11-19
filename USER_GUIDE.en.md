@@ -166,8 +166,8 @@ speech language remembers its local model and voice.
   Remove an inactive model to free space; shared runtime is retained. Local speech uses
   explicit EN/RU; mixed-language detection and translation are not included.
 - **Organization server:** OpenAI-compatible `/audio/transcriptions`; `/models` is
-  optional. Example `http://192.168.1.10:8000/v1`. Your administrator installs the
-  server. HTTP is allowed only for localhost/private IPs on a trusted network; audio
+  optional. Example `http://192.168.1.10:8000/v1`. The server can be another Glagol —
+  see Server for other computers; then pasting its connection code is enough. HTTP is allowed only for localhost/private IPs on a trusted network; audio
   and keys are unencrypted there. Hostnames need trusted HTTPS. System proxies are
   bypassed; an explicit proxy is available.
 - **Cloud service:** choose a preset or compatible endpoint, model, key and optional
@@ -209,6 +209,44 @@ once per dictation). Only a background of almost the same colour as the indicato
 be judged. The pixels are not stored. The
 indicator has a light and a dark outline, so it stands out on light and dark backgrounds. If the indicator ever stays invisible, restart Glagol from
 the tray and send the log from that day: it records these events and the indicator state.
+
+## Server for other computers
+
+One computer with Glagol can recognize Russian speech for other computers in your
+local network — for example, a powerful PC with a graphics card serving office
+computers. Speech does not go to the internet; it travels only over the local network.
+
+**On the server computer:**
+
+1. Install a Russian GigaAM model (Settings → Dictation → Manage models). If there is
+   a graphics card, turn it on in Recognition speed: the server uses the same device.
+2. In Server for other computers, turn on Serve recognition over the network. The
+   first time, Windows asks whether Glagol may accept connections — allow private
+   networks.
+3. Click Copy connection code and give the code to your colleagues. It contains the
+   address and the access key: without the key the server serves nobody.
+
+**On an office computer:** Settings → Dictation → method Organization server → Glagol
+on another computer, paste the code and click Connect. Glagol checks the server and
+saves the settings; then dictate as usual. Hesitation-sound removal and text insertion
+run on the office computer.
+
+Good to know:
+
+- The server recognizes Russian only. It serves private-network addresses only (home
+  or office network, Tailscale) and is off by default.
+- Requests run one after another. If more than 9 are waiting at once, the office
+  computer is asked to retry in a few seconds.
+- While the server is on, the computer does not go to sleep (the screen may still turn
+  off) — you can change this in Advanced, together with the port (8765 by default).
+- New key disconnects everyone with the old code — they need to paste the new one.
+- Audio and the key travel over the local network unencrypted (HTTP), so use the
+  server only on a trusted network.
+- The server log holds numbers only (duration, recognition time, status code): no
+  speech, text or computer addresses. The "computers in the last 10 minutes" count
+  lives in memory only.
+- If computers cannot connect, open Computers cannot connect?: it has a PowerShell
+  command (run as administrator) that opens the port for private networks.
 
 ## Windows limitations
 
