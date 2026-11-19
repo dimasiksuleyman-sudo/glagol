@@ -710,5 +710,37 @@
   {
     "en": "Unknown local model.",
     "ru": "Неизвестная локальная модель."
+  },
+  {
+    "en": "Could not save server settings: {e}",
+    "ru": "Не удалось сохранить настройки сервера: {e}"
+  },
+  {
+    "en": "Could not read server settings: {e}",
+    "ru": "Не удалось прочитать настройки сервера: {e}"
+  },
+  {
+    "en": "Could not get the server access key: {e}",
+    "ru": "Не удалось получить ключ доступа сервера: {e}"
+  },
+  {
+    "en": "Port {port} is already used by another program. Choose another port.",
+    "ru": "Порт {port} уже занят другой программой. Выберите другой порт."
+  },
+  {
+    "en": "Could not start the server: {e}",
+    "ru": "Не удалось запустить сервер: {e}"
+  },
+  {
+    "en": "The port must be from 1024 to 65535 (except 8766).",
+    "ru": "Порт должен быть от 1024 до 65535 (кроме 8766)."
+  },
+  {
+    "en": "This computer has no address in the local network.",
+    "ru": "У этого компьютера нет адреса в локальной сети."
+  },
+  {
+    "en": "Could not create a new key: {e}",
+    "ru": "Не удалось создать новый ключ: {e}"
   }
 ]

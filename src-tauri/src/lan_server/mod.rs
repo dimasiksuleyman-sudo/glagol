@@ -11,6 +11,7 @@
 
 pub mod audio;
 pub mod auth;
+pub mod awake;
 pub mod http;
 pub mod multipart;
 pub mod net;
@@ -44,33 +45,35 @@ pub trait Recognizer: Send + Sync + 'static {
 }
 
 /// The host's Russian GigaAM engine. Requests wait for the engine like the
-/// host's own dictation does.
+/// host's own dictation does, on the device (processor or graphics card) the
+/// host chose.
 pub struct GigaAm {
     /// The local model store shared with dictation.
     pub models: Arc<crate::stt::local::LocalModels>,
-    /// The GigaAM model id to serve (the host's selected Russian model).
-    pub model_id: String,
+    /// The host's currently selected Russian model id (read per request, so
+    /// switching the model in Settings applies without a restart).
+    pub model_source: Box<dyn Fn() -> String + Send + Sync>,
 }
 
 impl Recognizer for GigaAm {
     fn model(&self) -> Result<String, String> {
+        let id = (self.model_source)();
         let installed = self
             .models
             .status()
             .models
             .iter()
-            .any(|m| m.id == self.model_id && m.language == "ru" && m.installed);
+            .any(|m| m.id == id && m.language == "ru" && m.installed);
         if installed {
-            Ok(self.model_id.clone())
+            Ok(id)
         } else {
             Err("the Russian recognition model is not installed on the server".into())
         }
     }
 
     fn recognize(&self, pcm: &[f32]) -> Result<String, String> {
-        self.models
-            .recognize(&self.model_id, pcm)
-            .map(|(text, ..)| text)
+        let id = self.model()?;
+        self.models.recognize(&id, pcm).map(|(text, ..)| text)
     }
 }
 

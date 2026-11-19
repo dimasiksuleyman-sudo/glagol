@@ -9,6 +9,7 @@ pub mod backup;
 pub mod diagnostics;
 pub mod dictation;
 pub mod file;
+pub mod lan_server;
 pub mod metrics;
 pub mod preferences;
 pub mod speech;

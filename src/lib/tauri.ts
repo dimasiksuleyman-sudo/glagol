@@ -583,5 +583,27 @@ export const reportOverlayEvent = (event: OverlayEvent, state?: DictationState["
   invoke<void>("report_overlay_event", { event, state: state ?? null, delayMs: delayMs === undefined ? null : Math.round(delayMs) }).catch(() => undefined);
 /** Ask Rust to hide this overlay window unless a new dictation already started. */
 export const hideOverlay = () => invoke<void>("hide_overlay").catch(() => undefined);
+/** Mirrors `lan_server::Status` (counters of a running LAN server). */
+export interface LanServerStatus { port: number; requests: number; failures: number; active_clients: number; pending: number }
+/** Mirrors `commands::lan_server::LanServerInfo`. */
+export interface LanServerInfo {
+  supported: boolean;
+  enabled: boolean;
+  running: boolean;
+  port: number;
+  keep_awake: boolean;
+  address: string | null;
+  model_name: string | null;
+  model_ready: boolean;
+  status: LanServerStatus | null;
+  error: string | null;
+}
+export const getLanServer = () => invoke<LanServerInfo>("get_lan_server");
+export const setLanServerEnabled = (enabled: boolean) => invoke<LanServerInfo>("set_lan_server_enabled", { enabled });
+export const setLanServerPort = (port: number) => invoke<LanServerInfo>("set_lan_server_port", { port });
+export const setLanServerKeepAwake = (enabled: boolean) => invoke<LanServerInfo>("set_lan_server_keep_awake", { enabled });
+/** The connection code with the access key; fetched only when the user copies or shows it. */
+export const lanServerConnectionCode = () => invoke<string>("lan_server_connection_code");
+export const regenerateLanServerKey = () => invoke<LanServerInfo>("regenerate_lan_server_key");
 /** The running dictation's state for a pill window rebuilt mid-session, or `null` when idle. */
 export const overlayState = () => invoke<DictationState | null>("overlay_state").catch(() => null);

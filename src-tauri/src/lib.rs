@@ -190,6 +190,7 @@ pub fn run() {
             );
             let local_models = std::sync::Arc::new(local_models);
             app.manage(local_models.clone());
+            app.manage(commands::lan_server::LanServerState::default());
             // Learn the graphics card for the recommendation without loading a
             // model; never while a download or another model operation runs.
             {
@@ -295,6 +296,9 @@ pub fn run() {
                 });
             }
 
+            // Serve recognition to other computers when the user turned it on.
+            commands::lan_server::start_at_launch(app.handle());
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -314,6 +318,12 @@ pub fn run() {
             dictation::session::report_overlay_event,
             dictation::session::hide_overlay,
             dictation::session::overlay_state,
+            commands::lan_server::get_lan_server,
+            commands::lan_server::set_lan_server_enabled,
+            commands::lan_server::set_lan_server_port,
+            commands::lan_server::set_lan_server_keep_awake,
+            commands::lan_server::lan_server_connection_code,
+            commands::lan_server::regenerate_lan_server_key,
             commands::diagnostics::get_diagnostics_settings,
             commands::diagnostics::set_detailed_logging,
             commands::diagnostics::open_log_folder,

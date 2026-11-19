@@ -4,6 +4,7 @@ import { Navigate, NavLink, useParams } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { BackupSection } from "@/components/settings/BackupSection";
 import { DictationSection } from "@/components/settings/DictationSection";
+import { LanServerSection } from "@/components/settings/LanServerSection";
 import { TtsSection } from "@/components/settings/TtsSection";
 import { UpdatesSection } from "@/components/settings/UpdatesSection";
 import { DiagnosticsSection } from "@/components/settings/DiagnosticsSection";
@@ -34,7 +35,7 @@ export function Settings() {
         {label[id]}
       </NavLink>)}
     </nav>
-    {tab === "dictation" && <DictationSection />}
+    {tab === "dictation" && <><DictationSection /><LanServerSection /></>}
     {tab === "speech" && <TtsSection />}
     {tab === "general" && <>
       <div data-tour="interface-language"><LanguageSwitch /></div>
