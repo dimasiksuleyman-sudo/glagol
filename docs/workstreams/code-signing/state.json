@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "id": "code-signing",
+  "title": "Подпись установщика Windows (Authenticode) через SignPath Foundation",
+  "status": "paused",
+  "next": "C1",
+  "reason": "TODO 2026-11-19 по итогам побочного исследования; четвёртая в docs/roadmap.md, после Ctrl+Win; начинать по просьбе пользователя.",
+  "claim": null,
+  "links": [
+    "docs/workstreams/code-signing/README.md",
+    "docs/workstreams/code-signing/log.md",
+    "docs/roadmap.md",
+    "docs/runbooks/release.md"
+  ],
+  "steps": [
+    {
+      "id": "C1",
+      "title": "Подготовка и заявка в SignPath Foundation: страница политики подписи в README RU/EN, роли, MFA; заявку подаёт пользователь",
+      "status": "pending",
+      "depends_on": [],
+      "required": ["manual"],
+      "checks": []
+    },
+    {
+      "id": "C2",
+      "title": "Workflow выпуска в GitHub Actions: неподписанный NSIS-установщик как артефакт, сверка с локальной сборкой",
+      "status": "pending",
+      "depends_on": ["C1"],
+      "required": ["ci"],
+      "checks": []
+    },
+    {
+      "id": "C3",
+      "title": "Интеграция SignPath и порядок «Authenticode → подпись обновлений (minisign) → release:assets»; обновить ранбук выпуска",
+      "status": "pending",
+      "depends_on": ["C2"],
+      "required": ["ci", "manual"],
+      "checks": []
+    },
+    {
+      "id": "C4",
+      "title": "Проверка: signtool verify /pa, свойства файла, SmartScreen на чистой системе, самообновление 0.6.x → подписанная версия",
+      "status": "pending",
+      "depends_on": ["C3"],
+      "required": ["manual"],
+      "checks": []
+    }
+  ]
+}
