@@ -324,6 +324,7 @@ pub fn run() {
             commands::lan_server::set_lan_server_keep_awake,
             commands::lan_server::lan_server_connection_code,
             commands::lan_server::regenerate_lan_server_key,
+            commands::lan_server::inspect_lan_connection_code,
             commands::diagnostics::get_diagnostics_settings,
             commands::diagnostics::set_detailed_logging,
             commands::diagnostics::open_log_folder,

@@ -605,5 +605,8 @@ export const setLanServerKeepAwake = (enabled: boolean) => invoke<LanServerInfo>
 /** The connection code with the access key; fetched only when the user copies or shows it. */
 export const lanServerConnectionCode = () => invoke<string>("lan_server_connection_code");
 export const regenerateLanServerKey = () => invoke<LanServerInfo>("regenerate_lan_server_key");
+/** Mirrors `commands::lan_server::LanConnection`: a pasted code checked against the server. */
+export interface LanConnection { base_url: string; key: string; model: string }
+export const inspectLanConnectionCode = (code: string) => invoke<LanConnection>("inspect_lan_connection_code", { code });
 /** The running dictation's state for a pill window rebuilt mid-session, or `null` when idle. */
 export const overlayState = () => invoke<DictationState | null>("overlay_state").catch(() => null);

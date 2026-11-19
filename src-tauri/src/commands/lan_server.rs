@@ -327,6 +327,63 @@ pub async fn regenerate_lan_server_key(app: AppHandle) -> Result<LanServerInfo, 
     .map_err(crate::i18n::error)
 }
 
+/// What a pasted connection code points to, checked against the server.
+#[derive(Debug, Clone, Serialize)]
+pub struct LanConnection {
+    /// `http://host:port/v1` for the «organization server» profile.
+    pub base_url: String,
+    /// The access key from the code (saved to the keyring by the caller).
+    pub key: String,
+    /// The model the server recognizes with.
+    pub model: String,
+}
+
+/// Parse a connection code and ask the server which model it serves, so the
+/// client profile can be saved and tested in one step.
+#[tauri::command]
+pub async fn inspect_lan_connection_code(code: String) -> Result<LanConnection, String> {
+    (async {
+        let connection = lan_server::parse_connection_code(&code)?;
+        let http = reqwest::Client::builder()
+            .no_proxy()
+            .build()
+            .map_err(|e| e.to_string())?;
+        let client = crate::stt::openai_compat::OpenAiCompatStt::new(
+            http,
+            connection.base_url.clone(),
+            "glagol",
+            Some(connection.key.clone()),
+        );
+        let address = connection
+            .base_url
+            .trim_start_matches("http://")
+            .trim_end_matches("/v1")
+            .to_string();
+        let models = client.list_models().await.map_err(|e| match e {
+            crate::stt::SttError::Auth => {
+                "Ключ в коде не подходит: возьмите новый код подключения на сервере.".to_string()
+            }
+            crate::stt::SttError::Api(message) if message.contains("503") => {
+                "На сервере не установлена русская модель распознавания.".to_string()
+            }
+            _ => format!(
+                "Не удалось подключиться к Глаголу на {address}: проверьте, что сервер включён и брандмауэр разрешает подключения."
+            ),
+        })?;
+        let model = models
+            .into_iter()
+            .next()
+            .ok_or("Сервер не сообщил модель распознавания.")?;
+        Ok(LanConnection {
+            base_url: connection.base_url,
+            key: connection.key,
+            model,
+        })
+    })
+    .await
+    .map_err(crate::i18n::error)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

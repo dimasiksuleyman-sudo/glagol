@@ -290,5 +290,9 @@ export const messages: {[K in keyof typeof en]: string} = {
   "Both computers must be in the same local network, and this computer must not be asleep.": "Оба компьютера должны быть в одной локальной сети, а этот компьютер не должен спать.",
   "Port": "Порт",
   "Keep this computer awake while the server is on": "Не давать компьютеру засыпать, пока сервер включён",
-  "The screen may still turn off; only sleep is prevented.": "Экран может гаснуть; запрещается только сон."
+  "The screen may still turn off; only sleep is prevented.": "Экран может гаснуть; запрещается только сон.",
+  "Glagol on another computer": "Глагол на другом компьютере",
+  "On the server computer: Settings → Dictation → Server for other computers → Copy connection code. Paste it here.": "На компьютере-сервере: «Настройки» → «Диктовка» → «Сервер для других компьютеров» → «Скопировать код подключения». Вставьте его сюда.",
+  "Connect": "Подключить",
+  "Connected to Glagol at {p0}. You can start dictating.": "Подключено к Глаголу на {p0}. Можно диктовать."
 };

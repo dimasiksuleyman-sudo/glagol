@@ -289,5 +289,9 @@ export const messages = {
   "Both computers must be in the same local network, and this computer must not be asleep.": "Both computers must be in the same local network, and this computer must not be asleep.",
   "Port": "Port",
   "Keep this computer awake while the server is on": "Keep this computer awake while the server is on",
-  "The screen may still turn off; only sleep is prevented.": "The screen may still turn off; only sleep is prevented."
+  "The screen may still turn off; only sleep is prevented.": "The screen may still turn off; only sleep is prevented.",
+  "Glagol on another computer": "Glagol on another computer",
+  "On the server computer: Settings → Dictation → Server for other computers → Copy connection code. Paste it here.": "On the server computer: Settings → Dictation → Server for other computers → Copy connection code. Paste it here.",
+  "Connect": "Connect",
+  "Connected to Glagol at {p0}. You can start dictating.": "Connected to Glagol at {p0}. You can start dictating."
 } as const;
