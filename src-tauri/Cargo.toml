@@ -66,6 +66,12 @@ reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"
 # Async runtime
 tokio = { version = "1", features = ["full"] }
 
+# LAN recognition server (GL-010). Already in the tree through reqwest; the
+# server features add only httpdate, which is locked as well.
+hyper = { version = "1", features = ["http1", "server"] }
+hyper-util = { version = "0.1", features = ["tokio"] }
+http-body-util = "0.1"
+
 # Error handling
 thiserror = "1"
 anyhow = "1"

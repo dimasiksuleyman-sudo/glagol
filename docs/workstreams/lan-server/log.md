@@ -21,3 +21,25 @@
 (GigaAM), код подключения + «Найти Глагол в сети», ключ всегда нужен. План
 L1–L6 записан в README серии; проверка — ПК сына (GTX 1060 6 ГБ) как сервер.
 Сервер на своём старом ПК пользователь не ставит («У меня старый ПК»).
+
+## 2026-11-19T18:00:00.000Z — L2: ядро сервера
+
+`src-tauri/src/lan_server/`: `net.rs` (частные сети: loopback, RFC 1918,
+link-local, CGNAT 100.64/10, IPv6 ULA/link-local; основной IPv4 через UDP
+connect без отправки), `auth.rs` (ключ 64 hex из двух UUID v4, keyring
+`Glagol/lan_server_key`, сравнение за постоянное время), `multipart.rs`
+(ограниченный парсер: ≤ 16 частей, поле ≤ 4 КБ, ровно один file), `audio.rs`
+(WAV PCM16/float32, любые частота и каналы → моно 16 кГц, ≤ 10 мин, иное —
+415), `http.rs` (hyper 1 http1: `GET /`, `GET /v1/models`, `POST
+/v1/audio/transcriptions`; только русский, иначе 400; json/text; тело ≤ 25 МБ;
+очередь ≤ 9, иначе 429 Retry-After 2; таймаут 120 с; журнал — только статус и
+длительности), `mod.rs` (`Server::start/stop/status`, ≤ 32 соединений,
+заголовки ≤ 10 с, распознаватель `GigaAm` поверх `LocalModels::recognize`
+(сделан `pub(crate)`), счётчики в памяти, код подключения
+`glagol://host:port/?key=…` и его разбор только для частных адресов).
+Cargo.toml: прямые зависимости hyper (http1, server), hyper-util (tokio),
+http-body-util — уже были в lock; Cargo.lock: только список зависимостей пакета.
+Тесты (17): существующий клиент `OpenAiCompatStt` диктует через сервер,
+неверный/нет ключа → Auth, английский → 400, нет модели → 503, не WAV → 415,
+переполнение очереди → 429 с Retry-After 2, остановка, коды подключения.
+Гейты: fmt --check, clippy --all-targets -D warnings, cargo test — 401 passed.

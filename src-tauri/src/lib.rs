@@ -45,6 +45,8 @@ pub mod state;
 
 // Dictation microphone recorder (Sprint 6 PR2): capture → 16 kHz mono S16LE.
 pub mod dictation;
+/// Glagol as a recognition server for other computers in the LAN.
+pub mod lan_server;
 
 // Tauri commands exposed to the frontend.
 pub mod commands;

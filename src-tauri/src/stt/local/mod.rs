@@ -431,7 +431,10 @@ impl LocalModels {
 
     /// Recognize with the loaded model. A recognition error on the graphics
     /// card switches this session to the CPU and retries once.
-    fn recognize(
+    /// Recognize 16 kHz mono `pcm` with model `id`, waiting for the engine.
+    /// Returns text, run statistics, prepare and lock-wait milliseconds and
+    /// the backend name.
+    pub(crate) fn recognize(
         &self,
         id: &str,
         pcm: &[f32],
