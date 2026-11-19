@@ -3,7 +3,7 @@
   "id": "lan-server",
   "title": "Сервер распознавания внутри Глагола для офиса (русский, GigaAM)",
   "status": "active",
-  "next": "L5",
+  "next": "L6",
   "reason": null,
   "claim": null,
   "links": [
@@ -165,7 +165,7 @@
     {
       "id": "L5",
       "title": "«Найти Глагол в сети» (UDP-широковещание в частной сети)",
-      "status": "pending",
+      "status": "cancelled",
       "depends_on": [
         "L4"
       ],
@@ -173,14 +173,15 @@
         "rust",
         "frontend"
       ],
-      "checks": []
+      "checks": [],
+      "reason": "Пользователь 2026-11-19: «пока не надо, все равно ключ не запомнить, а значит его будут рассылать» — код подключения и так рассылают."
     },
     {
       "id": "L6",
       "title": "Замер (scripts/lan-server-bench.mjs) и проверка на двух машинах: ПК сына (GTX 1060 6 ГБ) — сервер, ПК и ноутбук — клиенты",
       "status": "pending",
       "depends_on": [
-        "L5"
+        "L4"
       ],
       "required": [
         "manual"

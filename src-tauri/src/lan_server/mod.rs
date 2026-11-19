@@ -31,8 +31,10 @@ use tokio::sync::{oneshot, Semaphore};
 
 /// Default TCP port of the server.
 pub const DEFAULT_PORT: u16 = 8765;
-/// Open connections accepted at once; further ones are closed.
-const MAX_CONNECTIONS: usize = 32;
+/// Open connections accepted at once; further ones are closed. Above the
+/// recognition queue ([`http::MAX_PENDING`]) so a full queue answers 429
+/// instead of resetting connections.
+const MAX_CONNECTIONS: usize = 2 * http::MAX_PENDING;
 /// A client counts as connected while it sent a request this recently.
 const ACTIVE_WINDOW: Duration = Duration::from_secs(10 * 60);
 
@@ -178,9 +180,12 @@ impl Server {
                 let ctx = serving.clone();
                 tokio::spawn(async move {
                     let service = service_fn(move |req| http::handle(req, ctx.clone(), peer.ip()));
+                    // One dictation is one request: closing after the answer
+                    // keeps idle clients from holding connection slots.
                     let _ = http1::Builder::new()
                         .timer(TokioTimer::new())
                         .header_read_timeout(Duration::from_secs(10))
+                        .keep_alive(false)
                         .serve_connection(TokioIo::new(stream), service)
                         .await;
                     drop(permit);

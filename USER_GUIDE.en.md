@@ -235,8 +235,9 @@ Good to know:
 
 - The server recognizes Russian only. It serves private-network addresses only (home
   or office network, Tailscale) and is off by default.
-- Requests run one after another. If more than 9 are waiting at once, the office
-  computer is asked to retry in a few seconds.
+- Requests run one after another. If more than 32 are waiting at once, Glagol on the
+  office computer retries by itself after a couple of seconds (up to three times). On
+  a test PC with a GTX 1060 a 6-second phrase took about 0.4 s.
 - While the server is on, the computer does not go to sleep (the screen may still turn
   off) — you can change this in Advanced, together with the port (8765 by default).
 - New key disconnects everyone with the old code — they need to paste the new one.

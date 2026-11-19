@@ -26,6 +26,13 @@ const TRANSCRIBE_TIMEOUT: Duration = Duration::from_secs(90);
 /// so this per-request cap is what bounds the probe.
 const LIST_MODELS_TIMEOUT: Duration = Duration::from_secs(20);
 
+/// A busy server's 429 is retried automatically this many times…
+const BUSY_RETRIES: usize = 3;
+/// …but only when it asks to wait at most this long. A Glagol LAN server
+/// answers `Retry-After: 2` while its queue is full; longer waits (cloud
+/// quotas) are reported to the user instead of silently stalling dictation.
+const MAX_AUTO_RETRY_WAIT: Duration = Duration::from_secs(5);
+
 /// How many bytes of an error response body to keep in an [`SttError::Api`]
 /// message — enough to be diagnostic without dumping a whole HTML error page.
 const ERROR_BODY_SNIPPET_LEN: usize = 500;
@@ -108,8 +115,35 @@ impl OpenAiCompatStt {
     }
 
     /// `POST {base_url}/audio/transcriptions` — multipart upload of one WAV
-    /// clip. See [`SttProvider::transcribe`] for the `lang` semantics.
+    /// clip. See [`SttProvider::transcribe`] for the `lang` semantics. A 429
+    /// with a short `Retry-After` (a busy office server) is retried up to
+    /// [`BUSY_RETRIES`] times after the requested wait.
     pub async fn transcribe(
+        &self,
+        wav_bytes: Vec<u8>,
+        lang: Option<&str>,
+    ) -> Result<Transcript, SttError> {
+        let mut retries = 0;
+        loop {
+            match self.transcribe_once(wav_bytes.clone(), lang).await {
+                Err(SttError::RateLimited(Some(wait)))
+                    if retries < BUSY_RETRIES && wait <= MAX_AUTO_RETRY_WAIT =>
+                {
+                    retries += 1;
+                    info!(
+                        retries,
+                        wait_ms = wait.as_millis() as u64,
+                        "stt server busy; retrying"
+                    );
+                    tokio::time::sleep(wait).await;
+                }
+                other => return other,
+            }
+        }
+    }
+
+    /// One `POST {base_url}/audio/transcriptions` attempt.
+    async fn transcribe_once(
         &self,
         wav_bytes: Vec<u8>,
         lang: Option<&str>,

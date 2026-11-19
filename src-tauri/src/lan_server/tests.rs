@@ -132,34 +132,30 @@ async fn non_wav_audio_is_refused() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn a_full_queue_asks_clients_to_retry() {
+async fn a_full_queue_answers_429_and_glagol_clients_retry() {
     let (server, key) = start_server(Fake {
         installed: true,
         delay: Duration::from_millis(600),
     })
     .await;
     let client = client(&server, Some(key));
-    let calls: Vec<_> = (0..http::MAX_PENDING + 4)
+    let extra = 4;
+    let calls: Vec<_> = (0..http::MAX_PENDING + extra)
         .map(|_| {
             let client = client.clone();
             tokio::spawn(async move { client.transcribe(second_of_speech(), Some("ru")).await })
         })
         .collect();
-    let mut ok = 0;
-    let mut busy = 0;
     for call in calls {
-        match call.await.unwrap() {
-            Ok(_) => ok += 1,
-            Err(SttError::RateLimited(retry)) => {
-                assert_eq!(retry, Some(Duration::from_secs(2)));
-                busy += 1;
-            }
-            Err(other) => panic!("unexpected {other:?}"),
-        }
+        // The extra requests got «busy, retry in 2 s» and succeeded on retry.
+        call.await
+            .unwrap()
+            .expect("every dictation is eventually recognized");
     }
-    assert_eq!(ok, http::MAX_PENDING);
-    assert_eq!(busy, 4);
-    assert_eq!(server.status().pending, 0);
+    let status = server.status();
+    assert_eq!(status.failures as usize, extra, "one 429 per extra request");
+    assert_eq!(status.requests as usize, http::MAX_PENDING + 2 * extra);
+    assert_eq!(status.pending, 0);
 }
 
 #[tokio::test]

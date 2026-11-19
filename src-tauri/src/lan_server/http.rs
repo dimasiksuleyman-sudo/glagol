@@ -17,7 +17,9 @@ use super::{audio, auth, multipart, Context};
 /// Largest accepted request body (OpenAI's own transcription limit).
 pub const MAX_BODY_BYTES: usize = 25 * 1024 * 1024;
 /// Recognitions running or waiting at once; more are told to retry (429).
-pub const MAX_PENDING: usize = 9;
+/// A GTX 1060 recognizes 6 s of speech in ~0.4 s (2026-11-19 benchmark), so
+/// a full queue still answers within seconds; Glagol clients retry a 429.
+pub const MAX_PENDING: usize = 32;
 /// A recognition that takes longer than this answers 504.
 const RECOGNITION_TIMEOUT: Duration = Duration::from_secs(120);
 
