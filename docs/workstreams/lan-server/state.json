@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "id": "lan-server",
-  "title": "Глагол как сервер распознавания для других компьютеров в сети",
-  "status": "paused",
-  "next": "L1",
-  "reason": "TODO от пользователя 2026-11-13: «Запиши в туду, но делать не будем. Пока.» Начинать только по отдельной просьбе; объём согласовать перед L1; продолжение — README серии.",
+  "title": "Сервер распознавания внутри Глагола для офиса (русский, GigaAM)",
+  "status": "active",
+  "next": "L2",
+  "reason": null,
   "claim": null,
   "links": [
     "docs/workstreams/lan-server/README.md",
@@ -13,26 +13,90 @@
   "steps": [
     {
       "id": "L1",
-      "title": "Решение по архитектуре и безопасности: адрес/порт, ключ доступа, шифрование, политика сети",
-      "status": "pending",
+      "title": "План реализации в репо: архитектура, API, безопасность, удобство, этапы",
+      "status": "done",
       "depends_on": [],
-      "required": ["decision"],
-      "checks": []
+      "required": [
+        "decision"
+      ],
+      "checks": [
+        {
+          "id": "decision",
+          "status": "PASS",
+          "method": "manual",
+          "command": "AskUserQuestion 2026-11-19: языки v1, способ подключения, ключ доступа; одобрение плана",
+          "cwd": ".",
+          "at": "2026-11-19T17:00:00.000Z",
+          "environment": {
+            "os": "chat"
+          },
+          "exit_code": null,
+          "output": "Только русский (GigaAM); код подключения + «Найти Глагол в сети»; ключ всегда нужен; «Как приоритет для нас интересна Российская часть»; план одобрен",
+          "evidence": "docs/workstreams/lan-server/log.md"
+        }
+      ]
     },
     {
       "id": "L2",
-      "title": "Серверный режим: OpenAI-совместимый /v1/audio/transcriptions поверх локального движка, настройки, документация RU/EN",
+      "title": "Ядро сервера (Rust): HTTP OpenAI-совместимый, multipart, аудио, ключ, фильтр частных сетей, очередь и лимиты; интеграционный тест существующим клиентом",
       "status": "pending",
-      "depends_on": ["L1"],
-      "required": ["rust", "frontend"],
+      "depends_on": [
+        "L1"
+      ],
+      "required": [
+        "rust"
+      ],
       "checks": []
     },
     {
       "id": "L3",
-      "title": "Проверка на двух машинах: ПК-сервер, ноутбук-клиент в режиме «Сервер организации»",
+      "title": "Хост: настройки, блок «Сервер для других компьютеров», код подключения, адрес в сети, не засыпать, брандмауэр; документы",
       "status": "pending",
-      "depends_on": ["L2"],
-      "required": ["manual"],
+      "depends_on": [
+        "L2"
+      ],
+      "required": [
+        "rust",
+        "frontend"
+      ],
+      "checks": []
+    },
+    {
+      "id": "L4",
+      "title": "Клиент: «Вставить код подключения» и проверка в одно действие",
+      "status": "pending",
+      "depends_on": [
+        "L3"
+      ],
+      "required": [
+        "rust",
+        "frontend"
+      ],
+      "checks": []
+    },
+    {
+      "id": "L5",
+      "title": "«Найти Глагол в сети» (UDP-широковещание в частной сети)",
+      "status": "pending",
+      "depends_on": [
+        "L4"
+      ],
+      "required": [
+        "rust",
+        "frontend"
+      ],
+      "checks": []
+    },
+    {
+      "id": "L6",
+      "title": "Замер (scripts/lan-server-bench.mjs) и проверка на двух машинах: ПК сына (GTX 1060 6 ГБ) — сервер, ПК и ноутбук — клиенты",
+      "status": "pending",
+      "depends_on": [
+        "L5"
+      ],
+      "required": [
+        "manual"
+      ],
       "checks": []
     }
   ]
