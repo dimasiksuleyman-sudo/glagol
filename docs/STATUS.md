@@ -5,15 +5,7 @@
 
 Начало работы: [AGENTS](../AGENTS.md) → этот обзор → состояние и журнал серии.
 
-Выбранная серия: **Диктовка по удержанию только модификаторов (Ctrl+Win)**.
-
-**NEXT: M2 — Переключатель на странице «Диктовка», документация RU/EN, тестовая сборка 0.6.7; ручная проверка на Windows** (pending).
-
-[Решения](workstreams/modifier-hotkey/README.md) · [Состояние](workstreams/modifier-hotkey/state.json) · [Журнал](workstreams/modifier-hotkey/log.md)
-
-Последний завершённый шаг серии: **M1 — Машина состояний Ctrl+Win, хук клавиатуры Windows, маска «Пуска», отмена диктовки; автоматические гейты**.
-
-Проверка 2026-11-19T13:30:00.000Z: test result: ok. 384 passed; 0 failed; 6 ignored; Windows target clippy: Finished, no warnings ([evidence](../docs/workstreams/modifier-hotkey/log.md)).
+Активная серия не выбрана. Новая задача определяется пользователем.
 
 ## Доставка и наблюдения
 

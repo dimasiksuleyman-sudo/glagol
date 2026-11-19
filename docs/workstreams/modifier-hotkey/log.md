@@ -45,3 +45,11 @@ CHANGELOG [Unreleased], SECURITY.md EN/RU, CLAUDE.md, PROJECT_STRUCTURE.md,
 passed, 6 ignored; Windows-код — clippy -D warnings для x86_64-pc-windows-msvc в
 отдельном мини-крейте с windows =0.61.3 (OK); pnpm exec tsc --noEmit; pnpm build —
 I18N PASS 356, ✓ built. Хук на Windows не запускался — M2 (ручная проверка).
+
+## 2026-11-19T15:00:00.000Z — M2 проверен на ПК (reported), серия завершена
+
+Пользователь установил тестовую сборку 0.6.7 (c0d7225), включил «Также по
+удержанию Ctrl+Win»: «Пробую. Всё работает.» По отдельным сценариям (маска
+«Пуска», Ctrl+Win+D, окна от администратора, Windows 10 и 11 отдельно) деталей
+нет — записано как общий reported PASS. Выпуск — следующим шагом вместе с
+T2 серии tts-default-off (не проверен).

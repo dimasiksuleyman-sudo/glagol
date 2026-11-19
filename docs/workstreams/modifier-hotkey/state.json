@@ -2,9 +2,9 @@
   "schema_version": 1,
   "id": "modifier-hotkey",
   "title": "Диктовка по удержанию только модификаторов (Ctrl+Win)",
-  "status": "active",
-  "next": "M2",
-  "reason": null,
+  "status": "done",
+  "next": null,
+  "reason": "Серия завершена 2026-11-19: Ctrl+Win работает на сборке 0.6.7 (reported); выпуск — вместе с 0.6.7.",
   "claim": null,
   "links": [
     "docs/workstreams/modifier-hotkey/README.md",
@@ -60,14 +60,29 @@
     {
       "id": "M2",
       "title": "Переключатель на странице «Диктовка», документация RU/EN, тестовая сборка 0.6.7; ручная проверка на Windows",
-      "status": "pending",
+      "status": "done",
       "depends_on": [
         "M1"
       ],
       "required": [
         "manual"
       ],
-      "checks": []
+      "checks": [
+        {
+          "id": "manual",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Сборка 0.6.7 (c0d7225) на ПК: переключатель «Также по удержанию Ctrl+Win»; удержание → пилюля → отпускание → текст; «Пуск» не открывается; Ctrl+Win+D/←/→; Win один; Ctrl+C/V; основная клавиша",
+          "cwd": ".",
+          "at": "2026-11-19T15:00:00.000Z",
+          "environment": {
+            "os": "Windows (ПК пользователя)"
+          },
+          "exit_code": null,
+          "output": "Пользователь: «Пробую. Всё работает.» (reported, по сценариям не детализировано; Windows 10/11 по отдельности и окна от администратора не подтверждены)",
+          "evidence": "docs/workstreams/modifier-hotkey/log.md"
+        }
+      ]
     }
   ]
 }
