@@ -38,6 +38,7 @@
 - [docs/context/README.md](../docs/context/README.md)
 - [docs/runbooks/README.md](../docs/runbooks/README.md)
 - [docs/findings/README.md](../docs/findings/README.md)
+- [docs/roadmap.md](../docs/roadmap.md)
 - [docs/workstreams/context-system/README.md](../docs/workstreams/context-system/README.md)
 - [docs/workstreams/context-system/log.md](../docs/workstreams/context-system/log.md)
 - [docs/workstreams/verification-0.4.0/README.md](../docs/workstreams/verification-0.4.0/README.md)

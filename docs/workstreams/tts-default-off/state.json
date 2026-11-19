@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "id": "tts-default-off",
+  "title": "Озвучка выключена по умолчанию при новой установке",
+  "status": "paused",
+  "next": "T1",
+  "reason": "TODO от пользователя 2026-11-19; первая в очереди docs/roadmap.md; начинать по просьбе пользователя.",
+  "claim": null,
+  "links": [
+    "docs/workstreams/tts-default-off/README.md",
+    "docs/workstreams/tts-default-off/log.md",
+    "docs/roadmap.md"
+  ],
+  "steps": [
+    {
+      "id": "T1",
+      "title": "Новая установка: tts_enabled=0, строка-подсказка вместо карточки озвучки на первом запуске; тест, i18n, документация RU/EN; автоматические гейты",
+      "status": "pending",
+      "depends_on": [],
+      "required": ["rust", "frontend"],
+      "checks": []
+    },
+    {
+      "id": "T2",
+      "title": "Ручная проверка чистой установки на Windows в отдельном профиле/ВМ и обновления поверх 0.6.x",
+      "status": "pending",
+      "depends_on": ["T1"],
+      "required": ["manual"],
+      "checks": []
+    }
+  ]
+}
