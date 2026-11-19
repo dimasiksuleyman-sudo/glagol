@@ -261,6 +261,8 @@ export const messages = {
   "Glagol has a faster setup for this computer.": "Glagol has a faster setup for this computer.",
   "Search by title": "Search by title",
   "Nothing found.": "Nothing found.",
+  "Also hold Ctrl+Win": "Also hold Ctrl+Win",
+  "Hold Ctrl and Win together to dictate, as in Wispr Flow. Another key pressed meanwhile (for example Ctrl+Win+D) cancels the dictation and works as usual. In windows run as administrator, use the shortcut above.": "Hold Ctrl and Win together to dictate, as in Wispr Flow. Another key pressed meanwhile (for example Ctrl+Win+D) cancels the dictation and works as usual. In windows run as administrator, use the shortcut above.",
   "Remove hesitation sounds": "Remove hesitation sounds",
   "Drops sounds like «uh», «um», «hmm» or «эм», «э-э», «м-м» from the text. Words such as «like» or «ну» are kept.": "Drops sounds like “uh”, “um”, “hmm” or “эм”, “э-э”, “м-м” from the text. Words such as “like” or “ну” are kept."
 } as const;

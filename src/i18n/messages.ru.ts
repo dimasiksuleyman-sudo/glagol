@@ -262,6 +262,8 @@ export const messages: {[K in keyof typeof en]: string} = {
   "Glagol has a faster setup for this computer.": "Для этого компьютера есть более быстрая настройка.",
   "Search by title": "Поиск по названию",
   "Nothing found.": "Ничего не найдено.",
+  "Also hold Ctrl+Win": "Также по удержанию Ctrl+Win",
+  "Hold Ctrl and Win together to dictate, as in Wispr Flow. Another key pressed meanwhile (for example Ctrl+Win+D) cancels the dictation and works as usual. In windows run as administrator, use the shortcut above.": "Удерживайте Ctrl и Win вместе, чтобы диктовать, как в Wispr Flow. Если в это время нажать другую клавишу (например, Ctrl+Win+D), диктовка отменится, а сочетание сработает как обычно. В окнах, запущенных от администратора, используйте клавишу выше.",
   "Remove hesitation sounds": "Убирать звуки-заминки",
   "Drops sounds like «uh», «um», «hmm» or «эм», «э-э», «м-м» from the text. Words such as «like» or «ну» are kept.": "Убирает из текста звуки вроде «эм», «э-э», «м-м», «хм» или «uh», «um». Слова вроде «ну» и «вот» остаются."
 };

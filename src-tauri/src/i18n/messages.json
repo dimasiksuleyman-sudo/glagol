@@ -112,6 +112,10 @@
     "ru": "Недопустимое значение переключателя истории (ожидается true или false)."
   },
   {
+    "en": "Invalid Ctrl+Win setting (expected true or false).",
+    "ru": "Недопустимое значение переключателя Ctrl+Win (ожидается true или false)."
+  },
+  {
     "en": "Invalid hesitation-sound setting (expected true or false).",
     "ru": "Недопустимое значение переключателя звуков-заминок (ожидается true или false)."
   },

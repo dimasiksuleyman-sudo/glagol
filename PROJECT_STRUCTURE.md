@@ -51,6 +51,8 @@ CC BY-NC-SA 4.0 для некоммерческого использования
 | `stt/openai_compat.rs` | Совместимый HTTP STT-клиент |
 | `dictation` | Recorder, resampling, readiness, hotkey session, clipboard/paste |
 | `dictation/overlay_native.rs` | Windows: события дисплея/сна/сеанса, WebView2 ProcessFailed, состояние окна индикатора; пересоздание после них |
+| `dictation/modifier_trigger.rs` | Диктовка по удержанию Ctrl+Win: машина состояний (задержка 0,2 с, отмена другой клавишей) и Windows-хук WH_KEYBOARD_LL с маской «Пуска»; включается переключателем |
+| `dictation/fillers.rs` | Удаление звуков-заминок («эм», «э-э», «uh», «um») перед вставкой |
 | `parser` | TXT/MD/DOCX/PDF, Pdfium |
 | `text` | Общие URL/email/сокращения и разбиение; числа/латиница — Silero adapter |
 | `db` | Append-only миграции и repository |

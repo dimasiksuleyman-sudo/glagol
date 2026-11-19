@@ -11,6 +11,10 @@ the per-session master logs under [`docs/day-logs/`](docs/day-logs/).
 
 ## [Unreleased]
 
+### Added
+
+- Also hold Ctrl+Win (Dictation page, off by default, Windows): dictate by holding Ctrl and Win together, as in Wispr Flow, alongside the main shortcut. Another key pressed meanwhile (Ctrl+Win+D) cancels silently; Start does not open after a dictation; elevated windows still need the main shortcut. A keyboard hook tells only Ctrl, Win and "another key" apart and stores nothing. / «Также по удержанию Ctrl+Win» (страница «Диктовка», по умолчанию выключено, Windows): диктовка по удержанию Ctrl и Win вместе, как в Wispr Flow, вместе с основной клавишей. Другая клавиша в это время (Ctrl+Win+D) молча отменяет диктовку; «Пуск» после диктовки не открывается; в окнах от администратора нужна основная клавиша. Хук клавиатуры различает только Ctrl, Win и «другую клавишу» и ничего не сохраняет.
+
 ### Changed
 
 - A new installation starts with text to speech off: the first-launch screen shows dictation setup and a note that text to speech can be turned on later in Settings → Text to speech; Silero is not offered or verified until then. Upgrades keep their previous choice. / Новая установка начинает с выключенной озвучкой: на первом запуске — настройка диктовки и подсказка, что озвучку можно включить позже в «Настройки» → «Озвучка»; до этого Silero не предлагается и не проверяется. После обновления прежний выбор сохраняется.

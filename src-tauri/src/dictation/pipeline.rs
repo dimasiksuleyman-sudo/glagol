@@ -200,6 +200,19 @@ pub enum DiscardReason {
     Silent,
     /// The provider returned empty/whitespace-only text.
     EmptyTranscript,
+    /// The trigger cancelled the recording: Ctrl+Win was part of another
+    /// Windows shortcut ([`StopSignal::Cancel`]).
+    Cancelled,
+}
+
+/// Why the hotkey side ended a recording.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StopSignal {
+    /// The shortcut was released: stop, recognize and deliver.
+    Release,
+    /// The chord turned out to be another shortcut: stop and discard without
+    /// recognition or insertion.
+    Cancel,
 }
 
 /// What [`run_dictation`] did, for the caller's follow-up (tray icon reset,
@@ -328,10 +341,11 @@ fn set_phase(phase: &Mutex<DictationPhase>, next: DictationPhase) {
 /// `released` resolves when the hotkey is released (the sender is stored by the
 /// `Pressed` handler and fired by `Released`); a dropped sender (app shutdown)
 /// resolves it too, which simply stops the recording — the correct behaviour.
+/// [`StopSignal::Cancel`] stops and discards without recognition.
 pub async fn run_dictation<R, P, I, C, E>(
     deps: DictationDeps<'_, R, P, I, C, E>,
     opts: DictationOpts,
-    mut released: oneshot::Receiver<()>,
+    mut released: oneshot::Receiver<StopSignal>,
 ) -> DictationOutcome
 where
     R: RecorderControl,
@@ -374,7 +388,13 @@ where
 
     // Wait for the hotkey release or the watchdog, whichever comes first (D10).
     tokio::select! {
-        _ = released => {}
+        signal = released => {
+            if signal == Ok(StopSignal::Cancel) {
+                let _ = deps.recorder.stop().await;
+                tracing::debug!("dictation cancelled by another key; clip dropped");
+                return discard(&deps, DiscardReason::Cancelled);
+            }
+        }
         _ = tokio::time::sleep(opts.watchdog) => {
             tracing::debug!("dictation watchdog fired after {:?}; sending Stop", opts.watchdog);
         }
@@ -657,7 +677,7 @@ mod tests {
         phase: &Mutex<DictationPhase>,
     ) -> DictationOutcome {
         let (tx, rx) = oneshot::channel();
-        tx.send(()).unwrap(); // release immediately — watchdog untouched
+        tx.send(StopSignal::Release).unwrap(); // release immediately — watchdog untouched
         run_dictation(
             DictationDeps {
                 recorder,
@@ -738,7 +758,7 @@ mod tests {
             "no recording signal while the microphone is opening"
         );
         recorder.ready.notify_one();
-        release.send(()).unwrap();
+        release.send(StopSignal::Release).unwrap();
         assert!(matches!(task.await, DictationOutcome::Delivered { .. }));
         assert_eq!(emitter.states()[1], DictationState::Recording);
         assert_eq!(clipboard.content().as_deref(), Some("Первое слово"));
@@ -771,7 +791,7 @@ mod tests {
             _ = &mut task => panic!("must wait for microphone readiness"),
             _ = recorder.entered.notified() => {}
         }
-        release.send(()).unwrap();
+        release.send(StopSignal::Release).unwrap();
         let outcome = tokio::time::timeout(Duration::from_secs(1), task)
             .await
             .expect("release must cancel a pending start");
@@ -846,7 +866,7 @@ mod tests {
         let recorder = FakeRecorder::ok(Ok(loud_clip(1000, 8000, false)));
         let provider = FakeStt::text(text);
         let (tx, rx) = oneshot::channel();
-        tx.send(()).unwrap();
+        tx.send(StopSignal::Release).unwrap();
         run_dictation(
             DictationDeps {
                 recorder: &recorder,
@@ -860,6 +880,33 @@ mod tests {
             rx,
         )
         .await
+    }
+
+    #[tokio::test]
+    async fn cancel_stops_and_discards_without_recognition() {
+        let recorder = FakeRecorder::ok(Ok(loud_clip(2000, 8000, false)));
+        let provider = FakeStt::text("не должно вставиться");
+        let clipboard = FakeClipboard::empty();
+        let (tx, rx) = oneshot::channel();
+        tx.send(StopSignal::Cancel).unwrap();
+        let outcome = run_dictation(
+            DictationDeps {
+                recorder: &recorder,
+                provider: &provider,
+                inserter: &FakeInserter::default(),
+                clipboard: &clipboard,
+                emitter: &FakeEmitter::default(),
+                phase: &Mutex::new(DictationPhase::Idle),
+            },
+            DictationOpts::new(None, None, InsertionMode::ClipboardOnly),
+            rx,
+        )
+        .await;
+        assert_eq!(
+            outcome,
+            DictationOutcome::Discarded(DiscardReason::Cancelled)
+        );
+        assert_eq!(clipboard.content(), None, "nothing delivered");
     }
 
     #[tokio::test]
@@ -1255,7 +1302,7 @@ mod tests {
         let phase = Mutex::new(DictationPhase::Idle);
 
         let (tx, rx) = oneshot::channel();
-        tx.send(()).unwrap();
+        tx.send(StopSignal::Release).unwrap();
         let outcome = run_dictation(
             DictationDeps {
                 recorder: &recorder,

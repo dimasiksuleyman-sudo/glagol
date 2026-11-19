@@ -137,6 +137,15 @@ is filtered. Queue overflow or an engine failure discards the attempt with an er
 instead of inserting a truncated transcript.
 
 On Dictation choose language, microphone, hotkey and Auto-paste or Clipboard only.
+Also hold Ctrl+Win (under the shortcut, off by default, Windows only) adds dictation
+by holding Ctrl and Win together, as in Wispr Flow; the main shortcut keeps working.
+Recording starts once both keys are held for about 0.2 s with no other key; release
+either and the text is inserted. Pressing another key meanwhile (for example
+Ctrl+Win+D or Ctrl+Win+←) cancels the dictation silently and the Windows shortcut
+works as usual. Start does not open when Win is released after a dictation. Windows
+does not pass this chord to Glagol in windows run as administrator — use the main
+shortcut there. Glagol installs a keyboard hook for this: it only tells Ctrl, Win
+and "another key" apart and stores or logs nothing.
 Remove hesitation sounds (on by default) drops the sounds people make while thinking:
 "uh", "um", "er", "hmm" and the Russian «эм», «э-э», «м-м», «хм», «аа». Spaces, commas
 and capitalization are repaired afterwards; if a dictation contained only such sounds,

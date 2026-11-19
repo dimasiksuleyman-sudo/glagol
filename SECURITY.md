@@ -27,6 +27,10 @@ providers; use the current code/release when testing fixes.
   failures. Idle workers unload. These are process controls, not an OS sandbox.
 - Logs contain operational metadata, not document text, audio, transcripts or keys.
   Optional dictation history is off by default and stored locally when enabled.
+- Optional Ctrl+Win dictation (off by default, Windows) installs a low-level
+  keyboard hook. It only tells Ctrl, Win and "another key" apart, passes every
+  key on, ignores injected input, and never stores or logs keys; turning the
+  switch off removes the hook.
 - STT credentials use OS keyring slots separate from server/cloud profiles.
 - Update checks contact GitHub only on an explicit button press or, when the user
   enables it, once after startup (off by default). Installers are accepted only with a
@@ -75,6 +79,10 @@ remain part of the deployment's security boundary.
   процессом. Это не полноценная песочница операционной системы.
 - В логах нет текста, аудио, распознанной речи и ключей. История диктовок локальна,
   необязательна и по умолчанию выключена.
+- Необязательная диктовка по Ctrl+Win (по умолчанию выключена, Windows) ставит
+  низкоуровневый хук клавиатуры. Он различает только Ctrl, Win и «другую клавишу»,
+  пропускает все нажатия дальше, игнорирует программный ввод и никогда не хранит и
+  не пишет клавиши в журнал; выключение переключателя снимает хук.
 - Проверка обновлений обращается к GitHub только по кнопке или, если пользователь
   включил автопроверку, один раз после запуска (по умолчанию выключено). Установщик
   принимается только с верной подписью minisign для встроенного открытого ключа;

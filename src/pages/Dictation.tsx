@@ -183,6 +183,18 @@ export function Dictation() {
     }
   }
 
+  async function handleCtrlWinToggle(enabled: boolean) {
+    if (!settings) return;
+    const prev = settings.ctrl_win;
+    setSettings({ ...settings, ctrl_win: enabled }); // optimistic
+    try {
+      await setDictationSetting("dictation_ctrl_win", enabled ? "true" : "false");
+    } catch (err) {
+      setSettings((s) => (s ? { ...s, ctrl_win: prev } : s)); // revert
+      toast.error(stringifyError(err));
+    }
+  }
+
   async function handleHistoryClear() {
     setBusy(true);
     try {
@@ -310,6 +322,24 @@ export function Dictation() {
                   onError={(m) => toast.error(m)}
                   disabled={busy}
                 />
+                {settings.ctrl_win_supported && (
+                  <div className="flex items-start justify-between gap-4 pt-1">
+                    <div className="space-y-0.5">
+                      <label htmlFor="ctrl-win-toggle" className="text-sm font-medium">
+                        {t("Also hold Ctrl+Win")}
+                      </label>
+                      <p className="text-muted-foreground text-xs">
+                        {t("Hold Ctrl and Win together to dictate, as in Wispr Flow. Another key pressed meanwhile (for example Ctrl+Win+D) cancels the dictation and works as usual. In windows run as administrator, use the shortcut above.")}
+                      </p>
+                    </div>
+                    <Switch
+                      id="ctrl-win-toggle"
+                      checked={settings.ctrl_win}
+                      onCheckedChange={handleCtrlWinToggle}
+                      disabled={busy}
+                    />
+                  </div>
+                )}
               </div>
 
               <Separator />

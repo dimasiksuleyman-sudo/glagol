@@ -32,6 +32,7 @@
 
 pub mod fillers;
 pub mod insert;
+pub mod modifier_trigger;
 pub mod overlay_native;
 pub mod pipeline;
 pub mod recorder;

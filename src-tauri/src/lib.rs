@@ -268,6 +268,18 @@ pub fn run() {
             if let Err(e) = app.global_shortcut().register(hotkey) {
                 tracing::warn!("failed to register dictation hotkey {hotkey:?}: {e}");
             }
+            // Ctrl+Win works alongside the hotkey when the user turned it on.
+            let ctrl_win = {
+                let state = app.state::<state::AppState>();
+                let conn = state
+                    .db
+                    .lock()
+                    .expect("db mutex poisoned during startup Ctrl+Win read");
+                commands::dictation::read_ctrl_win(&conn).unwrap_or(false)
+            };
+            if ctrl_win {
+                dictation::session::apply_ctrl_win(app.handle(), true);
+            }
 
             // Close-to-tray (D12): intercept the main window's close so the
             // hotkey keeps working after the user "closes" the window.

@@ -41,7 +41,7 @@ use crate::db::repository;
 use crate::dictation::insert::{ArboardClipboard, EnigoInserter, InsertionMode};
 use crate::dictation::pipeline::{
     run_dictation, DictationDeps, DictationEmitter, DictationOpts, DictationOutcome,
-    DictationState, Disposition,
+    DictationState, Disposition, StopSignal,
 };
 use crate::dictation::DictationPhase;
 use crate::state::AppState;
@@ -243,14 +243,51 @@ fn on_released(app: &AppHandle) {
         .take();
     if let Some(tx) = sender {
         // Err means the pipeline already returned (watchdog/error) — fine.
-        let _ = tx.send(());
+        let _ = tx.send(StopSignal::Release);
+    }
+}
+
+/// Install or remove the Ctrl+Win keyboard hook (GL-009). Its decisions are
+/// delivered on the main thread, like the global-shortcut handler's.
+pub fn apply_ctrl_win(app: &AppHandle, enabled: bool) {
+    use super::modifier_trigger::{self, Action};
+    if !enabled {
+        modifier_trigger::stop();
+        return;
+    }
+    let app = app.clone();
+    modifier_trigger::start(move |action| {
+        let handle = app.clone();
+        let dispatched = app.run_on_main_thread(move || match action {
+            Action::Press => handle_shortcut(&handle, ShortcutState::Pressed),
+            Action::Release => handle_shortcut(&handle, ShortcutState::Released),
+            Action::Cancel => cancel_dictation(&handle),
+        });
+        if let Err(e) = dispatched {
+            tracing::warn!("failed to dispatch Ctrl+Win action: {e}");
+        }
+    });
+}
+
+/// Cancel the in-flight recording without recognition or insertion: Ctrl+Win
+/// turned out to be part of another Windows shortcut (GL-009). A no-op when no
+/// session is active.
+pub fn cancel_dictation(app: &AppHandle) {
+    let state = app.state::<AppState>();
+    let sender = state
+        .dictation_stop
+        .lock()
+        .expect("dictation_stop mutex poisoned")
+        .take();
+    if let Some(tx) = sender {
+        let _ = tx.send(StopSignal::Cancel);
     }
 }
 
 /// The async body of one session: build the provider from persisted settings +
 /// keyring, run the pipeline, record advisory usage, and always reset the tray
 /// and phase on the way out.
-async fn run_session(app: AppHandle, release_rx: oneshot::Receiver<()>, token: u64) {
+async fn run_session(app: AppHandle, release_rx: oneshot::Receiver<StopSignal>, token: u64) {
     let state = app.state::<AppState>();
 
     let (provider, device, language, mode, remove_fillers) = match build_provider(&app, &state) {

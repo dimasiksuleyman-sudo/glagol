@@ -461,6 +461,10 @@ export interface DictationSettings {
   insertion_mode: string;
   /** Remove hesitation sounds («эм», «э-э», "um") before insertion (default on). */
   remove_fillers: boolean;
+  /** Also dictate while holding Ctrl+Win (default off). */
+  ctrl_win: boolean;
+  /** Whether Ctrl+Win dictation exists on this platform (Windows only). */
+  ctrl_win_supported: boolean;
 }
 
 /**
@@ -492,7 +496,7 @@ export async function getDictationSettings(): Promise<DictationSettings> {
 
 /**
  * Persist a single dictation-page setting by whitelisted `name`
- * (`stt_insertion_mode`, `dictation_device`, `dictation_history_enabled`, `dictation_remove_fillers`,
+ * (`stt_insertion_mode`, `dictation_device`, `dictation_history_enabled`, `dictation_remove_fillers`, `dictation_ctrl_win`,
  * `stt_model`, `stt_provider`). The hotkey is **not** settable here — it goes
  * through {@link setDictationHotkey}. Rejects with a Russian-language string on
  * an invalid value or an unknown key; nothing is written unless it validates.

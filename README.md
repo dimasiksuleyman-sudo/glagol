@@ -41,6 +41,7 @@ local dictation. Upgrades retain modes, server addresses, credentials and voices
 - Hold `Ctrl+Shift+Space`, wait for the recording signal, speak, release, then receive
   the final text once. Auto-paste or clipboard only; optional history is off by default.
   Hesitation sounds ("uh", "um", «эм», «э-э») are removed from the text by default.
+  Optionally dictate by holding Ctrl+Win, as in Wispr Flow.
 - English local dictation: Moonshine Small Streaming, native CPU runtime. Russian:
   GigaAM v3 CTC/RNNT on the processor or, optionally, the graphics card (Vulkan), with
   a selectable thread count and a one-click recommendation for the computer's hardware. Independent office-server and cloud profiles remain available.
@@ -136,6 +137,7 @@ the development machine; importing pinned files was exercised separately.
 - Удерживайте `Ctrl+Shift+Space`, дождитесь сигнала записи, говорите и отпустите:
   готовый текст вставится один раз. Доступен режим буфера; история изначально выключена.
   Звуки-заминки («эм», «э-э», «uh», «um») по умолчанию убираются из текста.
+  По желанию — диктовка по удержанию Ctrl+Win, как в Wispr Flow.
 - Английская локальная диктовка: Moonshine Small Streaming, нативный CPU-runtime.
   Русская: GigaAM v3 CTC/RNNT на процессоре или, по выбору, на видеокарте (Vulkan),
   с настраиваемым числом потоков и рекомендацией под железо компьютера в один клик. Сохраняются отдельные офисный и облачный профили.
