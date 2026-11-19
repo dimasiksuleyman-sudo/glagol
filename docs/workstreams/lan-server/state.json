@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "id": "lan-server",
+  "title": "Глагол как сервер распознавания для других компьютеров в сети",
+  "status": "paused",
+  "next": "L1",
+  "reason": "TODO от пользователя 2026-11-13: «Запиши в туду, но делать не будем. Пока.» Начинать только по отдельной просьбе; объём согласовать перед L1; продолжение — README серии.",
+  "claim": null,
+  "links": [
+    "docs/workstreams/lan-server/README.md",
+    "docs/workstreams/lan-server/log.md"
+  ],
+  "steps": [
+    {
+      "id": "L1",
+      "title": "Решение по архитектуре и безопасности: адрес/порт, ключ доступа, шифрование, политика сети",
+      "status": "pending",
+      "depends_on": [],
+      "required": ["decision"],
+      "checks": []
+    },
+    {
+      "id": "L2",
+      "title": "Серверный режим: OpenAI-совместимый /v1/audio/transcriptions поверх локального движка, настройки, документация RU/EN",
+      "status": "pending",
+      "depends_on": ["L1"],
+      "required": ["rust", "frontend"],
+      "checks": []
+    },
+    {
+      "id": "L3",
+      "title": "Проверка на двух машинах: ПК-сервер, ноутбук-клиент в режиме «Сервер организации»",
+      "status": "pending",
+      "depends_on": ["L2"],
+      "required": ["manual"],
+      "checks": []
+    }
+  ]
+}

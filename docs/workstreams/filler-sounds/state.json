@@ -2,14 +2,10 @@
   "schema_version": 1,
   "id": "filler-sounds",
   "title": "Чистка звуков-заминок в диктовке (э-э, эм, м-м)",
-  "status": "active",
-  "next": "F3",
-  "reason": null,
-  "claim": {
-    "owner": "Claude Code (cloud session)",
-    "at": "2026-11-13T12:00:00.000Z",
-    "branch": "claude/optimistic-franklin-cvvbsr"
-  },
+  "status": "done",
+  "next": null,
+  "reason": "Серия завершена: выпуск 0.6.6 опубликован и проверен 2026-11-13.",
+  "claim": null,
   "links": [
     "docs/workstreams/filler-sounds/README.md",
     "docs/workstreams/filler-sounds/log.md"
@@ -91,7 +87,7 @@
     {
       "id": "F3",
       "title": "Выпуск 0.6.6: заметки, PR и CI, подписанная сборка, GitHub Release, проверка опубликованного",
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [
         "F2"
       ],
@@ -112,6 +108,20 @@
           },
           "exit_code": null,
           "output": "Glagol_0.6.6_x64-setup.exe 10355410 байт, SHA-256 6f48efde5c9852cbcaa2c603b10ee8a24292779c0a0d7e3b4f14a837c45392d2, подпись ключом 82D55017631804B2",
+          "evidence": "docs/workstreams/filler-sounds/log.md"
+        },
+        {
+          "id": "published",
+          "status": "PASS",
+          "method": "command",
+          "command": "curl assets v0.6.6 + releases/latest/download/latest.json; sha256sum -c; cmp; minisign -V with embedded pubkey",
+          "cwd": ".",
+          "at": "2026-11-13T20:05:00.000Z",
+          "environment": {
+            "os": "Linux container"
+          },
+          "exit_code": 0,
+          "output": "Glagol_0.6.6_x64-setup.exe: OK (10355410 bytes); endpoint latest.json identical; Signature and comment signature verified; notes RU/EN intact; tag v0.6.6 → e687e62",
           "evidence": "docs/workstreams/filler-sounds/log.md"
         }
       ]

@@ -77,7 +77,8 @@ Silero retains a full-verification receipt for 30 days; changed key files, an ex
 receipt or worker failure trigger a full check. Workers stay warm and unload after
 15 idle minutes. Installed local speech works offline. Speech languages are selected
 explicitly: mixed-language detection and translation are not provided locally.
-If you only dictate, turn text to speech off in Settings: Silero is then neither
+A new installation starts with text to speech off; turn it on in Settings → Text to
+speech when needed. If you only dictate, keep it off: Silero is then neither offered,
 verified at startup nor preloaded, and the Synthesize page is hidden.
 
 ### Licenses and data
@@ -170,8 +171,10 @@ Python/PyTorch и словарей произношения. Начальную 
 ключевых файлов или ошибка worker вызывают полный контроль. Прогретый worker
 выгружается через 15 минут простоя. Установленная локальная речь работает без сети.
 Язык выбирается явно; локального автоопределения смешанной речи и перевода нет.
-Если нужна только диктовка, выключите озвучку в настройках: Silero не проверяется
-при запуске и не загружается заранее, экран «Озвучить» скрывается.
+Новая установка начинает с выключенной озвучкой; при необходимости включите её в
+«Настройки» → «Озвучка». Если нужна только диктовка, оставьте её выключенной: Silero
+не предлагается, не проверяется при запуске и не загружается заранее, экран
+«Озвучить» скрыт.
 
 ### Лицензии и данные
 

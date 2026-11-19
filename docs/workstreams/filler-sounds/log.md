@@ -58,3 +58,16 @@ docs/releases/v0.6.6.notes.txt` — SHA-256
 6f48efde5c9852cbcaa2c603b10ee8a24292779c0a0d7e3b4f14a837c45392d2;
 `(Get-Item …).Length` — 10 355 410 байт. Размер и SHA вписаны в README и
 docs/releases/v0.6.6.md.
+
+## 2026-11-13T20:05:00.000Z — F3 выпуск 0.6.6 опубликован и проверен
+
+PR #52 слит после зелёного CI (Quality gates (Windows) на 0480355), merge e687e62.
+Пользователь опубликовал GitHub Release v0.6.6 (latest; тег v0.6.6 → e687e62).
+Проверка здесь (Linux-контейнер): скачаны установщик, latest.json и
+SHA256SUMS.txt выпуска и latest.json по адресу обновлений программы.
+`sha256sum -c` — «Glagol_0.6.6_x64-setup.exe: OK» (10 355 410 байт); `cmp`
+latest.json выпуска и адреса программы — совпадают; version 0.6.6, обе платформы
+с одинаковой подписью; notes содержат «Звуки-заминки» — кириллица целая.
+`minisign -V` с ключом из tauri.conf.json — «Signature and comment signature
+verified», trusted comment file:Glagol_0.6.6_x64-setup.exe. Серия завершена;
+активной снова стала dictation-speed (S3c — журналы ПК).

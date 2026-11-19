@@ -25,7 +25,9 @@ export function Onboarding() {
       <h2 className="text-xl">{t("setupSpeech")}</h2>
       <p className="text-muted-foreground">{t("setupNote")}</p>
       {preferences.upgraded && <p>{t("upgradeNote")}</p>}
-      <div className="grid items-start gap-4 md:grid-cols-2"><DictationSetupCard /><TtsSection compact /></div>
+      <div className="grid items-start gap-4 md:grid-cols-2"><DictationSetupCard />
+        {/* A new installation starts with text to speech off; an upgrade with it on keeps the card. */}
+        {preferences.tts_enabled ? <TtsSection compact /> : <p className="rounded-lg border p-4 text-sm text-muted-foreground">{t("ttsOffSetupNote")}</p>}</div>
       <details><summary className="cursor-pointer text-sm">{t("advancedSpeechSettings")}</summary><div className="mt-4"><DictationSection /></div></details>
       <Button disabled={saving} onClick={() => void complete().catch(() => undefined)}>{t("continue")}</Button>
     </>}
