@@ -26,6 +26,7 @@ param(
     [string]$RefWav = "",
     [string]$RefText = "",
     [string]$ServerArgs = "",
+    [int]$TimeoutSec = 1800,
     [int]$Port = 8089
 )
 $ErrorActionPreference = "Stop"
@@ -71,7 +72,7 @@ function Invoke-Speech([string]$speechText, [string]$voice, [string]$outFile) {
     $sw = [Diagnostics.Stopwatch]::StartNew()
     Invoke-WebRequest -UseBasicParsing -Method Post -Uri "http://127.0.0.1:$Port/v1/audio/speech" `
         -ContentType "application/json; charset=utf-8" -Body ([Text.Encoding]::UTF8.GetBytes($body)) `
-        -OutFile $outFile -TimeoutSec 900 | Out-Null
+        -OutFile $outFile -TimeoutSec $TimeoutSec | Out-Null
     $sw.Stop()
     # 24 kHz mono 16-bit: 48000 bytes per second after the 44-byte header.
     $seconds = ((Get-Item $outFile).Length - 44) / 48000.0
@@ -114,7 +115,8 @@ foreach ($modelKey in ($Models -split ",") | ForEach-Object { $_.Trim() } | Wher
                     Invoke-Speech $Warmup $voice (Join-Path $OutDir "warmup.wav") | Out-Null
                     $elapsed, $audio = Invoke-Speech $Text $voice $file
                 } catch {
-                    Write-Host "$voice FAILED: $($_.ErrorDetails.Message) (log: $log)"
+                    $why = if ($_.ErrorDetails.Message) { $_.ErrorDetails.Message } else { $_.Exception.Message }
+                    Write-Host "$voice FAILED: $why (log: $log)"
                     $results += [pscustomobject]@{ model = $modelKey; device = $device; voice = $voice; speech_s = 0; synthesis_s = 0; speech_per_second = "FAILED" }
                     continue
                 }
