@@ -58,6 +58,7 @@ CC BY-NC-SA 4.0 для некоммерческого использования
 | `parser` | TXT/MD/DOCX/PDF, Pdfium |
 | `text` | Общие URL/email/сокращения и разбиение; числа/латиница — Silero adapter |
 | `text/normalize/`, `text/dictionary.rs` | Числа, даты, суммы и сокращения словами (RU с падежом, EN); словарь произношения пользователя (один проход, CSV); `commands/pronunciations.rs` — хранение (миграция 7), команды и `prepare_for_speech`; `components/settings/PronunciationSection.tsx` — раздел в настройках |
+| `text/ai_normalization.rs`, `text/ai_fragments.rs` | Необязательная ИИ-нормализация: любой OpenAI-совместимый сервис (адрес + ключ, список `/models`, проверка перед сохранением), выбор коротких фрагментов (≤ 1/10 текста, без контактов, латиницы и словарных слов), проверка ответа, откат на правила; `commands/ai_normalization.rs` — настройки в keyring, команды, предпросмотр; `components/settings/AiNormalizationSection.tsx` |
 | `db` | Append-only миграции и repository |
 | `backup` | ZIP библиотеки, проверка и защитная копия перед восстановлением |
 | `secrets/keyring.rs` | Раздельные STT-ключи; узкое удаление старого TTS-ключа |
