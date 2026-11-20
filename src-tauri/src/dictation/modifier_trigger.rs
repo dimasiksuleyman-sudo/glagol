@@ -143,9 +143,13 @@ impl ModifierTrigger {
 /// Whether Ctrl+Win dictation can run on this platform.
 pub const SUPPORTED: bool = cfg!(windows);
 
+/// Unassigned virtual key sent at the start of Ctrl+Win to suppress Start.
+#[cfg(windows)]
+pub(super) const MENU_MASK_VK: u16 = 0xE8;
+
 #[cfg(windows)]
 mod imp {
-    use super::{classify, Action, Key, ModifierTrigger};
+    use super::{classify, Action, Key, ModifierTrigger, MENU_MASK_VK};
     use std::sync::mpsc::{self, RecvTimeoutError, Sender};
     use std::sync::Mutex;
     use std::time::Instant;
@@ -161,10 +165,6 @@ mod imp {
         HC_ACTION, KBDLLHOOKSTRUCT, LLKHF_INJECTED, MSG, WH_KEYBOARD_LL, WM_KEYDOWN, WM_KEYUP,
         WM_QUIT, WM_SYSKEYDOWN, WM_SYSKEYUP,
     };
-
-    /// Unassigned virtual key used to keep Windows from opening Start when Win
-    /// is released after the chord (the "menu mask" technique of AutoHotkey).
-    const MENU_MASK_VK: u16 = 0xE8;
 
     /// Key classes from the hook to the worker; only the class leaves the hook.
     static EVENTS: Mutex<Option<Sender<(Key, bool)>>> = Mutex::new(None);
