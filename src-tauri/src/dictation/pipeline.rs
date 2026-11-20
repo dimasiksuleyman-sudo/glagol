@@ -14,7 +14,7 @@
 //! - [`crate::stt::SttProvider`] — transcription (real: `OpenAiCompatStt`; a
 //!   `FakeStt` returns canned text or errors).
 //! - [`TextInserter`] + [`ClipboardAccess`] — the two delivery seams (PR4, D8):
-//!   keystroke synthesis (real: `insert::EnigoInserter`) and clipboard get/set
+//!   keystroke synthesis (real: `insert::SystemInserter`) and clipboard get/set
 //!   (real: `insert::ArboardClipboard`), both blocking, both run inside one
 //!   `spawn_blocking`. `FakeInserter`/`FakeClipboard` keep the headless CI box
 //!   hardware-free (D9).
@@ -284,7 +284,7 @@ where
 {
     pub recorder: &'a R,
     pub provider: &'a P,
-    /// Keystroke synthesis seam (D8). Real impl: `insert::EnigoInserter`.
+    /// Keystroke synthesis seam (D8). Real impl: `insert::SystemInserter`.
     pub inserter: &'a I,
     /// Clipboard get/set seam (D8). Real impl: `insert::ArboardClipboard`.
     pub clipboard: &'a C,

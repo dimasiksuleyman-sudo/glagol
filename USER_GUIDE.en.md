@@ -302,6 +302,10 @@ Good to know:
 
 ## Windows limitations
 
+- Release all shortcut keys after dictating. Auto-paste waits up to half a second
+  for Ctrl, Shift, Alt and Win to clear. If a modifier stays down or you switch
+  windows while the paste is being prepared, the text goes to the clipboard
+  for manual `Ctrl+V`.
 - Auto-paste restores previous text clipboard contents, but cannot restore images/files.
   Clipboard managers changing line endings can prevent restoration. Windows Win+V
   history may retain transcripts independently of Glagol's history setting.
