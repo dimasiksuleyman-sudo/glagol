@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "id": "lan-server",
-  "title": "Глагол как сервер распознавания для других компьютеров в сети",
+  "title": "Сервер распознавания внутри Глагола для офиса (русский, GigaAM)",
   "status": "paused",
-  "next": "L1",
-  "reason": "TODO от пользователя 2026-11-13: «Запиши в туду, но делать не будем. Пока.» Начинать только по отдельной просьбе; объём согласовать перед L1; продолжение — README серии.",
+  "next": "L6",
+  "reason": "Сервер работает на двух машинах (L6 частично: замеры GTX 1060 и RX 550, два клиента). Осталось: смена ключа и сон сервера — проверить при выпуске 0.7.0. Пользователь 2026-11-20 переключил работу на tts-normalization.",
   "claim": null,
   "links": [
     "docs/workstreams/lan-server/README.md",
@@ -13,26 +13,179 @@
   "steps": [
     {
       "id": "L1",
-      "title": "Решение по архитектуре и безопасности: адрес/порт, ключ доступа, шифрование, политика сети",
-      "status": "pending",
+      "title": "План реализации в репо: архитектура, API, безопасность, удобство, этапы",
+      "status": "done",
       "depends_on": [],
-      "required": ["decision"],
-      "checks": []
+      "required": [
+        "decision"
+      ],
+      "checks": [
+        {
+          "id": "decision",
+          "status": "PASS",
+          "method": "manual",
+          "command": "AskUserQuestion 2026-11-19: языки v1, способ подключения, ключ доступа; одобрение плана",
+          "cwd": ".",
+          "at": "2026-11-19T17:00:00.000Z",
+          "environment": {
+            "os": "chat"
+          },
+          "exit_code": null,
+          "output": "Только русский (GigaAM); код подключения + «Найти Глагол в сети»; ключ всегда нужен; «Как приоритет для нас интересна Российская часть»; план одобрен",
+          "evidence": "docs/workstreams/lan-server/log.md"
+        }
+      ]
     },
     {
       "id": "L2",
-      "title": "Серверный режим: OpenAI-совместимый /v1/audio/transcriptions поверх локального движка, настройки, документация RU/EN",
-      "status": "pending",
-      "depends_on": ["L1"],
-      "required": ["rust", "frontend"],
-      "checks": []
+      "title": "Ядро сервера (Rust): HTTP OpenAI-совместимый, multipart, аудио, ключ, фильтр частных сетей, очередь и лимиты; интеграционный тест существующим клиентом",
+      "status": "done",
+      "depends_on": [
+        "L1"
+      ],
+      "required": [
+        "rust"
+      ],
+      "checks": [
+        {
+          "id": "rust",
+          "status": "PASS",
+          "method": "command",
+          "command": "cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test",
+          "cwd": "src-tauri",
+          "at": "2026-11-19T18:00:00.000Z",
+          "environment": {
+            "os": "Linux container",
+            "rustc": "1.97.0",
+            "node": "v22.23.4",
+            "pnpm": "10.28.0"
+          },
+          "exit_code": 0,
+          "output": "test result: ok. 401 passed; 0 failed; 6 ignored (17 lan_server, incl. OpenAiCompatStt client ↔ server end-to-end)",
+          "evidence": "docs/workstreams/lan-server/log.md"
+        }
+      ]
     },
     {
       "id": "L3",
-      "title": "Проверка на двух машинах: ПК-сервер, ноутбук-клиент в режиме «Сервер организации»",
+      "title": "Хост: настройки, блок «Сервер для других компьютеров», код подключения, адрес в сети, не засыпать, брандмауэр; документы",
+      "status": "done",
+      "depends_on": [
+        "L2"
+      ],
+      "required": [
+        "rust",
+        "frontend"
+      ],
+      "checks": [
+        {
+          "id": "rust",
+          "status": "PASS",
+          "method": "command",
+          "command": "cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test",
+          "cwd": "src-tauri",
+          "at": "2026-11-19T19:30:00.000Z",
+          "environment": {
+            "os": "Linux container",
+            "rustc": "1.97.0",
+            "node": "v22.23.4",
+            "pnpm": "10.28.0"
+          },
+          "exit_code": 0,
+          "output": "test result: ok. 403 passed; 0 failed; 6 ignored",
+          "evidence": "docs/workstreams/lan-server/log.md"
+        },
+        {
+          "id": "frontend",
+          "status": "PASS",
+          "method": "command",
+          "command": "pnpm exec tsc --noEmit && pnpm build",
+          "cwd": ".",
+          "at": "2026-11-19T19:30:00.000Z",
+          "environment": {
+            "os": "Linux container",
+            "rustc": "1.97.0",
+            "node": "v22.23.4",
+            "pnpm": "10.28.0"
+          },
+          "exit_code": 0,
+          "output": "I18N PASS: 385 keys; ✓ built",
+          "evidence": "docs/workstreams/lan-server/log.md"
+        }
+      ]
+    },
+    {
+      "id": "L4",
+      "title": "Клиент: «Вставить код подключения» и проверка в одно действие",
+      "status": "done",
+      "depends_on": [
+        "L3"
+      ],
+      "required": [
+        "rust",
+        "frontend"
+      ],
+      "checks": [
+        {
+          "id": "rust",
+          "status": "PASS",
+          "method": "command",
+          "command": "cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test",
+          "cwd": "src-tauri",
+          "at": "2026-11-19T19:30:00.000Z",
+          "environment": {
+            "os": "Linux container",
+            "rustc": "1.97.0",
+            "node": "v22.23.4",
+            "pnpm": "10.28.0"
+          },
+          "exit_code": 0,
+          "output": "test result: ok. 403 passed; 0 failed; 6 ignored",
+          "evidence": "docs/workstreams/lan-server/log.md"
+        },
+        {
+          "id": "frontend",
+          "status": "PASS",
+          "method": "command",
+          "command": "pnpm exec tsc --noEmit && pnpm build",
+          "cwd": ".",
+          "at": "2026-11-19T19:30:00.000Z",
+          "environment": {
+            "os": "Linux container",
+            "rustc": "1.97.0",
+            "node": "v22.23.4",
+            "pnpm": "10.28.0"
+          },
+          "exit_code": 0,
+          "output": "I18N PASS: 385 keys; ✓ built",
+          "evidence": "docs/workstreams/lan-server/log.md"
+        }
+      ]
+    },
+    {
+      "id": "L5",
+      "title": "«Найти Глагол в сети» (UDP-широковещание в частной сети)",
+      "status": "cancelled",
+      "depends_on": [
+        "L4"
+      ],
+      "required": [
+        "rust",
+        "frontend"
+      ],
+      "checks": [],
+      "reason": "Пользователь 2026-11-19: «пока не надо, все равно ключ не запомнить, а значит его будут рассылать» — код подключения и так рассылают."
+    },
+    {
+      "id": "L6",
+      "title": "Замер (scripts/lan-server-bench.mjs) и проверка на двух машинах: ПК сына (GTX 1060 6 ГБ) — сервер, ПК и ноутбук — клиенты",
       "status": "pending",
-      "depends_on": ["L2"],
-      "required": ["manual"],
+      "depends_on": [
+        "L4"
+      ],
+      "required": [
+        "manual"
+      ],
       "checks": []
     }
   ]

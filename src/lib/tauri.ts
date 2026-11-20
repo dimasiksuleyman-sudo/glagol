@@ -461,6 +461,10 @@ export interface DictationSettings {
   insertion_mode: string;
   /** Remove hesitation sounds («эм», «э-э», "um") before insertion (default on). */
   remove_fillers: boolean;
+  /** Also dictate while holding Ctrl+Win (default off). */
+  ctrl_win: boolean;
+  /** Whether Ctrl+Win dictation exists on this platform (Windows only). */
+  ctrl_win_supported: boolean;
 }
 
 /**
@@ -492,7 +496,7 @@ export async function getDictationSettings(): Promise<DictationSettings> {
 
 /**
  * Persist a single dictation-page setting by whitelisted `name`
- * (`stt_insertion_mode`, `dictation_device`, `dictation_history_enabled`, `dictation_remove_fillers`,
+ * (`stt_insertion_mode`, `dictation_device`, `dictation_history_enabled`, `dictation_remove_fillers`, `dictation_ctrl_win`,
  * `stt_model`, `stt_provider`). The hotkey is **not** settable here — it goes
  * through {@link setDictationHotkey}. Rejects with a Russian-language string on
  * an invalid value or an unknown key; nothing is written unless it validates.
@@ -579,5 +583,30 @@ export const reportOverlayEvent = (event: OverlayEvent, state?: DictationState["
   invoke<void>("report_overlay_event", { event, state: state ?? null, delayMs: delayMs === undefined ? null : Math.round(delayMs) }).catch(() => undefined);
 /** Ask Rust to hide this overlay window unless a new dictation already started. */
 export const hideOverlay = () => invoke<void>("hide_overlay").catch(() => undefined);
+/** Mirrors `lan_server::Status` (counters of a running LAN server). */
+export interface LanServerStatus { port: number; requests: number; failures: number; active_clients: number; pending: number }
+/** Mirrors `commands::lan_server::LanServerInfo`. */
+export interface LanServerInfo {
+  supported: boolean;
+  enabled: boolean;
+  running: boolean;
+  port: number;
+  keep_awake: boolean;
+  address: string | null;
+  model_name: string | null;
+  model_ready: boolean;
+  status: LanServerStatus | null;
+  error: string | null;
+}
+export const getLanServer = () => invoke<LanServerInfo>("get_lan_server");
+export const setLanServerEnabled = (enabled: boolean) => invoke<LanServerInfo>("set_lan_server_enabled", { enabled });
+export const setLanServerPort = (port: number) => invoke<LanServerInfo>("set_lan_server_port", { port });
+export const setLanServerKeepAwake = (enabled: boolean) => invoke<LanServerInfo>("set_lan_server_keep_awake", { enabled });
+/** The connection code with the access key; fetched only when the user copies or shows it. */
+export const lanServerConnectionCode = () => invoke<string>("lan_server_connection_code");
+export const regenerateLanServerKey = () => invoke<LanServerInfo>("regenerate_lan_server_key");
+/** Mirrors `commands::lan_server::LanConnection`: a pasted code checked against the server. */
+export interface LanConnection { base_url: string; key: string; model: string }
+export const inspectLanConnectionCode = (code: string) => invoke<LanConnection>("inspect_lan_connection_code", { code });
 /** The running dictation's state for a pill window rebuilt mid-session, or `null` when idle. */
 export const overlayState = () => invoke<DictationState | null>("overlay_state").catch(() => null);

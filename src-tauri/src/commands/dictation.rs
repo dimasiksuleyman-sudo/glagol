@@ -65,6 +65,8 @@ const KEY_HISTORY_ENABLED: &str = "dictation_history_enabled";
 const KEY_PROVIDER: &str = "stt_provider";
 /// Remove hesitation sounds («эм», «э-э», "um") before insertion. Default on.
 const KEY_REMOVE_FILLERS: &str = "dictation_remove_fillers";
+/// Also dictate while holding Ctrl+Win (GL-009). Default off; Windows only.
+pub(crate) const KEY_CTRL_WIN: &str = "dictation_ctrl_win";
 
 /// Default push-to-talk hotkey (D3/D7). `CmdOrCtrl` resolves to `Control` on
 /// Windows/Linux and `Cmd` on macOS via global-shortcut's parser.
@@ -76,6 +78,8 @@ const DEFAULT_HISTORY_ENABLED: bool = false;
 /// Default hesitation-sound removal: **on** (filler-sounds F1). Only sounds,
 /// never words, are removed, and the switch is in Settings → Dictation.
 const DEFAULT_REMOVE_FILLERS: bool = true;
+/// Default Ctrl+Win dictation: **off** — a keyboard hook is opt-in.
+const DEFAULT_CTRL_WIN: bool = false;
 /// Persisted representation of an enabled/disabled boolean setting.
 const BOOL_TRUE: &str = "true";
 const BOOL_FALSE: &str = "false";
@@ -130,6 +134,10 @@ pub struct DictationSettings {
     pub insertion_mode: String,
     /// Remove hesitation sounds before insertion.
     pub remove_fillers: bool,
+    /// Also dictate while holding Ctrl+Win.
+    pub ctrl_win: bool,
+    /// Whether Ctrl+Win dictation exists on this platform (Windows).
+    pub ctrl_win_supported: bool,
 }
 
 // ── Tauri command wrappers ─────────────────────────────────────────────
@@ -246,6 +254,25 @@ pub(crate) fn read_remove_fillers(conn: &Connection) -> rusqlite::Result<bool> {
     })
 }
 
+/// Read the Ctrl+Win switch. Absent → [`DEFAULT_CTRL_WIN`] (off); an unknown
+/// value is a loud fallback to off.
+pub(crate) fn read_ctrl_win(conn: &Connection) -> rusqlite::Result<bool> {
+    Ok(match repository::get_setting(conn, KEY_CTRL_WIN)? {
+        None => DEFAULT_CTRL_WIN,
+        Some(raw) => match raw.as_str() {
+            BOOL_TRUE => true,
+            BOOL_FALSE => false,
+            other => {
+                tracing::error!(
+                    value = other,
+                    "unknown dictation_ctrl_win; falling back to off"
+                );
+                DEFAULT_CTRL_WIN
+            }
+        },
+    })
+}
+
 /// Read the pinned input device name (D6). An absent or whitespace-only value
 /// means "system default" → `None`.
 pub(crate) fn read_device_setting(conn: &Connection) -> rusqlite::Result<Option<String>> {
@@ -284,6 +311,8 @@ pub(crate) fn get_dictation_settings_impl(
         .unwrap_or_else(|| DEFAULT_MODEL.to_string()),
         insertion_mode: insertion_mode_str(read_insertion_mode(conn)?).to_string(),
         remove_fillers: read_remove_fillers(conn)?,
+        ctrl_win: read_ctrl_win(conn)?,
+        ctrl_win_supported: crate::dictation::modifier_trigger::SUPPORTED,
     })
 }
 
@@ -305,6 +334,14 @@ pub(crate) fn set_dictation_setting_impl(
             if value != BOOL_TRUE && value != BOOL_FALSE {
                 return Err(
                     "Недопустимое значение переключателя истории (ожидается true или false)."
+                        .to_string(),
+                );
+            }
+        }
+        KEY_CTRL_WIN => {
+            if value != BOOL_TRUE && value != BOOL_FALSE {
+                return Err(
+                    "Недопустимое значение переключателя Ctrl+Win (ожидается true или false)."
                         .to_string(),
                 );
             }
@@ -677,17 +714,25 @@ pub async fn get_dictation_settings(
 
 #[tauri::command]
 pub async fn set_dictation_setting(
+    app: tauri::AppHandle,
     state: tauri::State<'_, AppState>,
     name: String,
     value: String,
 ) -> Result<(), String> {
     (async {
         let updated_at = chrono::Utc::now().timestamp_millis();
-        let conn = state
-            .db
-            .lock()
-            .map_err(|e| format!("Не удалось получить блокировку базы данных: {e}"))?;
-        set_dictation_setting_impl(&conn, &name, &value, updated_at)
+        {
+            let conn = state
+                .db
+                .lock()
+                .map_err(|e| format!("Не удалось получить блокировку базы данных: {e}"))?;
+            set_dictation_setting_impl(&conn, &name, &value, updated_at)?;
+        }
+        // The keyboard hook follows the switch at once, without a restart.
+        if name == KEY_CTRL_WIN {
+            crate::dictation::session::apply_ctrl_win(&app, value.trim() == BOOL_TRUE);
+        }
+        Ok(())
     })
     .await
     .map_err(crate::i18n::error)
@@ -939,6 +984,21 @@ mod tests {
         assert_eq!(s.model, DEFAULT_MODEL);
         assert_eq!(s.insertion_mode, INSERTION_MODE_PASTE);
         assert!(s.remove_fillers, "hesitation sounds are removed by default");
+        assert!(!s.ctrl_win, "Ctrl+Win hook is opt-in");
+    }
+
+    #[test]
+    fn ctrl_win_switch_validates_and_persists() {
+        let conn = crate::db::test_connection();
+        set_dictation_setting_impl(&conn, KEY_CTRL_WIN, "true", 1).unwrap();
+        assert!(read_ctrl_win(&conn).unwrap());
+        assert!(set_dictation_setting_impl(&conn, KEY_CTRL_WIN, "yes", 2).is_err());
+        assert!(read_ctrl_win(&conn).unwrap(), "invalid value not written");
+        repository::set_setting(&conn, KEY_CTRL_WIN, "garbage", 3).unwrap();
+        assert!(
+            !read_ctrl_win(&conn).unwrap(),
+            "corrupt value falls back to off"
+        );
     }
 
     #[test]

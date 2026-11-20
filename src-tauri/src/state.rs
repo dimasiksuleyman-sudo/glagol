@@ -40,7 +40,8 @@ pub struct AppState {
     /// and fires it, ending the recording. `take()` semantics make a second
     /// `Released` (or a lost `Pressed`/`Released` ordering) a no-op. Block-scoped
     /// `std::sync::Mutex`, never held across an `.await`.
-    pub dictation_stop: Mutex<Option<tokio::sync::oneshot::Sender<()>>>,
+    pub dictation_stop:
+        Mutex<Option<tokio::sync::oneshot::Sender<crate::dictation::pipeline::StopSignal>>>,
 
     /// Monotonic dictation-session counter (Sprint 6 PR3). Each `Pressed`
     /// increments it and captures the new value as its session token; a

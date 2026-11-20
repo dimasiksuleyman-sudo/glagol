@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "id": "tts-qwen",
+  "title": "Qwen3-TTS: качественные голоса (Apache 2.0) на смену Silero для организаций",
+  "status": "paused",
+  "next": "Q2",
+  "reason": "План согласован 2026-11-20; начинать по команде пользователя после/параллельно tts-normalization N1 (см. docs/roadmap.md).",
+  "claim": null,
+  "links": [
+    "docs/workstreams/tts-qwen/README.md",
+    "docs/workstreams/tts-qwen/log.md"
+  ],
+  "steps": [
+    {
+      "id": "Q1",
+      "title": "Прослушать демо Qwen3-TTS 0.6B/1.7B на русских и английских текстах пользователя, сравнить с Silero",
+      "status": "done",
+      "depends_on": [],
+      "required": [
+        "manual"
+      ],
+      "checks": [
+        {
+          "id": "manual",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Демо Qwen3-TTS (0.6B/1.7B) на русском новостном тексте пользователя, сравнение с Silero",
+          "cwd": ".",
+          "at": "2026-11-20T12:00:00.000Z",
+          "environment": {
+            "os": "браузер пользователя"
+          },
+          "exit_code": null,
+          "output": "«Квен обладает более живой озвучкой, меньше синтетического привкуса»; обеим моделям нужна нормализация («980 млн» → «девяносто восемдесят малерад»); «Квен 1.7 с нормализацией цифр и сокращений был бы топчик для прослушивания новостей, с выбором языка» (reported)",
+          "evidence": "docs/workstreams/tts-qwen/log.md"
+        }
+      ]
+    },
+    {
+      "id": "Q2",
+      "title": "Выбор C++/GGML-порта (лицензия, Vulkan/CUDA, Windows), закрепление версии, замер на GTX 1060, RX 550 и процессоре",
+      "status": "pending",
+      "depends_on": [
+        "Q1"
+      ],
+      "required": [
+        "manual"
+      ],
+      "checks": []
+    },
+    {
+      "id": "Q3",
+      "title": "Движок tts/qwen: закреплённые файлы, проверка, TtsBackend, устройство, голоса RU/EN",
+      "status": "pending",
+      "depends_on": [
+        "Q2"
+      ],
+      "required": [
+        "rust"
+      ],
+      "checks": []
+    },
+    {
+      "id": "Q4",
+      "title": "Интерфейс: выбор движка и размера модели, рекомендация по железу",
+      "status": "pending",
+      "depends_on": [
+        "Q3"
+      ],
+      "required": [
+        "rust",
+        "frontend"
+      ],
+      "checks": []
+    },
+    {
+      "id": "Q5",
+      "title": "Озвучка через сервер Глагола: POST /v1/audio/speech для офисных клиентов",
+      "status": "pending",
+      "depends_on": [
+        "Q4"
+      ],
+      "required": [
+        "rust",
+        "frontend"
+      ],
+      "checks": []
+    },
+    {
+      "id": "Q6",
+      "title": "Решение о Silero, документы RU/EN, позиционирование",
+      "status": "pending",
+      "depends_on": [
+        "Q4"
+      ],
+      "required": [
+        "manual"
+      ],
+      "checks": []
+    }
+  ]
+}

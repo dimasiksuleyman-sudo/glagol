@@ -45,6 +45,8 @@ pub mod state;
 
 // Dictation microphone recorder (Sprint 6 PR2): capture → 16 kHz mono S16LE.
 pub mod dictation;
+/// Glagol as a recognition server for other computers in the LAN.
+pub mod lan_server;
 
 // Tauri commands exposed to the frontend.
 pub mod commands;
@@ -188,6 +190,7 @@ pub fn run() {
             );
             let local_models = std::sync::Arc::new(local_models);
             app.manage(local_models.clone());
+            app.manage(commands::lan_server::LanServerState::default());
             // Learn the graphics card for the recommendation without loading a
             // model; never while a download or another model operation runs.
             {
@@ -268,6 +271,18 @@ pub fn run() {
             if let Err(e) = app.global_shortcut().register(hotkey) {
                 tracing::warn!("failed to register dictation hotkey {hotkey:?}: {e}");
             }
+            // Ctrl+Win works alongside the hotkey when the user turned it on.
+            let ctrl_win = {
+                let state = app.state::<state::AppState>();
+                let conn = state
+                    .db
+                    .lock()
+                    .expect("db mutex poisoned during startup Ctrl+Win read");
+                commands::dictation::read_ctrl_win(&conn).unwrap_or(false)
+            };
+            if ctrl_win {
+                dictation::session::apply_ctrl_win(app.handle(), true);
+            }
 
             // Close-to-tray (D12): intercept the main window's close so the
             // hotkey keeps working after the user "closes" the window.
@@ -280,6 +295,9 @@ pub fn run() {
                     }
                 });
             }
+
+            // Serve recognition to other computers when the user turned it on.
+            commands::lan_server::start_at_launch(app.handle());
 
             Ok(())
         })
@@ -300,6 +318,13 @@ pub fn run() {
             dictation::session::report_overlay_event,
             dictation::session::hide_overlay,
             dictation::session::overlay_state,
+            commands::lan_server::get_lan_server,
+            commands::lan_server::set_lan_server_enabled,
+            commands::lan_server::set_lan_server_port,
+            commands::lan_server::set_lan_server_keep_awake,
+            commands::lan_server::lan_server_connection_code,
+            commands::lan_server::regenerate_lan_server_key,
+            commands::lan_server::inspect_lan_connection_code,
             commands::diagnostics::get_diagnostics_settings,
             commands::diagnostics::set_detailed_logging,
             commands::diagnostics::open_log_folder,

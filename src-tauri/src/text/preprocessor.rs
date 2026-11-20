@@ -8,7 +8,8 @@
 //!
 //! ## Composition
 //!
-//! [`preprocess`] applies four passes in this fixed order:
+//! [`preprocess`] applies five passes in this fixed order (the fifth is
+//! [`crate::text::normalize::ru::normalize`]):
 //!
 //! 1. [`normalize_whitespace`] — CRLF → LF, NBSP/tab → space, collapse
 //!    multi-space within lines, preserve paragraph breaks (`\n\n`),
@@ -58,7 +59,9 @@ pub fn preprocess_english(input: &str) -> String {
     let clean = replace_emails(&clean);
     let clean = URL_SCHEMA_REGEX.replace_all(&clean, "link");
     let clean = URL_WWW_REGEX.replace_all(&clean, "link");
-    URL_BARE_REGEX.replace_all(&clean, "link").into_owned()
+    let clean = URL_BARE_REGEX.replace_all(&clean, "link");
+    // Numbers, money, ordinals and years as words (tts-normalization N1).
+    crate::text::normalize::en::normalize(&clean)
 }
 
 /// Whitelist of top-level domains used by the bare-domain URL detector.
@@ -113,7 +116,10 @@ pub fn preprocess(text: &str) -> String {
     let text = normalize_whitespace(text);
     let text = replace_emails(&text);
     let text = replace_urls(&text);
-    expand_abbreviations(&text)
+    let text = expand_abbreviations(&text);
+    // Numbers, money, dates and abbreviations as words in the right case
+    // (tts-normalization N1); engine-independent.
+    crate::text::normalize::ru::normalize(&text)
 }
 
 /// Normalise whitespace: CRLF → LF, NBSP/tab → space, collapse runs of

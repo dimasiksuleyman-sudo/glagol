@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "id": "tts-normalization",
+  "title": "Нормализация текста для озвучки: правила, словарь, ИИ-фрагменты",
+  "status": "active",
+  "next": "N2",
+  "reason": null,
+  "claim": null,
+  "links": [
+    "docs/workstreams/tts-normalization/README.md",
+    "docs/workstreams/tts-normalization/log.md",
+    "docs/workstreams/tts-qwen/README.md"
+  ],
+  "steps": [
+    {
+      "id": "N1",
+      "title": "Правила RU/EN в Rust: числа с падежом, дроби, деньги, единицы, даты, время, аббревиатуры; тесты ≥ 200 случаев",
+      "status": "done",
+      "depends_on": [],
+      "required": [
+        "rust"
+      ],
+      "checks": [
+        {
+          "id": "rust",
+          "status": "PASS",
+          "method": "command",
+          "command": "cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test",
+          "cwd": "src-tauri",
+          "at": "2026-11-20T17:00:00.000Z",
+          "environment": {
+            "os": "Linux container",
+            "rustc": "1.97.0",
+            "node": "v22.23.4",
+            "pnpm": "10.28.0"
+          },
+          "exit_code": 0,
+          "output": "test result: ok. 416 passed; 0 failed; 6 ignored (≈80 normalization cases incl. the user's news text verbatim)",
+          "evidence": "docs/workstreams/tts-normalization/log.md"
+        }
+      ]
+    },
+    {
+      "id": "N2",
+      "title": "Словарь произношения: миграция SQLite, раздел в настройках, импорт/экспорт, «Послушать», бэкап",
+      "status": "pending",
+      "depends_on": [
+        "N1"
+      ],
+      "required": [
+        "rust",
+        "frontend"
+      ],
+      "checks": []
+    },
+    {
+      "id": "N3",
+      "title": "ИИ-нормализация фрагментами по разрешению: провайдер/модель/ключ, валидация, откат на правила, кэш, предпросмотр",
+      "status": "pending",
+      "depends_on": [
+        "N1"
+      ],
+      "required": [
+        "rust",
+        "frontend"
+      ],
+      "checks": []
+    },
+    {
+      "id": "N4",
+      "title": "Документы RU/EN, SECURITY, ручная проверка на новостях",
+      "status": "pending",
+      "depends_on": [
+        "N2",
+        "N3"
+      ],
+      "required": [
+        "manual"
+      ],
+      "checks": []
+    }
+  ]
+}

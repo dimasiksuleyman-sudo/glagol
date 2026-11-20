@@ -557,3 +557,12 @@ pnpm build — I18N PASS 351, ✓ built; check-version 0.6.6. Код Windows-onl
 Выпуск 0.6.6 опубликован и проверен (docs/workstreams/filler-sounds/log.md).
 Дальше: S3c — журналы ПК с 0.6.6 (ищем «not presented on screen» и «rebuilt
 during dictation»), S4 — обновление ноутбука из программы, S3b — наблюдение.
+
+## 2026-11-19T12:00:00.000Z — серия завершена (reported)
+
+Пользователь: «Пилюля больше не исчезает, уже прошло дней пять, ноутбук
+обновился и все работает». S3b/S3c pc-test — PASS (manual, reported; журналы
+не разбирались, поэтому срабатывание починки «rebuilt during dictation» не
+подтверждено). S4 in-app-update — ноутбук 0.6.1 → 0.6.6 из программы
+(reported), ПК — observed ранее. Причина отказа вывода WebView2 по-прежнему
+unknown (GL-006 остаётся под наблюдением в обычной работе).

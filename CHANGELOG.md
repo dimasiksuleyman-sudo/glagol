@@ -13,6 +13,16 @@ the per-session master logs under [`docs/day-logs/`](docs/day-logs/).
 
 ### Changed
 
+- Text to speech reads numbers, money, percentages, dates, years, centuries, times, ordinals («2-я», «90-е») and common abbreviations as words, in the grammatical case the Russian context asks for («продал 980 млн акций», «$81,3 млрд», «в 2026 г.»); English text follows English rules. Offline and engine-independent. / Озвучка читает числа, суммы, проценты, даты, годы, века, время, порядковые («2-я», «90-е») и частые сокращения словами — в падеже по русскому контексту («продал 980 млн акций», «$81,3 млрд», «в 2026 г.»); английский текст — по английским правилам. Офлайн и для любого движка.
+
+### Added
+
+- Server for other computers (Settings → Dictation, off by default): this computer serves Russian GigaAM recognition over the local network through an OpenAI-compatible endpoint; office computers connect by pasting a connection code (address + access key) in Organization server → Glagol on another computer. Private networks only, access key always required, requests queue (beyond 32 the server answers «busy» and Glagol clients retry automatically), keep-awake option, firewall help; no speech, text or client addresses are logged. / «Сервер для других компьютеров» («Настройки» → «Диктовка», по умолчанию выключен): компьютер раздаёт русское распознавание GigaAM по локальной сети через OpenAI-совместимый API; офисные компьютеры подключаются вставкой кода подключения (адрес + ключ) в «Сервер организации» → «Глагол на другом компьютере». Только частные сети, ключ обязателен, очередь запросов (сверх 32 сервер отвечает «занят», а клиенты Глагола сами повторяют запрос), «не засыпать», помощь с брандмауэром; речь, текст и адреса компьютеров не пишутся в журнал.
+
+- Also hold Ctrl+Win (Dictation page, off by default, Windows): dictate by holding Ctrl and Win together, as in Wispr Flow, alongside the main shortcut. Another key pressed meanwhile (Ctrl+Win+D) cancels silently; Start does not open after a dictation; elevated windows still need the main shortcut. A keyboard hook tells only Ctrl, Win and "another key" apart and stores nothing. / «Также по удержанию Ctrl+Win» (страница «Диктовка», по умолчанию выключено, Windows): диктовка по удержанию Ctrl и Win вместе, как в Wispr Flow, вместе с основной клавишей. Другая клавиша в это время (Ctrl+Win+D) молча отменяет диктовку; «Пуск» после диктовки не открывается; в окнах от администратора нужна основная клавиша. Хук клавиатуры различает только Ctrl, Win и «другую клавишу» и ничего не сохраняет.
+
+### Changed
+
 - A new installation starts with text to speech off: the first-launch screen shows dictation setup and a note that text to speech can be turned on later in Settings → Text to speech; Silero is not offered or verified until then. Upgrades keep their previous choice. / Новая установка начинает с выключенной озвучкой: на первом запуске — настройка диктовки и подсказка, что озвучку можно включить позже в «Настройки» → «Озвучка»; до этого Silero не предлагается и не проверяется. После обновления прежний выбор сохраняется.
 
 ## [v0.6.6] — 2026-11-13

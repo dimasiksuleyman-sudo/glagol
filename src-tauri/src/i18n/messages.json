@@ -112,6 +112,10 @@
     "ru": "Недопустимое значение переключателя истории (ожидается true или false)."
   },
   {
+    "en": "Invalid Ctrl+Win setting (expected true or false).",
+    "ru": "Недопустимое значение переключателя Ctrl+Win (ожидается true или false)."
+  },
+  {
     "en": "Invalid hesitation-sound setting (expected true or false).",
     "ru": "Недопустимое значение переключателя звуков-заминок (ожидается true или false)."
   },
@@ -706,5 +710,73 @@
   {
     "en": "Unknown local model.",
     "ru": "Неизвестная локальная модель."
+  },
+  {
+    "en": "Could not save server settings: {e}",
+    "ru": "Не удалось сохранить настройки сервера: {e}"
+  },
+  {
+    "en": "Could not read server settings: {e}",
+    "ru": "Не удалось прочитать настройки сервера: {e}"
+  },
+  {
+    "en": "Could not get the server access key: {e}",
+    "ru": "Не удалось получить ключ доступа сервера: {e}"
+  },
+  {
+    "en": "Port {port} is already used by another program. Choose another port.",
+    "ru": "Порт {port} уже занят другой программой. Выберите другой порт."
+  },
+  {
+    "en": "Could not start the server: {e}",
+    "ru": "Не удалось запустить сервер: {e}"
+  },
+  {
+    "en": "The port must be from 1024 to 65535 (except 8766).",
+    "ru": "Порт должен быть от 1024 до 65535 (кроме 8766)."
+  },
+  {
+    "en": "This computer has no address in the local network.",
+    "ru": "У этого компьютера нет адреса в локальной сети."
+  },
+  {
+    "en": "Could not create a new key: {e}",
+    "ru": "Не удалось создать новый ключ: {e}"
+  },
+  {
+    "en": "This is not a Glagol connection code.",
+    "ru": "Это не код подключения Глагола."
+  },
+  {
+    "en": "The code has no access key.",
+    "ru": "В коде нет ключа доступа."
+  },
+  {
+    "en": "The access key in the code is invalid.",
+    "ru": "В коде неверный ключ доступа."
+  },
+  {
+    "en": "The server address in the code is invalid.",
+    "ru": "В коде неверный адрес сервера."
+  },
+  {
+    "en": "The Glagol server must be in the local network.",
+    "ru": "Сервер Глагола должен быть в локальной сети."
+  },
+  {
+    "en": "The key in the code does not fit: get a new connection code on the server.",
+    "ru": "Ключ в коде не подходит: возьмите новый код подключения на сервере."
+  },
+  {
+    "en": "The Russian recognition model is not installed on the server.",
+    "ru": "На сервере не установлена русская модель распознавания."
+  },
+  {
+    "en": "Could not connect to Glagol at {address}: check that the server is on and the firewall allows connections.",
+    "ru": "Не удалось подключиться к Глаголу на {address}: проверьте, что сервер включён и брандмауэр разрешает подключения."
+  },
+  {
+    "en": "The server did not report a recognition model.",
+    "ru": "Сервер не сообщил модель распознавания."
   }
 ]

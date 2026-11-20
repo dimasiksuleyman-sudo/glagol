@@ -37,7 +37,7 @@ export const en = {
   serviceAddress: "Service address",
   helpDictateTitle: "Dictate into any app",
   helpDictateSteps: "Put the cursor where the text should go.\nHold the shortcut (Ctrl+Shift+Space by default) and wait for the red dot on the indicator.\nSpeak, then release the keys: the text is inserted once.",
-  helpDictateHint: "This shortcut starts dictation. Hold it while you speak; click Change to pick another combination.",
+  helpDictateHint: "This shortcut starts dictation. Hold it while you speak; click Change to pick another combination. You can also turn on holding Ctrl+Win.",
   helpDictateTip: "Dictate into any window: hold Ctrl+Shift+Space, speak and release — the text appears at the cursor.",
   helpSpeedTitle: "Faster recognition",
   helpSpeedSteps: "Open Settings → Dictation.\nIn Recognition speed, read the recommendation for this computer.\nClick Apply recommendation: Glagol downloads CTC if needed and selects the graphics card or the processor.",

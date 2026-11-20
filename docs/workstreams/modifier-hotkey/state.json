@@ -2,13 +2,87 @@
   "schema_version": 1,
   "id": "modifier-hotkey",
   "title": "Диктовка по удержанию только модификаторов (Ctrl+Win)",
-  "status": "paused",
-  "next": "M1",
-  "reason": "TODO от пользователя 2026-11-10: начинать после выпуска 0.6.5; объём согласовать перед M1; продолжение — README серии.",
+  "status": "done",
+  "next": null,
+  "reason": "Серия завершена 2026-11-19: Ctrl+Win работает на сборке 0.6.7 (reported); выпуск — вместе с 0.6.7.",
   "claim": null,
-  "links": ["docs/workstreams/modifier-hotkey/README.md", "docs/workstreams/modifier-hotkey/log.md"],
+  "links": [
+    "docs/workstreams/modifier-hotkey/README.md",
+    "docs/workstreams/modifier-hotkey/log.md"
+  ],
   "steps": [
-    {"id": "M1", "title": "Прототип хука модификаторов: старт/стоп, отмена при другой клавише, без «Пуска»", "status": "pending", "depends_on": [], "required": ["rust", "manual"], "checks": []},
-    {"id": "M2", "title": "Режим в настройках, документация RU/EN, проверка на Windows 10 и 11", "status": "pending", "depends_on": ["M1"], "required": ["rust", "frontend", "manual"], "checks": []}
+    {
+      "id": "M1",
+      "title": "Машина состояний Ctrl+Win, хук клавиатуры Windows, маска «Пуска», отмена диктовки; автоматические гейты",
+      "status": "done",
+      "depends_on": [],
+      "required": [
+        "rust",
+        "frontend"
+      ],
+      "checks": [
+        {
+          "id": "rust",
+          "status": "PASS",
+          "method": "command",
+          "command": "cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test; mini-crate cargo clippy --target x86_64-pc-windows-msvc -- -D warnings (modifier_trigger.rs, windows =0.61.3)",
+          "cwd": "src-tauri",
+          "at": "2026-11-19T13:30:00.000Z",
+          "environment": {
+            "os": "Linux container",
+            "rustc": "1.97.0",
+            "node": "v22.23.4",
+            "pnpm": "10.28.0"
+          },
+          "exit_code": 0,
+          "output": "test result: ok. 384 passed; 0 failed; 6 ignored; Windows target clippy: Finished, no warnings",
+          "evidence": "docs/workstreams/modifier-hotkey/log.md"
+        },
+        {
+          "id": "frontend",
+          "status": "PASS",
+          "method": "command",
+          "command": "pnpm exec tsc --noEmit && pnpm build && node scripts/check-version.mjs",
+          "cwd": ".",
+          "at": "2026-11-19T13:30:00.000Z",
+          "environment": {
+            "os": "Linux container",
+            "rustc": "1.97.0",
+            "node": "v22.23.4",
+            "pnpm": "10.28.0"
+          },
+          "exit_code": 0,
+          "output": "I18N PASS: 356 keys; ✓ built; versions 0.6.7 match",
+          "evidence": "docs/workstreams/modifier-hotkey/log.md"
+        }
+      ]
+    },
+    {
+      "id": "M2",
+      "title": "Переключатель на странице «Диктовка», документация RU/EN, тестовая сборка 0.6.7; ручная проверка на Windows",
+      "status": "done",
+      "depends_on": [
+        "M1"
+      ],
+      "required": [
+        "manual"
+      ],
+      "checks": [
+        {
+          "id": "manual",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Сборка 0.6.7 (c0d7225) на ПК: переключатель «Также по удержанию Ctrl+Win»; удержание → пилюля → отпускание → текст; «Пуск» не открывается; Ctrl+Win+D/←/→; Win один; Ctrl+C/V; основная клавиша",
+          "cwd": ".",
+          "at": "2026-11-19T15:00:00.000Z",
+          "environment": {
+            "os": "Windows (ПК пользователя)"
+          },
+          "exit_code": null,
+          "output": "Пользователь: «Пробую. Всё работает.» (reported, по сценариям не детализировано; Windows 10/11 по отдельности и окна от администратора не подтверждены)",
+          "evidence": "docs/workstreams/modifier-hotkey/log.md"
+        }
+      ]
+    }
   ]
 }

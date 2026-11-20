@@ -118,9 +118,13 @@ languages. Language/model changes are disabled during the corresponding operatio
 
 Long text is split and synthesized sequentially with progress and cancellation.
 Cancellation does not publish a partial recording as a completed library document.
-English text uses English number/abbreviation handling; Russian retains its existing
-stress and Latin-letter conversion. Dates and unusual notation may be read component
-by component: listen to important text. Choosing a language is not translation.
+Before synthesis Glagol turns numbers, amounts, percentages, dates, years, centuries,
+times and abbreviations into words. Russian text gets the grammatical case from the
+context («продал 980 млн акций» → «девятьсот восемьдесят миллионов акций», «в 2026 г.» →
+«в две тысячи двадцать шестом году», «IPO» → «ай-пи-о»); English text follows English
+rules («$81.3 billion» → «eighty-one point three billion dollars», «in 2026» → «in
+twenty twenty-six»). The case is inferred from neighbouring words and can occasionally
+be off; listen to unusual notation. Choosing a language is not translation.
 
 The Library is a compact list: ▶ next to a document plays it in the shared player at the
 bottom (pause, seek, 0.5–2× speed, volume); the icons rename, export the WAV or delete.
@@ -137,6 +141,15 @@ is filtered. Queue overflow or an engine failure discards the attempt with an er
 instead of inserting a truncated transcript.
 
 On Dictation choose language, microphone, hotkey and Auto-paste or Clipboard only.
+Also hold Ctrl+Win (under the shortcut, off by default, Windows only) adds dictation
+by holding Ctrl and Win together, as in Wispr Flow; the main shortcut keeps working.
+Recording starts once both keys are held for about 0.2 s with no other key; release
+either and the text is inserted. Pressing another key meanwhile (for example
+Ctrl+Win+D or Ctrl+Win+←) cancels the dictation silently and the Windows shortcut
+works as usual. Start does not open when Win is released after a dictation. Windows
+does not pass this chord to Glagol in windows run as administrator — use the main
+shortcut there. Glagol installs a keyboard hook for this: it only tells Ctrl, Win
+and "another key" apart and stores or logs nothing.
 Remove hesitation sounds (on by default) drops the sounds people make while thinking:
 "uh", "um", "er", "hmm" and the Russian «эм», «э-э», «м-м», «хм», «аа». Spaces, commas
 and capitalization are repaired afterwards; if a dictation contained only such sounds,
@@ -157,8 +170,8 @@ speech language remembers its local model and voice.
   Remove an inactive model to free space; shared runtime is retained. Local speech uses
   explicit EN/RU; mixed-language detection and translation are not included.
 - **Organization server:** OpenAI-compatible `/audio/transcriptions`; `/models` is
-  optional. Example `http://192.168.1.10:8000/v1`. Your administrator installs the
-  server. HTTP is allowed only for localhost/private IPs on a trusted network; audio
+  optional. Example `http://192.168.1.10:8000/v1`. The server can be another Glagol —
+  see Server for other computers; then pasting its connection code is enough. HTTP is allowed only for localhost/private IPs on a trusted network; audio
   and keys are unencrypted there. Hostnames need trusted HTTPS. System proxies are
   bypassed; an explicit proxy is available.
 - **Cloud service:** choose a preset or compatible endpoint, model, key and optional
@@ -200,6 +213,45 @@ once per dictation). Only a background of almost the same colour as the indicato
 be judged. The pixels are not stored. The
 indicator has a light and a dark outline, so it stands out on light and dark backgrounds. If the indicator ever stays invisible, restart Glagol from
 the tray and send the log from that day: it records these events and the indicator state.
+
+## Server for other computers
+
+One computer with Glagol can recognize Russian speech for other computers in your
+local network — for example, a powerful PC with a graphics card serving office
+computers. Speech does not go to the internet; it travels only over the local network.
+
+**On the server computer:**
+
+1. Install a Russian GigaAM model (Settings → Dictation → Manage models). If there is
+   a graphics card, turn it on in Recognition speed: the server uses the same device.
+2. In Server for other computers, turn on Serve recognition over the network. The
+   first time, Windows asks whether Glagol may accept connections — allow private
+   networks.
+3. Click Copy connection code and give the code to your colleagues. It contains the
+   address and the access key: without the key the server serves nobody.
+
+**On an office computer:** Settings → Dictation → method Organization server → Glagol
+on another computer, paste the code and click Connect. Glagol checks the server and
+saves the settings; then dictate as usual. Hesitation-sound removal and text insertion
+run on the office computer.
+
+Good to know:
+
+- The server recognizes Russian only. It serves private-network addresses only (home
+  or office network, Tailscale) and is off by default.
+- Requests run one after another. If more than 32 are waiting at once, Glagol on the
+  office computer retries by itself after a couple of seconds (up to three times). On
+  a test PC with a GTX 1060 a 6-second phrase took about 0.4 s.
+- While the server is on, the computer does not go to sleep (the screen may still turn
+  off) — you can change this in Advanced, together with the port (8765 by default).
+- New key disconnects everyone with the old code — they need to paste the new one.
+- Audio and the key travel over the local network unencrypted (HTTP), so use the
+  server only on a trusted network.
+- The server log holds numbers only (duration, recognition time, status code): no
+  speech, text or computer addresses. The "computers in the last 10 minutes" count
+  lives in memory only.
+- If computers cannot connect, open Computers cannot connect?: it has a PowerShell
+  command (run as administrator) that opens the port for private networks.
 
 ## Windows limitations
 

@@ -2,9 +2,9 @@
   "schema_version": 1,
   "id": "self-update",
   "title": "Самообновление и версия программы (0.6.0)",
-  "status": "paused",
-  "next": "U3",
-  "reason": "U3 ждёт подтверждения: пользователь 2026-11-09 сообщил, что 0.6.1 установлена и работает, но способ установки (обновление из 0.6.0 внутри программы или вручную) не уточнён. Продолжение: спросить способ и записать manual-update.",
+  "status": "done",
+  "next": null,
+  "reason": "Серия завершена 2026-11-19: обновление из программы работает на ПК и ноутбуке.",
   "claim": null,
   "links": [
     "docs/workstreams/self-update/README.md",
@@ -103,14 +103,29 @@
     {
       "id": "U3",
       "title": "Выпуск 0.6.1 и обновление из 0.6.0 внутри программы",
-      "status": "pending",
+      "status": "done",
       "depends_on": [
         "U2"
       ],
       "required": [
         "manual-update"
       ],
-      "checks": []
+      "checks": [
+        {
+          "id": "manual-update",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Проверить обновления → Установить обновление в установленной 0.6.x",
+          "cwd": ".",
+          "at": "2026-11-19T12:00:00.000Z",
+          "environment": {
+            "os": "Windows (ПК и ноутбук пользователя)"
+          },
+          "exit_code": null,
+          "output": "ПК: 0.6.2 → 0.6.3 (observed, 2026-11-09) и далее до 0.6.6; ноутбук: 0.6.1 → 0.6.6 (reported 2026-11-19). Обновление именно из 0.6.0 не проверялось.",
+          "evidence": "docs/workstreams/self-update/log.md"
+        }
+      ]
     }
   ]
 }

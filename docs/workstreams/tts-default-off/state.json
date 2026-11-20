@@ -2,9 +2,9 @@
   "schema_version": 1,
   "id": "tts-default-off",
   "title": "Озвучка выключена по умолчанию при новой установке",
-  "status": "active",
-  "next": "T2",
-  "reason": null,
+  "status": "done",
+  "next": null,
+  "reason": "Серия завершена 2026-11-19: новая установка начинает с выключенной озвучкой (проверено на 0.6.7, reported); выпуск — 0.6.7.",
   "claim": null,
   "links": [
     "docs/workstreams/tts-default-off/README.md",
@@ -61,14 +61,29 @@
     {
       "id": "T2",
       "title": "Ручная проверка чистой установки на Windows в отдельном профиле/ВМ и обновления поверх 0.6.x",
-      "status": "pending",
+      "status": "done",
       "depends_on": [
         "T1"
       ],
       "required": [
         "manual"
       ],
-      "checks": []
+      "checks": [
+        {
+          "id": "manual",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Сборка 0.6.7 на ПК: резервная копия, выход из трея, glagol.db* переименованы в *.bak (имитация новой установки: база отсутствует, модели и ключи на месте), запуск",
+          "cwd": ".",
+          "at": "2026-11-19T16:10:00.000Z",
+          "environment": {
+            "os": "Windows (ПК пользователя)"
+          },
+          "exit_code": null,
+          "output": "Пользователь: «Проверил, работает отлично» — первый запуск без карточки Silero, озвучка выключена (reported). Переустановка программы не выполнялась; обновление поверх 0.6.x с включённой озвучкой — на той же сборке до переименования (озвучка оставалась как была).",
+          "evidence": "docs/workstreams/tts-default-off/log.md"
+        }
+      ]
     }
   ]
 }

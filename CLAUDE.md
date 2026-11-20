@@ -116,6 +116,12 @@ These constraints apply to changes. Resolve required architectural changes befor
   Removing one language model retains the other model and runtime. No Kokoro/G2P.
 
 - `tts/silero` owns optional files, consent, worker and download state; STT is separate.
+- Ctrl+Win dictation (`dictation/modifier_trigger.rs`) is opt-in: a WH_KEYBOARD_LL hook
+  forwards only the Ctrl/Win/other class, never swallows, stores or logs keys, ignores
+  injected input; it runs alongside the RegisterHotKey shortcut (fallback for elevated windows).
+- LAN recognition server (`lan_server/`, `commands/lan_server.rs`) is off by default,
+  serves private-network peers only, always requires the keyring access key, serves
+  Russian GigaAM only and never logs speech, text, keys or client IPs.
 - GigaAM (RU STT) defaults to CPU; Vulkan is opt-in with CPU fallback. A background startup
   probe loads the verified runtime (receipt or archive check) to learn the GPU for the
   hardware recommendation; it never opens a model and never changes settings by itself. Its full SHA-256

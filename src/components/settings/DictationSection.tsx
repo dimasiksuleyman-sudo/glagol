@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  getSpeechSettings, saveSpeechSettings, testSpeechSettings, deleteSpeechKey,
+  getSpeechSettings, saveSpeechSettings, testSpeechSettings, deleteSpeechKey, inspectLanConnectionCode,
   localModelsStatus, downloadLocalModel, cancelModelDownload, removeLocalModel,
   localEngineState, setLocalEngineOptions, DICTATION_STATE_EVENT,
   type DictationState,
@@ -42,6 +42,7 @@ export function DictationSection() {
   const [models, setModels] = useState<LocalModelsStatus | null>(null);
   const [progress, setProgress] = useState<ModelProgress | null>(null);
   const [keyStored, setKeyStored] = useState(false);
+  const [connectionCode, setConnectionCode] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -109,6 +110,27 @@ export function DictationSection() {
       setKeyStored(settings.key_stored);
       setMessage(test ? t("Connection works.") : p.mode === "local" ? t("Model ready. You can start dictating.") : t("Settings saved."));
     }
+  }
+  /** «Paste connection code»: a Glagol server on another computer (GL-010). */
+  async function connectByCode() {
+    if (!profile || !connectionCode.trim()) return;
+    setBusy(true); setMessage("");
+    try {
+      const found = await inspectLanConnectionCode(connectionCode);
+      const next: SpeechProfile = { ...profile, mode: "server", base_url: found.base_url, model: found.model, language: "ru", proxy: "" };
+      await saveSpeechSettings(next, found.key);
+      await testSpeechSettings();
+      const settings = await getSpeechSettings("server");
+      if (alive.current) {
+        setProfile(settings.profile); setKeyStored(settings.key_stored);
+        setActive("server"); setActiveModel(next.model); setApiKey(""); setConnectionCode("");
+        const connected = t("Connected to Glagol at {p0}. You can start dictating.", { p0: found.base_url.replace(/^http:\/\//, "").replace(/\/v1$/, "") });
+        setMessage(connected);
+        // The status line can be below the visible area; a toast is always seen.
+        toast.success(connected);
+      }
+    } catch (e) { setMessage(errorText(e)); toast.error(errorText(e)); }
+    finally { setBusy(false); }
   }
   async function remoteSave(test: boolean) {
     if (!profile) return;
@@ -256,6 +278,14 @@ export function DictationSection() {
             <Button variant="outline" disabled={progress.stage === "verifying"} onClick={() => void cancelModelDownload().catch(e => toast.error(errorText(e)))}>{t("Cancel download")}</Button>
           </div>}
         </> : <>
+          {profile.mode === "server" && <div className="space-y-2 rounded-lg border p-3" data-tour="lan-connect">
+            <Label htmlFor="lan-code">{t("Glagol on another computer")}</Label>
+            <p className="text-xs text-muted-foreground">{t("On the server computer: Settings → Dictation → Server for other computers → Copy connection code. Paste it here.")}</p>
+            <div className="flex gap-2">
+              <Input id="lan-code" value={connectionCode} onChange={e => setConnectionCode(e.target.value)} disabled={locked} spellCheck={false} autoComplete="off" placeholder="glagol://192.168.1.10:8765/?key=…" className="font-mono text-xs" />
+              <Button disabled={locked || !connectionCode.trim()} onClick={() => void connectByCode()}>{t("Connect")}</Button>
+            </div>
+          </div>}
           {profile.mode === "server" ? <p className="text-sm text-muted-foreground">{t("One speech server can serve every computer in your office. No local model download is needed. Servers with the /v1/audio/transcriptions API are supported.")}</p> : <div className="space-y-2">
             <Label htmlFor="speech-provider">{t("Provider")}</Label>
             <Select value={PRESETS.find(p => p.base_url === profile.base_url)?.id ?? "custom"} disabled={locked} onValueChange={id => {
