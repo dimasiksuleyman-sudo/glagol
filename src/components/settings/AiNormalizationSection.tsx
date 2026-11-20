@@ -88,7 +88,7 @@ export function AiNormalizationSection() {
 
   const disabled = busy !== null;
   return (
-    <Card id="ai-normalization">
+    <Card id="ai-normalization" data-tour="ai-normalization">
       <CardHeader>
         <CardTitle>{t("Improve number reading with AI")}</CardTitle>
         <CardDescription id="ai-disclosure">{t("aiExcerptDisclosure")}</CardDescription>
