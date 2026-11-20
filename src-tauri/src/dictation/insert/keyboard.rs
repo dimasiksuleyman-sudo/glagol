@@ -54,14 +54,13 @@ fn cleanup_start(sent: usize) -> usize {
 #[cfg(windows)]
 mod imp {
     use super::{cleanup_start, PasteKey, ReleaseState, ReleaseWait, MAX_WAIT, PASTE_CHORD};
+    use crate::dictation::insert::PasteOrigin;
     use std::time::{Duration, Instant};
-    use windows::Win32::Foundation::HWND;
     use windows::Win32::UI::Input::KeyboardAndMouse::{
         GetAsyncKeyState, SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYBD_EVENT_FLAGS,
         KEYEVENTF_KEYUP, VIRTUAL_KEY, VK_CONTROL, VK_LCONTROL, VK_LWIN, VK_MENU, VK_RWIN, VK_SHIFT,
         VK_V,
     };
-    use windows::Win32::UI::WindowsAndMessaging::GetForegroundWindow;
 
     const POLL_INTERVAL: Duration = Duration::from_millis(10);
 
@@ -97,32 +96,19 @@ mod imp {
         }
     }
 
-    fn foreground() -> HWND {
-        // SAFETY: GetForegroundWindow takes no arguments. The handle is used
-        // only for comparison and is never opened or dereferenced.
-        unsafe { GetForegroundWindow() }
-    }
-
-    pub(in crate::dictation) fn prepare() -> Result<HWND, String> {
-        let window = foreground();
-        if window.is_invalid() {
-            return Err("no foreground window before paste".into());
-        }
-
+    pub(in crate::dictation) fn prepare(origin: PasteOrigin) -> Result<PasteOrigin, String> {
+        report_target(origin.validate())?;
         let start = Instant::now();
         let initial = Modifiers::read();
         let mut modifiers = initial;
         let mut wait = ReleaseWait::default();
         let (elapsed, result) = loop {
             let elapsed = start.elapsed();
-            if foreground() != window {
-                break (
-                    elapsed,
-                    Err("foreground window changed while waiting to paste".into()),
-                );
+            if let Err(error) = report_target(origin.ensure_current()) {
+                break (elapsed, Err(error));
             }
             match wait.sample(elapsed, modifiers.any_down()) {
-                ReleaseState::Ready => break (elapsed, Ok(window)),
+                ReleaseState::Ready => break (elapsed, Ok(origin)),
                 ReleaseState::TimedOut => {
                     break (elapsed, Err("modifiers did not clear before paste".into()));
                 }
@@ -142,17 +128,25 @@ mod imp {
         result
     }
 
-    pub(in crate::dictation) fn paste(window: HWND) -> Result<(), String> {
+    fn report_target(result: Result<(), String>) -> Result<(), String> {
+        if let Err(reason) = &result {
+            tracing::debug!(target: "glagol_lib::paste_diagnostics", %reason, "paste target rejected");
+        }
+        result
+    }
+
+    pub(in crate::dictation) fn paste(origin: PasteOrigin) -> Result<(), String> {
         // Clipboard retries may have taken time after the wait. Recheck the
         // modifiers and foreground window immediately before dispatch.
+        report_target(origin.validate())?;
         let modifiers = Modifiers::read();
         tracing::debug!(
             target: "glagol_lib::paste_diagnostics",
             ?modifiers,
             "paste modifier state before dispatch"
         );
-        if modifiers.any_down() || foreground() != window {
-            return Err("modifiers or foreground window changed before paste".into());
+        if modifiers.any_down() {
+            return Err("modifiers changed before paste".into());
         }
 
         let inputs = PASTE_CHORD.map(|(key, up)| INPUT {
@@ -174,6 +168,7 @@ mod imp {
                 },
             },
         });
+        report_target(origin.ensure_current())?;
         // SAFETY: a valid array of keyboard INPUT records with the documented
         // size of one INPUT. SendInput enqueues a successful batch in order.
         let sent = unsafe { SendInput(&inputs, std::mem::size_of::<INPUT>() as i32) } as usize;

@@ -38,7 +38,7 @@ use crate::commands::dictation::{
     read_device_setting, read_history_enabled, read_insertion_mode, read_remove_fillers,
 };
 use crate::db::repository;
-use crate::dictation::insert::{ArboardClipboard, InsertionMode, SystemInserter};
+use crate::dictation::insert::{ArboardClipboard, InsertionMode, PasteOrigin, SystemInserter};
 use crate::dictation::pipeline::{
     run_dictation, DictationDeps, DictationEmitter, DictationOpts, DictationOutcome,
     DictationState, Disposition, StopSignal,
@@ -165,7 +165,7 @@ pub fn dictation_hotkey() -> Shortcut {
 /// the global-shortcut plugin's handler in `lib.rs`.
 pub fn handle_shortcut(app: &AppHandle, event_state: ShortcutState) {
     match event_state {
-        ShortcutState::Pressed => on_pressed(app),
+        ShortcutState::Pressed => on_pressed(app, PasteOrigin::capture()),
         ShortcutState::Released => on_released(app),
     }
 }
@@ -177,7 +177,7 @@ pub fn handle_shortcut(app: &AppHandle, event_state: ShortcutState) {
 /// pipeline. A second `Pressed` (autorepeat is suppressed by `MOD_NOREPEAT`, but
 /// a genuine double-press during processing is possible) finds a non-`Idle`
 /// phase and is dropped at `trace` — no toast, no spam (D4).
-fn on_pressed(app: &AppHandle) {
+fn on_pressed(app: &AppHandle, origin: PasteOrigin) {
     let state = app.state::<AppState>();
     if state
         .db
@@ -227,7 +227,7 @@ fn on_pressed(app: &AppHandle) {
 
     let app = app.clone();
     tauri::async_runtime::spawn(async move {
-        run_session(app, release_rx, token).await;
+        run_session(app, release_rx, token, origin).await;
     });
 }
 
@@ -256,10 +256,10 @@ pub fn apply_ctrl_win(app: &AppHandle, enabled: bool) {
         return;
     }
     let app = app.clone();
-    modifier_trigger::start(move |action| {
+    modifier_trigger::start(move |action, origin| {
         let handle = app.clone();
         let dispatched = app.run_on_main_thread(move || match action {
-            Action::Press => handle_shortcut(&handle, ShortcutState::Pressed),
+            Action::Press => on_pressed(&handle, origin),
             Action::Release => handle_shortcut(&handle, ShortcutState::Released),
             Action::Cancel => cancel_dictation(&handle),
         });
@@ -287,7 +287,12 @@ pub fn cancel_dictation(app: &AppHandle) {
 /// The async body of one session: build the provider from persisted settings +
 /// keyring, run the pipeline, record advisory usage, and always reset the tray
 /// and phase on the way out.
-async fn run_session(app: AppHandle, release_rx: oneshot::Receiver<StopSignal>, token: u64) {
+async fn run_session(
+    app: AppHandle,
+    release_rx: oneshot::Receiver<StopSignal>,
+    token: u64,
+    origin: PasteOrigin,
+) {
     let state = app.state::<AppState>();
 
     let (provider, device, language, mode, remove_fillers) = match build_provider(&app, &state) {
@@ -303,10 +308,9 @@ async fn run_session(app: AppHandle, release_rx: oneshot::Receiver<StopSignal>, 
 
     log_dictation_context(&app);
 
-    // The two delivery seams (D8): zero-field unit structs holding no OS handle,
-    // so the keyboard and clipboard work runs inside the pipeline's
-    // `spawn_blocking`. Both shortcuts use this same insertion path.
-    let inserter = SystemInserter;
+    // Keyboard and clipboard work runs inside the pipeline's spawn_blocking.
+    // Both shortcuts carry the originating window into the insertion path.
+    let inserter = SystemInserter::new(origin);
     let clipboard = ArboardClipboard;
     // Pass the pinned device (D6); the recorder falls back to the system default
     // and reports it if the device is gone.
