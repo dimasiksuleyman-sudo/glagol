@@ -11,6 +11,10 @@ the per-session master logs under [`docs/day-logs/`](docs/day-logs/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Windows auto-paste waits for shortcut modifiers to clear and sends Ctrl+V as a single batch. If the keys stay down or the window changes, the text is left in the clipboard. This addresses the unwanted KeyTips in new Outlook (GL-013). / Автовставка в Windows ждёт отпускания модификаторов и отправляет Ctrl+V одной последовательностью. Если клавиши остаются нажатыми или окно меняется, текст остаётся в буфере обмена. Это исправление для лишних подсказок клавиш в новом Outlook (GL-013).
+
 ### Changed
 
 - Text to speech reads numbers, money, percentages, dates, years, centuries, times, ordinals («2-я», «90-е») and common abbreviations as words, in the grammatical case the Russian context asks for («продал 980 млн акций», «$81,3 млрд», «в 2026 г.»); English text follows English rules. Offline and engine-independent. / Озвучка читает числа, суммы, проценты, даты, годы, века, время, порядковые («2-я», «90-е») и частые сокращения словами — в падеже по русскому контексту («продал 980 млн акций», «$81,3 млрд», «в 2026 г.»); английский текст — по английским правилам. Офлайн и для любого движка.

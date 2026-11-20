@@ -38,7 +38,7 @@ use crate::commands::dictation::{
     read_device_setting, read_history_enabled, read_insertion_mode, read_remove_fillers,
 };
 use crate::db::repository;
-use crate::dictation::insert::{ArboardClipboard, EnigoInserter, InsertionMode};
+use crate::dictation::insert::{ArboardClipboard, InsertionMode, SystemInserter};
 use crate::dictation::pipeline::{
     run_dictation, DictationDeps, DictationEmitter, DictationOpts, DictationOutcome,
     DictationState, Disposition, StopSignal,
@@ -304,9 +304,9 @@ async fn run_session(app: AppHandle, release_rx: oneshot::Receiver<StopSignal>, 
     log_dictation_context(&app);
 
     // The two delivery seams (D8): zero-field unit structs holding no OS handle,
-    // so they cost nothing to construct here and open a fresh `Enigo` /
-    // `arboard::Clipboard` per call inside the pipeline's `spawn_blocking`.
-    let inserter = EnigoInserter;
+    // so the keyboard and clipboard work runs inside the pipeline's
+    // `spawn_blocking`. Both shortcuts use this same insertion path.
+    let inserter = SystemInserter;
     let clipboard = ArboardClipboard;
     // Pass the pinned device (D6); the recorder falls back to the system default
     // and reports it if the device is gone.

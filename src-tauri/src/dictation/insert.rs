@@ -15,34 +15,20 @@
 //!
 //! # Why two seams (D8)
 //!
-//! Keystroke synthesis ([`TextInserter`], real impl [`EnigoInserter`]) and
-//! clipboard get/set ([`ClipboardAccess`], real impl [`ArboardClipboard`]) are
-//! independent capabilities with independent failure modes, so they are separate
-//! traits. Both are `Clone + Send + 'static` and hold **no** live OS handle: the
-//! real impls open a fresh `Enigo` / `arboard::Clipboard` per call. That is what
-//! lets the pipeline clone them into `spawn_blocking` (both libraries are
-//! blocking) without ever storing an `Enigo` in `AppState` (D8), and it means a
-//! panic mid-paste still drops the `Enigo`, releasing any key it left held
-//! (`release_keys_when_dropped` defaults `true` — verified in the enigo 0.6.1
-//! source during Phase 0).
+//! Keystroke synthesis and clipboard access are independent. The pipeline
+//! runs both inside `spawn_blocking`.
 //!
-//! # The honest semantics of "pasted" (D11)
-//!
-//! [`InsertOutcome::Pasted`] means **the paste events were handed to the OS**,
-//! not that the text landed in the target application. The latter cannot be
-//! confirmed: per Microsoft's `SendInput` documentation, a synthetic input
-//! blocked by UIPI (an elevated target window) is dropped **silently** — neither
-//! the return value nor `GetLastError` reports it. enigo *does* surface the
-//! detectable short-write (`Err(InputError::Simulate("...blocked by UIPI"))`),
-//! which buys loudness on the exotic cases (a low-level hook eating the input, a
-//! full input queue), but the elevated-window case stays invisible by design of
-//! the OS. The UX mitigation is that the transcript remains available in the
-//! clipboard / history (PR5) for a manual retry.
+//! On Windows, the inserter waits for modifiers to clear before taking the
+//! clipboard snapshot and dispatches one native Ctrl+V batch. An unsafe
+//! paste falls back to the clipboard. Pasted means the OS accepted the events,
+//! since the application cannot confirm delivery to another window.
 
 use std::time::{Duration, Instant};
 
-/// Windows virtual-key code for the `V` key. Sent as a **raw VK** via
-/// [`enigo::Key::Other`] so the paste is layout-independent (D4).
+#[cfg(any(windows, test))]
+mod keyboard;
+
+#[cfg(not(windows))]
 const VK_V: u32 = 0x56;
 
 /// How long to wait after issuing the paste before reading the clipboard back to
@@ -111,12 +97,6 @@ pub fn parse_insertion_mode(raw: &str) -> InsertionMode {
 pub enum InsertStep {
     /// Write the transcript to the clipboard (retried on a busy clipboard, D10).
     SetText(String),
-    /// Release Shift / Alt / Meta before pasting (D5). A modifier the user is
-    /// still physically holding would turn our `Ctrl+V` into `Ctrl+Shift+V`
-    /// ("paste without formatting") or worse; a synthetic key-up is more
-    /// deterministic than polling for the physical release. Documented practice
-    /// per MSDN `SendInput` Remarks.
-    ReleaseModifiers,
     /// Synthesise `Ctrl+V` via a raw `VK_V` (D4).
     Paste,
     /// Wait for the target app to read the clipboard (D7). Best-effort — see
@@ -137,7 +117,7 @@ pub enum InsertStep {
 /// `transcript`, and the `mode` (D6). Pure — no IO, no logging.
 ///
 /// - [`InsertionMode::ClipboardOnly`] → just `[SetText]`; the user pastes by hand.
-/// - [`InsertionMode::Paste`] → `SetText → ReleaseModifiers → Paste`, plus
+/// - [`InsertionMode::Paste`] → `SetText → Paste`, plus
 ///   `Settle → VerifyOwn → Restore` **iff** the snapshot was `Ok` (text). A
 ///   non-text snapshot (image, files → `Err`) leaves nothing to restore, so all
 ///   three steps — including the [`SETTLE_DELAY`] wait — are omitted entirely
@@ -155,7 +135,6 @@ pub fn plan_insertion(
         InsertionMode::Paste => {
             let mut steps = vec![
                 InsertStep::SetText(transcript.to_string()),
-                InsertStep::ReleaseModifiers,
                 InsertStep::Paste,
             ];
             // Settle + Restore are only meaningful when the prior clipboard was
@@ -190,16 +169,16 @@ pub enum InsertOutcome {
 
 // ── Seams (D8) ──────────────────────────────────────────────────────────
 
-/// Keystroke synthesis into the active window (D8). Real impl:
-/// [`EnigoInserter`]. `Clone + Send + 'static` so the pipeline clones it into
-/// `spawn_blocking`; the real impl holds no handle, opening a fresh `Enigo` per
-/// call.
+/// Keystroke synthesis into the active window. Preparation can wait without
+/// touching the clipboard, then pass the original focus target to dispatch.
 pub trait TextInserter: Clone + Send + 'static {
-    /// Release Shift / Alt / Meta so a still-held modifier cannot corrupt the
-    /// paste (D5). Best-effort: the executor logs a failure and continues.
-    fn release_modifiers(&self) -> Result<(), String>;
-    /// Synthesise `Ctrl+V` via a raw `VK_V` (D4).
-    fn paste(&self) -> Result<(), String>;
+    type Target;
+
+    /// Decide whether it is safe to prepare the paste.
+    fn prepare_paste(&self) -> Result<Self::Target, String>;
+
+    /// Send Ctrl+V if the prepared target can still accept the chord.
+    fn paste(&self, target: Self::Target) -> Result<(), String>;
 }
 
 /// Clipboard get/set (D8). Real impl: [`ArboardClipboard`] (reuses the `arboard`
@@ -255,18 +234,32 @@ pub fn insert_transcript<I: TextInserter, C: ClipboardAccess>(
     transcript: &str,
     mode: InsertionMode,
 ) -> InsertOutcome {
-    // Snapshot only matters for Paste mode; ClipboardOnly never restores.
-    let snapshot = match mode {
-        InsertionMode::ClipboardOnly => Err("clipboard-only mode: no snapshot".to_string()),
-        InsertionMode::Paste => clipboard.get_text(),
+    let target = if mode == InsertionMode::Paste {
+        match inserter.prepare_paste() {
+            Ok(target) => Some(target),
+            Err(reason) => {
+                tracing::warn!(reason, "automatic paste skipped; keeping text in clipboard");
+                None
+            }
+        }
+    } else {
+        None
     };
-    if mode == InsertionMode::Paste && snapshot.is_err() {
-        // D7 reason 1 + D9 scenario 4: continue the paste, restore nothing.
-        tracing::warn!("{}", NoRestoreReason::NonTextSnapshot.message());
-    }
+    let (snapshot, mode) = if target.is_some() {
+        let snapshot = clipboard.get_text();
+        if snapshot.is_err() {
+            tracing::warn!("{}", NoRestoreReason::NonTextSnapshot.message());
+        }
+        (snapshot, InsertionMode::Paste)
+    } else {
+        (
+            Err("clipboard-only mode: no snapshot".into()),
+            InsertionMode::ClipboardOnly,
+        )
+    };
 
     let plan = plan_insertion(snapshot, transcript, mode);
-    execute_insertion(&plan, inserter, clipboard)
+    execute_insertion(&plan, inserter, clipboard, target)
 }
 
 /// Walk a plan against the seams and return the outcome (D6). Separated from
@@ -277,6 +270,7 @@ pub fn execute_insertion<I: TextInserter, C: ClipboardAccess>(
     plan: &[InsertStep],
     inserter: &I,
     clipboard: &C,
+    mut target: Option<I::Target>,
 ) -> InsertOutcome {
     let start = Instant::now();
     let mut pasted = false;
@@ -297,16 +291,12 @@ pub fn execute_insertion<I: TextInserter, C: ClipboardAccess>(
                     return InsertOutcome::Failed;
                 }
             }
-            InsertStep::ReleaseModifiers => {
-                if let Err(e) = inserter.release_modifiers() {
-                    // Best-effort (D5): a failed release is not worth aborting a
-                    // paste over — the worst case is the modifier stays held,
-                    // which the next real keypress resolves.
-                    tracing::warn!(error = %e, "failed to release modifiers before paste");
-                }
-            }
             InsertStep::Paste => {
-                if let Err(e) = inserter.paste() {
+                let result = target
+                    .take()
+                    .ok_or_else(|| "paste was not prepared".to_string())
+                    .and_then(|target| inserter.paste(target));
+                if let Err(e) = result {
                     // D7 condition 3 + D9 scenario 3: the transcript is already on
                     // the clipboard, so leave it there for a manual Ctrl+V and do
                     // not restore. Every step after Paste is paste-dependent, so
@@ -382,16 +372,25 @@ fn log_timing(start: Instant, outcome: InsertOutcome) {
 
 // ── Real implementations ────────────────────────────────────────────────
 
-/// The production [`TextInserter`] — synthesises keystrokes via `enigo` (D8).
-///
-/// A zero-field unit struct: it holds no `Enigo` (that must never live in
-/// `AppState`, D8), constructing a fresh one per call. The constructor is cheap
-/// and stateless, and dropping the `Enigo` at the end of each method releases any
-/// key still held (`release_keys_when_dropped` defaults `true`).
+/// The production inserter, with native input on Windows and Enigo elsewhere.
 #[derive(Clone, Copy, Default)]
-pub struct EnigoInserter;
+pub struct SystemInserter;
 
-impl TextInserter for EnigoInserter {
+#[cfg(windows)]
+impl TextInserter for SystemInserter {
+    type Target = windows::Win32::Foundation::HWND;
+
+    fn prepare_paste(&self) -> Result<Self::Target, String> {
+        keyboard::prepare()
+    }
+
+    fn paste(&self, target: Self::Target) -> Result<(), String> {
+        keyboard::paste(target)
+    }
+}
+
+#[cfg(not(windows))]
+impl SystemInserter {
     fn release_modifiers(&self) -> Result<(), String> {
         use enigo::{Direction::Release, Key, Keyboard};
         let mut enigo =
@@ -411,8 +410,20 @@ impl TextInserter for EnigoInserter {
             None => Ok(()),
         }
     }
+}
 
-    fn paste(&self) -> Result<(), String> {
+#[cfg(not(windows))]
+impl TextInserter for SystemInserter {
+    type Target = ();
+
+    fn prepare_paste(&self) -> Result<Self::Target, String> {
+        Ok(())
+    }
+
+    fn paste(&self, (): Self::Target) -> Result<(), String> {
+        if let Err(e) = self.release_modifiers() {
+            tracing::warn!(error = %e, "failed to release modifiers before paste");
+        }
         use enigo::{
             Direction::{Click, Press, Release},
             Key, Keyboard,
@@ -475,7 +486,7 @@ pub(crate) mod fakes {
     struct FakeInserterState {
         calls: Vec<&'static str>,
         fail_paste: bool,
-        fail_release: bool,
+        fail_preparation: bool,
     }
 
     impl FakeInserter {
@@ -487,22 +498,33 @@ pub(crate) mod fakes {
                 })),
             }
         }
+        pub(crate) fn blocked_preparation() -> Self {
+            Self {
+                inner: Arc::new(Mutex::new(FakeInserterState {
+                    fail_preparation: true,
+                    ..Default::default()
+                })),
+            }
+        }
+
         pub(crate) fn calls(&self) -> Vec<&'static str> {
             self.inner.lock().unwrap().calls.clone()
         }
     }
 
     impl TextInserter for FakeInserter {
-        fn release_modifiers(&self) -> Result<(), String> {
+        type Target = ();
+
+        fn prepare_paste(&self) -> Result<Self::Target, String> {
             let mut s = self.inner.lock().unwrap();
-            s.calls.push("release_modifiers");
-            if s.fail_release {
-                Err("mock release failure".into())
+            s.calls.push("prepare_paste");
+            if s.fail_preparation {
+                Err("mock modifiers remained down".into())
             } else {
                 Ok(())
             }
         }
-        fn paste(&self) -> Result<(), String> {
+        fn paste(&self, (): Self::Target) -> Result<(), String> {
             let mut s = self.inner.lock().unwrap();
             s.calls.push("paste");
             if s.fail_paste {
@@ -677,7 +699,6 @@ mod tests {
             plan,
             vec![
                 InsertStep::SetText(TRANSCRIPT.to_string()),
-                InsertStep::ReleaseModifiers,
                 InsertStep::Paste,
                 InsertStep::Settle(SETTLE_DELAY),
                 InsertStep::VerifyOwn(TRANSCRIPT.to_string()),
@@ -707,7 +728,6 @@ mod tests {
             plan,
             vec![
                 InsertStep::SetText(TRANSCRIPT.to_string()),
-                InsertStep::ReleaseModifiers,
                 InsertStep::Paste,
             ]
         );
@@ -750,7 +770,7 @@ mod tests {
         let outcome = insert_transcript(&inserter, &clipboard, TRANSCRIPT, InsertionMode::Paste);
 
         assert_eq!(outcome, InsertOutcome::Pasted);
-        assert_eq!(inserter.calls(), vec!["release_modifiers", "paste"]);
+        assert_eq!(inserter.calls(), vec!["prepare_paste", "paste"]);
         // Wrote the transcript, then restored the prior text.
         assert_eq!(clipboard.writes(), vec![TRANSCRIPT, PRIOR]);
         assert_eq!(clipboard.content(), Some(PRIOR.to_string()));
@@ -768,8 +788,8 @@ mod tests {
 
         assert_eq!(outcome, InsertOutcome::Failed);
         assert!(
-            inserter.calls().is_empty(),
-            "no keystrokes if we never wrote"
+            inserter.calls() == ["prepare_paste"],
+            "no paste keystrokes if we never wrote"
         );
         assert!(clipboard.writes().is_empty());
     }
@@ -786,8 +806,8 @@ mod tests {
 
         assert_eq!(outcome, InsertOutcome::Failed);
         assert!(
-            inserter.calls().is_empty(),
-            "no keystrokes if we never wrote"
+            inserter.calls() == ["prepare_paste"],
+            "no paste keystrokes if we never wrote"
         );
         assert!(
             clipboard.writes().is_empty(),
@@ -810,7 +830,7 @@ mod tests {
         let outcome = insert_transcript(&inserter, &clipboard, TRANSCRIPT, InsertionMode::Paste);
 
         assert_eq!(outcome, InsertOutcome::ClipboardOnly);
-        assert_eq!(inserter.calls(), vec!["release_modifiers", "paste"]);
+        assert_eq!(inserter.calls(), vec!["prepare_paste", "paste"]);
         // Only the transcript was written; the prior text was never restored.
         assert_eq!(clipboard.writes(), vec![TRANSCRIPT]);
         assert_eq!(clipboard.content(), Some(TRANSCRIPT.to_string()));
@@ -825,7 +845,7 @@ mod tests {
         let outcome = insert_transcript(&inserter, &clipboard, TRANSCRIPT, InsertionMode::Paste);
 
         assert_eq!(outcome, InsertOutcome::Pasted);
-        assert_eq!(inserter.calls(), vec!["release_modifiers", "paste"]);
+        assert_eq!(inserter.calls(), vec!["prepare_paste", "paste"]);
         // Wrote only the transcript; nothing to restore.
         assert_eq!(clipboard.writes(), vec![TRANSCRIPT]);
     }
@@ -930,34 +950,16 @@ mod tests {
     // intruder, so `writes()` becomes `[TRANSCRIPT, PRIOR]` and `content()`
     // becomes PRIOR. Restore the real check → green again. Verified manually.
 
-    // ── NEGATIVE REGRESSION CYCLE 2: ReleaseModifiers is present in the trace ──
-    //
-    // `paste_with_text_snapshot_pastes_and_restores` asserts
-    // `inserter.calls() == ["release_modifiers", "paste"]`. Remove the
-    // `InsertStep::ReleaseModifiers` push from `plan_insertion` (or its arm from
-    // `execute_insertion`) → the recorded calls become `["paste"]` and this test
-    // fails. Restore the step → green. Verified manually. `plan_release_modifiers_
-    // present` below pins the same invariant on the pure planner.
-
     #[test]
-    fn plan_release_modifiers_present() {
-        // Guards negative cycle 2 at the planner level: the defensive modifier
-        // release must be in every Paste plan (D5).
-        let plan = plan_insertion(Ok(PRIOR.to_string()), TRANSCRIPT, InsertionMode::Paste);
-        assert!(
-            plan.iter()
-                .any(|s| matches!(s, InsertStep::ReleaseModifiers)),
-            "ReleaseModifiers must be planned before Paste (D5)"
+    fn blocked_preparation_keeps_transcript_in_clipboard_without_pasting() {
+        let inserter = FakeInserter::blocked_preparation();
+        let clipboard = FakeClipboard::with_text(PRIOR);
+        assert_eq!(
+            insert_transcript(&inserter, &clipboard, TRANSCRIPT, InsertionMode::Paste),
+            InsertOutcome::ClipboardOnly
         );
-        let rm = plan
-            .iter()
-            .position(|s| matches!(s, InsertStep::ReleaseModifiers))
-            .unwrap();
-        let paste = plan
-            .iter()
-            .position(|s| matches!(s, InsertStep::Paste))
-            .unwrap();
-        assert!(rm < paste, "ReleaseModifiers must come before Paste");
+        assert_eq!(inserter.calls(), vec!["prepare_paste"]);
+        assert_eq!(clipboard.writes(), vec![TRANSCRIPT]);
     }
 
     // ── outcome → disposition-relevant smoke (executor determinism) ──
@@ -968,7 +970,7 @@ mod tests {
         let inserter = FakeInserter::default();
         let clipboard = FakeClipboard::empty();
         assert_eq!(
-            execute_insertion(&[], &inserter, &clipboard),
+            execute_insertion(&[], &inserter, &clipboard, None),
             InsertOutcome::ClipboardOnly
         );
     }
