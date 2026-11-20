@@ -3,7 +3,7 @@
   "id": "tts-normalization",
   "title": "Нормализация текста для озвучки: правила, словарь, ИИ-фрагменты",
   "status": "active",
-  "next": "N2",
+  "next": "N3",
   "reason": null,
   "claim": null,
   "links": [
@@ -43,7 +43,7 @@
     {
       "id": "N2",
       "title": "Словарь произношения: миграция SQLite, раздел в настройках, импорт/экспорт, «Послушать», бэкап",
-      "status": "pending",
+      "status": "done",
       "depends_on": [
         "N1"
       ],
@@ -51,7 +51,42 @@
         "rust",
         "frontend"
       ],
-      "checks": []
+      "checks": [
+        {
+          "id": "rust",
+          "status": "PASS",
+          "method": "command",
+          "command": "cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test",
+          "cwd": "src-tauri",
+          "at": "2026-11-20T18:30:00.000Z",
+          "environment": {
+            "os": "Linux container",
+            "rustc": "1.97.0",
+            "node": "v22.23.4",
+            "pnpm": "10.28.0"
+          },
+          "exit_code": 0,
+          "output": "test result: ok. 425 passed; 0 failed; 6 ignored (9 new dictionary/storage tests)",
+          "evidence": "docs/workstreams/tts-normalization/log.md"
+        },
+        {
+          "id": "frontend",
+          "status": "PASS",
+          "method": "command",
+          "command": "pnpm exec tsc --noEmit && pnpm build",
+          "cwd": ".",
+          "at": "2026-11-20T18:30:00.000Z",
+          "environment": {
+            "os": "Linux container",
+            "rustc": "1.97.0",
+            "node": "v22.23.4",
+            "pnpm": "10.28.0"
+          },
+          "exit_code": 0,
+          "output": "I18N PASS: 409 keys with matching parameters; built",
+          "evidence": "docs/workstreams/tts-normalization/log.md"
+        }
+      ]
     },
     {
       "id": "N3",

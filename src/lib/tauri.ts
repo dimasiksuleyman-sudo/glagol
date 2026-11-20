@@ -610,3 +610,21 @@ export interface LanConnection { base_url: string; key: string; model: string }
 export const inspectLanConnectionCode = (code: string) => invoke<LanConnection>("inspect_lan_connection_code", { code });
 /** The running dictation's state for a pill window rebuilt mid-session, or `null` when idle. */
 export const overlayState = () => invoke<DictationState | null>("overlay_state").catch(() => null);
+/** Mirrors `text::dictionary::Entry`: one pronunciation dictionary row. */
+export interface PronunciationEntry {
+  id: number | null;
+  pattern: string;
+  replacement: string;
+  language: "ru" | "en" | "any";
+  whole_word: boolean;
+  case_sensitive: boolean;
+  enabled: boolean;
+}
+export const listPronunciations = () => invoke<PronunciationEntry[]>("list_pronunciations");
+export const savePronunciation = (entry: PronunciationEntry) => invoke<PronunciationEntry>("save_pronunciation", { entry });
+export const deletePronunciation = (id: number) => invoke<void>("delete_pronunciation", { id });
+export const exportPronunciations = (path: string) => invoke<number>("export_pronunciations", { path });
+/** Returns [imported, skipped]. */
+export const importPronunciations = (path: string) => invoke<[number, number]>("import_pronunciations", { path });
+/** How a phrase will be read: the dictionary, then the built-in rules. */
+export const previewNormalized = (text: string, language: "ru" | "en") => invoke<string>("preview_normalized", { text, language });

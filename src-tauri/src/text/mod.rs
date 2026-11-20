@@ -9,5 +9,6 @@
 //! `chunker` → sequential synthesis → streamed WAV.
 
 pub mod chunker;
+pub mod dictionary;
 pub mod normalize;
 pub mod preprocessor;

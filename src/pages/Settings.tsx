@@ -1,11 +1,12 @@
 import { t } from "@/i18n";
-import { useI18n } from "@/contexts/PreferencesContext";
+import { useI18n, usePreferences } from "@/contexts/PreferencesContext";
 import { Navigate, NavLink, useParams } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { BackupSection } from "@/components/settings/BackupSection";
 import { DictationSection } from "@/components/settings/DictationSection";
 import { LanServerSection } from "@/components/settings/LanServerSection";
 import { TtsSection } from "@/components/settings/TtsSection";
+import { PronunciationSection } from "@/components/settings/PronunciationSection";
 import { UpdatesSection } from "@/components/settings/UpdatesSection";
 import { DiagnosticsSection } from "@/components/settings/DiagnosticsSection";
 import { LanguageSwitch } from "@/components/LanguageSwitch";
@@ -17,6 +18,7 @@ const TABS: SettingsTab[] = ["dictation", "speech", "general"];
 export function Settings() {
   useI18n();
   const { tab } = useParams();
+  const { preferences } = usePreferences();
   if (!TABS.includes(tab as SettingsTab)) return <Navigate to="/settings/dictation" replace />;
   const label: Record<SettingsTab, string> = {
     dictation: t("Dictation"),
@@ -36,7 +38,7 @@ export function Settings() {
       </NavLink>)}
     </nav>
     {tab === "dictation" && <><DictationSection /><LanServerSection /></>}
-    {tab === "speech" && <TtsSection />}
+    {tab === "speech" && <><TtsSection />{preferences?.tts_enabled !== false && <PronunciationSection />}</>}
     {tab === "general" && <>
       <div data-tour="interface-language"><LanguageSwitch /></div>
       <UpdatesSection />

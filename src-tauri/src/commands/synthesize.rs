@@ -123,11 +123,17 @@ pub async fn synthesize_impl(
     if !caps.voices.contains(&voice) {
         return Err("Неизвестный голос.".into());
     }
-    let clean = if backend.capabilities().provider == "silero-en" {
-        crate::text::preprocessor::preprocess_english(text)
-    } else {
-        crate::text::preprocessor::preprocess(text)
+    // The user's pronunciation dictionary first, then the built-in rules.
+    let dictionary = {
+        let conn = db.lock().map_err(|e| e.to_string())?;
+        crate::commands::pronunciations::for_synthesis(&conn)
     };
+    let language = if backend.capabilities().provider == "silero-en" {
+        "en"
+    } else {
+        "ru"
+    };
+    let clean = crate::commands::pronunciations::prepare_for_speech(text, &dictionary, language);
     let chunks = chunk_text(&clean, caps.max_input_chars);
     if chunks.is_empty() {
         return Err("Введите текст для озвучивания.".into());

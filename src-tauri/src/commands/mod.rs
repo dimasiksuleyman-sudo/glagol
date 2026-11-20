@@ -12,6 +12,7 @@ pub mod file;
 pub mod lan_server;
 pub mod metrics;
 pub mod preferences;
+pub mod pronunciations;
 pub mod speech;
 pub mod storage;
 pub mod synthesize;

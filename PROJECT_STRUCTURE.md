@@ -57,6 +57,7 @@ CC BY-NC-SA 4.0 для некоммерческого использования
 | `components/settings/LanServerSection.tsx` | Блок «Сервер для других компьютеров» в настройках диктовки |
 | `parser` | TXT/MD/DOCX/PDF, Pdfium |
 | `text` | Общие URL/email/сокращения и разбиение; числа/латиница — Silero adapter |
+| `text/normalize/`, `text/dictionary.rs` | Числа, даты, суммы и сокращения словами (RU с падежом, EN); словарь произношения пользователя (один проход, CSV); `commands/pronunciations.rs` — хранение (миграция 7), команды и `prepare_for_speech`; `components/settings/PronunciationSection.tsx` — раздел в настройках |
 | `db` | Append-only миграции и repository |
 | `backup` | ZIP библиотеки, проверка и защитная копия перед восстановлением |
 | `secrets/keyring.rs` | Раздельные STT-ключи; узкое удаление старого TTS-ключа |

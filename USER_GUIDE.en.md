@@ -126,6 +126,21 @@ rules («$81.3 billion» → «eighty-one point three billion dollars», «in 20
 twenty twenty-six»). The case is inferred from neighbouring words and can occasionally
 be off; listen to unusual notation. Choosing a language is not translation.
 
+**Pronunciation dictionary** (Settings → Text to speech, below the Silero card) tells
+Glagol how to read names, abbreviations and terms: «Written as» → «Read as» (for example
+«Anthropic» → «Энтропик»). It is applied before the built-in rules, so your choice always
+wins. Each entry has a language (Russian, English or any), «Whole word» (on by default:
+«ИИ» leaves «ИИСУС» alone) and «Match case»; an entry can be switched off without
+deleting it. When several entries match, the longest wins («Нью-Йорк Таймс» before
+«Нью-Йорк»), and a replacement is never processed again. For Russian voices mark stress
+with «+» before the stressed vowel («з+амок»); English voices skip it. «Check a phrase»
+shows how text will be read, and «Listen» (and ▶ next to an entry) speaks up to 200
+characters with the selected voice, which must be installed. «Import» accepts a CSV
+exported by Glagol or a simple two-column table «written as;read as» (comma or semicolon);
+existing words are updated. «Export» saves the dictionary as CSV. The dictionary lives in
+Glagol's database and is included in backups; up to 5000 entries. Documents already
+synthesized do not change — synthesize them again.
+
 The Library is a compact list: ▶ next to a document plays it in the shared player at the
 bottom (pause, seek, 0.5–2× speed, volume); the icons rename, export the WAV or delete.
 With six or more documents a search by title appears. User titles, document contents and

@@ -137,6 +137,7 @@ These constraints apply to changes. Resolve required architectural changes befor
 - Pipeline streams chunks to a temporary WAV and transactionally publishes one row.
   Keep legacy audio/provider metadata, dictation profiles, keys and usage seconds.
 - Append-only migration 6 adds nullable speech_language: old rows stay NULL.
+  Migration 7 adds `pronunciations` (user dictionary, applied before normalization).
   Providers remain `salutespeech-legacy`, `silero` and new `silero-en`.
 - Retired OAuth/client/certificate and quota UI are gone. Only a narrow one-time
   cleanup of `Glagol/salutespeech_auth_key` remains; never touch STT keys.
