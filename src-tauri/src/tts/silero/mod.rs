@@ -22,6 +22,9 @@ pub const MODEL_ID: &str = "silero-v5_5_ru";
 pub const LICENSE: &str = include_str!("../../../../docs/third-party/Silero-LICENSE.txt");
 pub const LICENSE_HASH: &str = "1349a4b6148492b44f629e64eed676612e234fe9a839e4f3b277c1482c8849f1";
 pub const VOICES: &[&str] = &["aidar", "baya", "kseniya", "xenia", "eugene"];
+/// SHA-256 of `docs/third-party/Qwen3-TTS-LICENSE.txt` (checked by a test).
+pub const QWEN_LICENSE_HASH: &str =
+    "716a0dfb51f27fc5b3c5f109a169a3b497db80170ccfdaa85c3f4c75c4dda5c9";
 const WORKER_IDLE_TIMEOUT: Duration = Duration::from_secs(15 * 60);
 const VERIFICATION_MAX_AGE: i64 = 30 * 24 * 60 * 60;
 const VERIFICATION_STAMP: &str = "verification.json";
@@ -163,7 +166,7 @@ pub struct Silero {
     pub root: PathBuf,
     pub operation: Arc<tokio::sync::Mutex<()>>,
     pub model: &'static models::Model,
-    pub worker: tokio::sync::Mutex<Option<Worker>>,
+    pub worker: tokio::sync::Mutex<Option<crate::tts::LocalWorker>>,
     pub cancel: Arc<AtomicBool>,
     verification: VerificationCache,
     progress: Mutex<Option<Progress>>,
@@ -191,6 +194,10 @@ impl Silero {
         }
     }
     pub fn accepted(&self) -> bool {
+        // Qwen3-TTS is Apache 2.0/MIT: no noncommercial acknowledgement.
+        if self.model.engine == models::Engine::Qwen {
+            return true;
+        }
         std::fs::read_to_string(self.root.join(self.model.acknowledgement))
             .ok()
             .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
@@ -204,6 +211,9 @@ impl Silero {
         }
     }
     pub fn acknowledge(&self, accepted: bool, license_hash: &str) -> Result<(), String> {
+        if self.model.engine == models::Engine::Qwen {
+            return std::fs::create_dir_all(&self.root).map_err(|e| e.to_string());
+        }
         if !accepted || license_hash != LICENSE_HASH {
             return Err("Подтвердите актуальные условия Silero перед загрузкой.".into());
         }
@@ -213,6 +223,9 @@ impl Silero {
             .map_err(|e| e.to_string())
     }
     pub fn status(&self) -> Status {
+        if self.model.engine == models::Engine::Qwen {
+            return self.qwen_status();
+        }
         let runtime_bytes = catalog::ARTIFACTS.iter().map(|a| a.bytes).sum();
         let partial_bytes = catalog::ARTIFACTS
             .iter()
@@ -262,6 +275,68 @@ impl Silero {
             error: self.error.lock().unwrap().clone().map(crate::i18n::error),
         }
     }
+    fn qwen_status(&self) -> Status {
+        use crate::tts::qwen::{self, catalog as q};
+        let installed = qwen::installed(&self.root);
+        Status {
+            provider: self.model.provider,
+            model_id: self.model.id,
+            voices: self.model.voices,
+            dependencies: vec![Dependency {
+                id: "qwen-runtime-2edb35f",
+                shared: true,
+                installed: q::DLLS.iter().all(|a| self.root.join(a.file).is_file()),
+                bytes: q::RUNTIME.bytes,
+            }],
+            language: self.model.language,
+            model_file: q::TALKER.file,
+            download_bytes: qwen::missing_bytes(&self.root),
+            supported: cfg!(all(windows, target_arch = "x86_64")),
+            installed,
+            accepted: true,
+            model_bytes: q::TALKER.bytes + q::CODEC.bytes,
+            runtime_bytes: q::RUNTIME.bytes,
+            disk_bytes: q::TALKER.bytes + q::CODEC.bytes + 3 * q::RUNTIME.bytes + 200_000_000,
+            partial_bytes: qwen::partial_bytes(&self.root),
+            license: qwen::LICENSE,
+            license_hash: QWEN_LICENSE_HASH,
+            progress: self.progress.lock().unwrap().clone(),
+            error: self.error.lock().unwrap().clone().map(crate::i18n::error),
+        }
+    }
+    /// Three key files whose size and time a 30-day receipt remembers.
+    fn key_files(&self) -> [PathBuf; 3] {
+        match self.model.engine {
+            models::Engine::Silero => [
+                self.root.join(self.model.artifact.file),
+                self.root.join("runtime/python.exe"),
+                self.root.join("runtime/python311.dll"),
+            ],
+            models::Engine::Qwen => [
+                self.root.join(crate::tts::qwen::catalog::TALKER.file),
+                self.root.join(crate::tts::qwen::catalog::CODEC.file),
+                self.root.join("runtime/qwen.dll"),
+            ],
+        }
+    }
+    /// Hash of the pinned file list, so a new catalog forces a full check.
+    fn manifest_sha256(&self) -> String {
+        match self.model.engine {
+            models::Engine::Silero => runtime_manifest_sha256(),
+            models::Engine::Qwen => {
+                use crate::tts::qwen::catalog as q;
+                let mut hash = Sha256::new();
+                for artifact in [&q::RUNTIME, &q::TALKER, &q::CODEC]
+                    .into_iter()
+                    .chain(q::DLLS.iter())
+                {
+                    hash.update(artifact.file.as_bytes());
+                    hash.update(artifact.sha256.as_bytes());
+                }
+                format!("{:x}", hash.finalize())
+            }
+        }
+    }
     pub fn stage(&self, app: &tauri::AppHandle, stage: &str, downloaded: u64, total: u64) {
         *self.progress.lock().unwrap() = Some(Progress {
             stage: stage.into(),
@@ -294,30 +369,33 @@ impl Silero {
         if stamp.schema_version != 1
             || stamp.model != self.model.id
             || !(0..=VERIFICATION_MAX_AGE).contains(&age)
-            || stamp.runtime_manifest_sha256 != runtime_manifest_sha256()
+            || stamp.runtime_manifest_sha256 != self.manifest_sha256()
         {
             return false;
         }
-        fingerprint(&self.root.join(self.model.artifact.file)).is_ok_and(|value| {
+        let [model, second, third] = self.key_files();
+        fingerprint(&model).is_ok_and(|value| {
             value.bytes == stamp.model_file.bytes
                 && value.modified_ns == stamp.model_file.modified_ns
-        }) && fingerprint(&self.root.join("runtime/python.exe")).is_ok_and(|value| {
+        }) && fingerprint(&second).is_ok_and(|value| {
             value.bytes == stamp.python_exe.bytes
                 && value.modified_ns == stamp.python_exe.modified_ns
-        }) && fingerprint(&self.root.join("runtime/python311.dll")).is_ok_and(|value| {
+        }) && fingerprint(&third).is_ok_and(|value| {
             value.bytes == stamp.python_dll.bytes
                 && value.modified_ns == stamp.python_dll.modified_ns
         })
     }
     fn record_verification(&self) -> Result<(), String> {
+        // For Qwen the two «python» fields hold the codec model and qwen.dll.
+        let [model, second, third] = self.key_files();
         let stamp = VerificationStamp {
             schema_version: 1,
             model: self.model.id.into(),
             verified_at: chrono::Utc::now().timestamp(),
-            runtime_manifest_sha256: runtime_manifest_sha256(),
-            model_file: fingerprint(&self.root.join(self.model.artifact.file))?,
-            python_exe: fingerprint(&self.root.join("runtime/python.exe"))?,
-            python_dll: fingerprint(&self.root.join("runtime/python311.dll"))?,
+            runtime_manifest_sha256: self.manifest_sha256(),
+            model_file: fingerprint(&model)?,
+            python_exe: fingerprint(&second)?,
+            python_dll: fingerprint(&third)?,
         };
         let destination = self.root.join(self.model.verification);
         let partial = self.root.join(format!("{}.part", self.model.verification));
@@ -340,6 +418,13 @@ impl Silero {
                     let result = tokio::task::spawn_blocking(move || {
                         if this.recent_verification_valid() {
                             return Ok(false);
+                        }
+                        if this.model.engine == models::Engine::Qwen {
+                            crate::tts::qwen::verify(&this.root)?;
+                            if this.record_verification().is_err() {
+                                tracing::warn!("local TTS verification stamp could not be saved");
+                            }
+                            return Ok(true);
                         }
                         download::verify(
                             &this.root.join(this.model.artifact.file),
@@ -392,6 +477,17 @@ impl Silero {
         self.cancel.store(false, Ordering::Relaxed);
         self.close_worker().await;
         self.invalidate_verification().await;
+        if self.model.engine == models::Engine::Qwen {
+            crate::tts::qwen::install(&self.root, &self.cancel, |stage, done, total| {
+                self.stage(app, stage, done, total)
+            })
+            .await?;
+            if self.record_verification().is_err() {
+                tracing::warn!("local TTS verification stamp could not be saved");
+            }
+            self.verification.mark_ready();
+            return Ok(());
+        }
         // A second language must not download or reassemble an intact shared runtime.
         let this = self.clone();
         let reuse_runtime = tokio::task::spawn_blocking(move || {
@@ -496,13 +592,13 @@ impl Silero {
         }
         self.stage(app, "preparing", 0, 0);
         let verification_performed = self.verify_installed().await?;
-        let worker = match Worker::start_for(&self.root, self.cancel.clone(), self.model).await {
+        let worker = match self.start_worker().await {
             Ok(worker) => worker,
             Err(_) if !verification_performed => {
                 tracing::warn!("local TTS worker startup failed; forcing integrity verification");
                 self.invalidate_verification().await;
                 self.verify_installed().await?;
-                Worker::start_for(&self.root, self.cancel.clone(), self.model).await?
+                self.start_worker().await?
             }
             Err(error) => return Err(error),
         };
@@ -515,9 +611,29 @@ impl Silero {
         );
         Ok(())
     }
+    async fn start_worker(&self) -> Result<crate::tts::LocalWorker, String> {
+        Ok(match self.model.engine {
+            models::Engine::Silero => crate::tts::LocalWorker::Silero(
+                Worker::start_for(&self.root, self.cancel.clone(), self.model).await?,
+            ),
+            models::Engine::Qwen => crate::tts::LocalWorker::Qwen(
+                crate::tts::qwen::worker::Worker::start(
+                    &self.root,
+                    self.cancel.clone(),
+                    self.model.provider,
+                    if self.model.language == crate::preferences::Language::En {
+                        "english"
+                    } else {
+                        "russian"
+                    },
+                )
+                .await?,
+            ),
+        })
+    }
     pub fn verification_task(app: tauri::AppHandle) {
         let models = app.state::<models::Models>();
-        for state in [models.ru.clone(), models.en.clone()] {
+        for state in models.all() {
             let app = app.clone();
             tauri::async_runtime::spawn(async move {
                 // Installation can replace shared files; never inspect a half-written runtime.
@@ -554,10 +670,10 @@ impl Silero {
             loop {
                 tokio::time::sleep(Duration::from_secs(30)).await;
                 let models = app.state::<models::Models>();
-                for state in [models.ru.clone(), models.en.clone()] {
+                for state in models.all() {
                     if let Ok(_operation) = state.operation.try_lock() {
                         let mut worker = state.worker.lock().await;
-                        let idle = worker.as_ref().map(|worker| worker.last_used.elapsed());
+                        let idle = worker.as_ref().map(|worker| worker.last_used().elapsed());
                         if let Some(idle) = idle.filter(|idle| *idle > WORKER_IDLE_TIMEOUT) {
                             if let Some(mut process) = worker.take() {
                                 process.shutdown().await;
@@ -579,6 +695,14 @@ impl Silero {
 mod tests {
     use super::*;
     use std::sync::atomic::AtomicUsize;
+    #[test]
+    fn qwen_license_hash_matches_the_shipped_text() {
+        assert_eq!(
+            format!("{:x}", Sha256::digest(crate::tts::qwen::LICENSE.as_bytes())),
+            QWEN_LICENSE_HASH
+        );
+    }
+
     #[test]
     fn consent_is_explicit_and_model_license_bound() {
         let root = std::env::temp_dir().join(format!("tts-consent-{}", uuid::Uuid::new_v4()));

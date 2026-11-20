@@ -68,7 +68,7 @@ pub async fn synthesize_document(
 
             let synthesis_started = Instant::now();
             let synthesis_result = async {
-                let language = if tts.model.provider == "silero-en" {
+                let language = if tts.model.language == crate::preferences::Language::En {
                     "en"
                 } else {
                     "ru"

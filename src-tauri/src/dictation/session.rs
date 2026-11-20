@@ -387,7 +387,7 @@ fn log_dictation_context(app: &AppHandle) {
     let (tts_loaded, tts_busy) = app
         .try_state::<crate::tts::silero::models::Models>()
         .map(|models| {
-            let loaded = [&models.ru, &models.en].iter().any(|m| {
+            let loaded = models.all().iter().any(|m| {
                 m.worker
                     .try_lock()
                     .map(|worker| worker.is_some())

@@ -60,8 +60,9 @@ pub async fn install_tts(
             .map_err(|_| "Другая операция озвучки ещё выполняется.".to_string())?;
         state.acknowledge(accepted, &license_hash)?;
         models.close_workers().await;
-        models.ru.clear_verification_cache().await;
-        models.en.clear_verification_cache().await;
+        for model in models.all() {
+            model.clear_verification_cache().await;
+        }
         let result = state.install(&app, model_path.map(PathBuf::from)).await;
         state.finish(&app, &result);
         result
@@ -71,8 +72,9 @@ pub async fn install_tts(
 }
 #[tauri::command]
 pub fn cancel_tts(models: tauri::State<'_, Models>) {
-    models.ru.stop();
-    models.en.stop();
+    for model in models.all() {
+        model.stop();
+    }
 }
 #[tauri::command]
 pub async fn remove_tts(

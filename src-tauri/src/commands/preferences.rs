@@ -143,8 +143,7 @@ pub async fn set_tts_enabled(
             preferences::get(&conn).map_err(|e| e.to_string())?
         };
         if !enabled {
-            models.ru.close_worker().await;
-            models.en.close_worker().await;
+            models.close_workers().await;
         }
         tracing::info!(enabled, "text to speech switch changed");
         let _ = app.emit("preferences-changed", &value);
