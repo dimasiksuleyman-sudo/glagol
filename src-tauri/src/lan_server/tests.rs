@@ -55,13 +55,17 @@ async fn glagol_client_dictates_through_the_server() {
     .await;
     let client = client(&server, Some(key));
     assert_eq!(client.list_models().await.unwrap(), vec!["gigaam-test"]);
+    client
+        .probe_transcription(crate::commands::dictation::probe_clip(), Some("ru"))
+        .await
+        .unwrap();
     let transcript = client
         .transcribe(second_of_speech(), Some("ru"))
         .await
         .unwrap();
     assert_eq!(transcript.text, "распознано 16000 отсчётов");
     let status = server.status();
-    assert_eq!(status.requests, 2);
+    assert_eq!(status.requests, 3);
     assert_eq!(status.failures, 0);
     assert_eq!(status.active_clients, 1);
     assert_eq!(status.pending, 0);

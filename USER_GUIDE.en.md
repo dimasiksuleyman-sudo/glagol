@@ -245,6 +245,10 @@ speech language remembers its local model and voice.
   see Server for other computers; then pasting its connection code is enough. HTTP is allowed only for localhost/private IPs on a trusted network; audio
   and keys are unencrypted there. Hostnames need trusted HTTPS. System proxies are
   bypassed; an explicit proxy is available.
+  Enter the address and the API key if required, then click **Load models**.
+  Filter the list and pick a model or enter its name if the server provides no list.
+  **Save and use** tests the chosen model with a short built-in WAV of silence.
+  Glagol saves the profile and key only if the check succeeds.
 - **Cloud service:** choose a preset or compatible endpoint, model, key and optional
   dictation-only proxy. The existing remote `auto` language option is retained.
 

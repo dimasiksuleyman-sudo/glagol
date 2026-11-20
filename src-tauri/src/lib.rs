@@ -365,6 +365,7 @@ pub fn run() {
             commands::backup::relaunch_app,
             commands::dictation::get_stt_settings,
             commands::speech::get_speech_settings,
+            commands::speech::list_server_speech_models,
             commands::speech::save_speech_settings,
             commands::speech::test_speech_settings,
             commands::speech::delete_speech_key,

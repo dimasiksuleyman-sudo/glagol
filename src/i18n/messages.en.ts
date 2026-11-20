@@ -364,4 +364,11 @@ export const messages = {
   "style_custom": "Your own description…",
   "customStylePlaceholder": "For example: read slowly, with pauses, like an audiobook",
   "readingStyleNote": "Qwen3-TTS follows the description in each fragment; the effect depends on the voice. Listen before synthesizing a long document.",
+  "Checking the server model…": "Checking the server model…",
+  "Loading server models…": "Loading server models…",
+  "Glagol checks the selected model with a short built-in audio clip before saving.": "Glagol checks the selected model with a short built-in audio clip before saving.",
+  "The server did not return a model list. Enter the model name manually.": "The server did not return a model list. Enter the model name manually.",
+  "Choose a server model": "Choose a server model",
+  "No matching server models.": "No matching server models.",
+  "Showing the first {p0} models. Narrow the filter to see more.": "Showing the first {p0} models. Narrow the filter to see more.",
 } as const;

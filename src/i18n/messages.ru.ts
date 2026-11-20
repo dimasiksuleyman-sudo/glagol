@@ -365,4 +365,11 @@ export const messages: {[K in keyof typeof en]: string} = {
   "style_custom": "Своё описание…",
   "customStylePlaceholder": "Например: читай медленно, с паузами, как аудиокнигу",
   "readingStyleNote": "Qwen3-TTS учитывает описание в каждом фрагменте; эффект зависит от голоса. Послушайте перед озвучкой длинного документа.",
+  "Checking the server model…": "Проверяем модель сервера…",
+  "Loading server models…": "Загружаем модели сервера…",
+  "Glagol checks the selected model with a short built-in audio clip before saving.": "Перед сохранением Глагол проверит выбранную модель на коротком встроенном аудио.",
+  "The server did not return a model list. Enter the model name manually.": "Сервер не вернул список моделей. Введите имя модели вручную.",
+  "Choose a server model": "Выберите модель сервера",
+  "No matching server models.": "Нет моделей, подходящих под фильтр.",
+  "Showing the first {p0} models. Narrow the filter to see more.": "Показаны первые {p0} моделей. Уточните фильтр, чтобы найти нужную модель.",
 };
