@@ -298,6 +298,7 @@ pub fn run() {
 
             // Serve recognition to other computers when the user turned it on.
             commands::lan_server::start_at_launch(app.handle());
+            commands::speech_model_check::start_at_launch(app.handle());
 
             Ok(())
         })
@@ -362,6 +363,7 @@ pub fn run() {
             commands::speech::list_server_speech_models,
             commands::speech::save_speech_settings,
             commands::speech::test_speech_settings,
+            commands::speech_model_check::check_saved_speech_model,
             commands::speech::delete_speech_key,
             stt::local::local_models_status,
             stt::local::local_engine_state,

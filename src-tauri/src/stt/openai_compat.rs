@@ -27,7 +27,7 @@ const TRANSCRIBE_TIMEOUT: Duration = Duration::from_secs(90);
 const LIST_MODELS_TIMEOUT: Duration = Duration::from_secs(20);
 
 /// Bound data read from a remote model list and from a short settings probe.
-const MAX_MODELS_RESPONSE_BYTES: u64 = 1024 * 1024;
+const MAX_MODELS_RESPONSE_BYTES: u64 = 4 * 1024 * 1024;
 const MAX_PROBE_RESPONSE_BYTES: u64 = 64 * 1024;
 
 /// A busy server's 429 is retried automatically this many times…
@@ -278,6 +278,24 @@ impl OpenAiCompatStt {
     /// and proxy. Returns the model ids on success; an unfamiliar-but-200 body
     /// still counts as success (empty list) because the auth check passed.
     pub async fn list_models(&self) -> Result<Vec<String>, SttError> {
+        Ok(self
+            .fetch_model_catalog()
+            .await?
+            .map_or_else(Vec::new, |list| {
+                list.data.into_iter().map(|model| model.id).collect()
+            }))
+    }
+
+    /// Whether a catalog confirms the selected model is present or missing.
+    /// An unfamiliar or incomplete catalog cannot confirm absence.
+    pub(crate) async fn model_is_advertised(&self) -> Result<Option<bool>, SttError> {
+        Ok(self.fetch_model_catalog().await?.and_then(|list| {
+            let found = list.data.iter().any(|model| model.id == self.model);
+            (found || !list.has_more.unwrap_or(false)).then_some(found)
+        }))
+    }
+
+    async fn fetch_model_catalog(&self) -> Result<Option<ModelCatalog>, SttError> {
         let response = self
             .with_auth(
                 self.client
@@ -301,7 +319,7 @@ impl OpenAiCompatStt {
             return Err(map_error_status(status, &retry_after, body.into_owned()));
         }
 
-        Ok(parse_model_ids(&body))
+        Ok(serde_json::from_str(&body).ok())
     }
 }
 
@@ -379,23 +397,16 @@ fn parse_transcript(body: &str) -> Result<Transcript, SttError> {
     Ok(Transcript { text: resp.text })
 }
 
-/// Best-effort extraction of model ids from a `GET /models` body. Returns an
-/// empty vec (not an error) for an unfamiliar shape: a 200 already proved the
-/// key/endpoint work, which is all the probe cares about.
-fn parse_model_ids(body: &str) -> Vec<String> {
-    #[derive(Deserialize)]
-    struct ModelsResp {
-        data: Vec<Model>,
-    }
-    #[derive(Deserialize)]
-    struct Model {
-        id: String,
-    }
+#[derive(Deserialize)]
+struct ModelCatalog {
+    data: Vec<Model>,
+    #[serde(default)]
+    has_more: Option<bool>,
+}
 
-    match serde_json::from_str::<ModelsResp>(body) {
-        Ok(resp) => resp.data.into_iter().map(|m| m.id).collect(),
-        Err(_) => Vec::new(),
-    }
+#[derive(Deserialize)]
+struct Model {
+    id: String,
 }
 
 /// Read and parse the `Retry-After` header (integer seconds form) into a
@@ -704,6 +715,48 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn catalog_accepts_a_response_at_the_four_mib_limit() {
+        let mut server = mockito::Server::new_async().await;
+        let start = r#"{"data":[{"id":"whisper-1"}],"provider_metadata":""#;
+        let end = r#""}"#;
+        let padding = "x".repeat(4 * 1024 * 1024 - start.len() - end.len());
+        let _models = server
+            .mock("GET", "/models")
+            .with_body(format!("{start}{padding}{end}"))
+            .create_async()
+            .await;
+        assert_eq!(
+            client_for(&server).model_is_advertised().await.unwrap(),
+            Some(true)
+        );
+    }
+
+    #[tokio::test]
+    async fn only_an_authoritative_catalog_confirms_a_model_is_missing() {
+        for (body, expected) in [
+            (r#"{"data":[]}"#, Some(false)),
+            (r#"{"data":[{"id":"other-model"}]}"#, Some(false)),
+            (r#"{"data":[{"id":"other-model"}],"has_more":true}"#, None),
+            (
+                r#"{"data":[{"id":"whisper-1"}],"has_more":true}"#,
+                Some(true),
+            ),
+            (r#"{"unexpected":[]}"#, None),
+        ] {
+            let mut server = mockito::Server::new_async().await;
+            let _models = server
+                .mock("GET", "/models")
+                .with_body(body)
+                .create_async()
+                .await;
+            assert_eq!(
+                client_for(&server).model_is_advertised().await.unwrap(),
+                expected
+            );
+        }
+    }
+
+    #[tokio::test]
     async fn list_models_refuses_large_fixed_and_chunked_responses() {
         let mut server = mockito::Server::new_async().await;
         let client = client_for(&server);
@@ -721,7 +774,7 @@ mod tests {
             .mock("GET", "/models")
             .with_chunked_body(|out| {
                 let part = [b'x'; 16 * 1024];
-                for _ in 0..65 {
+                for _ in 0..=MAX_MODELS_RESPONSE_BYTES as usize / part.len() {
                     out.write_all(&part)?;
                 }
                 Ok(())

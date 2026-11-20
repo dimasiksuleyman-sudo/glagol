@@ -1,5 +1,6 @@
 //! Speech profiles: on-device, office server and cloud. Remote credentials are
 //! separated by mode and bound to the endpoint they were saved for.
+use super::speech_model_check::{self, SavedModelStatus};
 use crate::{
     db::repository,
     secrets::keyring,
@@ -30,7 +31,7 @@ impl Mode {
             Self::Cloud => "cloud",
         }
     }
-    fn prefix(self) -> &'static str {
+    pub(super) fn prefix(self) -> &'static str {
         if self == Self::Server {
             "stt_server"
         } else {
@@ -39,7 +40,7 @@ impl Mode {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Profile {
     pub mode: Mode,
     pub base_url: String,
@@ -53,6 +54,7 @@ pub struct Settings {
     pub profile: Profile,
     pub active_mode: Mode,
     pub key_stored: bool,
+    pub model_status: SavedModelStatus,
 }
 
 pub fn active_mode(conn: &Connection) -> Result<Mode, String> {
@@ -370,6 +372,7 @@ pub fn get_speech_settings(
         let profile = read_profile(&conn, mode)?;
         let key_stored = profile_key(&conn, &profile)?.is_some();
         Ok(Settings {
+            model_status: speech_model_check::saved_status(&conn, profile.mode)?,
             profile,
             key_stored,
             active_mode: active_mode(&conn)?,
@@ -409,6 +412,9 @@ pub fn persist_profile(conn: &mut Connection, p: &Profile, new_key: bool) -> Res
         ] {
             set(&format!("{}_{}", p.mode.prefix(), key), value)?;
         }
+    }
+    if p.mode != Mode::Local && (new_key || previous != *p) {
+        speech_model_check::invalidate_warning(&tx, p.mode)?;
     }
     set("stt_mode", p.mode.name())?;
     set(
@@ -545,21 +551,25 @@ pub async fn test_speech_settings(
 }
 
 #[tauri::command]
-pub fn delete_speech_key(mode: Mode) -> Result<(), String> {
+pub fn delete_speech_key(state: tauri::State<'_, AppState>, mode: Mode) -> Result<(), String> {
     (|| {
-        if mode != Mode::Local {
-            match keyring::delete_bound_stt_key(mode == Mode::Server) {
-                Ok(()) | Err(keyring::KeyringError::NotFound) => {}
-                Err(e) => return Err(e.to_string()),
-            }
+        if mode == Mode::Local {
+            return Ok(());
         }
-        let result = match mode {
-            Mode::Local => return Ok(()),
-            Mode::Server => keyring::delete_server_stt_key(),
-            Mode::Cloud => keyring::delete_stt_key(),
+        let conn = state.db.lock().map_err(|e| e.to_string())?;
+        match keyring::delete_bound_stt_key(mode == Mode::Server) {
+            Ok(()) | Err(keyring::KeyringError::NotFound) => {}
+            Err(e) => return Err(e.to_string()),
+        }
+        let result = if mode == Mode::Server {
+            keyring::delete_server_stt_key()
+        } else {
+            keyring::delete_stt_key()
         };
         match result {
-            Ok(()) | Err(keyring::KeyringError::NotFound) => Ok(()),
+            Ok(()) | Err(keyring::KeyringError::NotFound) => {
+                speech_model_check::invalidate_warning(&conn, mode)
+            }
             Err(e) => Err(e.to_string()),
         }
     })()
