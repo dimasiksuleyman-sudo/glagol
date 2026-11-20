@@ -124,7 +124,10 @@ export function DictationSection() {
       if (alive.current) {
         setProfile(settings.profile); setKeyStored(settings.key_stored);
         setActive("server"); setActiveModel(next.model); setApiKey(""); setConnectionCode("");
-        setMessage(t("Connected to Glagol at {p0}. You can start dictating.", { p0: found.base_url.replace(/^http:\/\//, "").replace(/\/v1$/, "") }));
+        const connected = t("Connected to Glagol at {p0}. You can start dictating.", { p0: found.base_url.replace(/^http:\/\//, "").replace(/\/v1$/, "") });
+        setMessage(connected);
+        // The status line can be below the visible area; a toast is always seen.
+        toast.success(connected);
       }
     } catch (e) { setMessage(errorText(e)); toast.error(errorText(e)); }
     finally { setBusy(false); }
