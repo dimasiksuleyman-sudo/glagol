@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  getSpeechSettings, saveSpeechSettings, testSpeechSettings, deleteSpeechKey, inspectLanConnectionCode,
+  getSpeechSettings, listServerSpeechModels, saveSpeechSettings, testSpeechSettings, deleteSpeechKey, inspectLanConnectionCode,
   localModelsStatus, downloadLocalModel, cancelModelDownload, removeLocalModel,
   localEngineState, setLocalEngineOptions, DICTATION_STATE_EVENT,
   type DictationState,
@@ -26,6 +26,7 @@ const PRESETS = [
   { id: "vsegpt", label: "VseGPT", base_url: "https://api.vsegpt.ru/v1", model: "whisper-1" },
   { id: "groq", label: "Groq", base_url: "https://api.groq.com/openai/v1", model: "whisper-large-v3-turbo" },
 ];
+const MAX_VISIBLE_SERVER_MODELS = 100;
 const size = (bytes: number) => t("{p0} MB", { p0: new Intl.NumberFormat(currentLocale(), { maximumFractionDigits: 1 }).format(bytes / 1_000_000) });
 const errorText = (error: unknown) => error instanceof Error ? error.message : String(error);
 
@@ -44,6 +45,9 @@ export function DictationSection() {
   const [keyStored, setKeyStored] = useState(false);
   const [connectionCode, setConnectionCode] = useState("");
   const [apiKey, setApiKey] = useState("");
+  const [serverModels, setServerModels] = useState<string[] | null>(null);
+  const [modelFilter, setModelFilter] = useState("");
+  const [loadingServerModels, setLoadingServerModels] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [loadError, setLoadError] = useState("");
@@ -90,8 +94,13 @@ export function DictationSection() {
     };
   }, []);
 
+  function clearServerModelList() {
+    setServerModels(null);
+    setModelFilter("");
+  }
   async function chooseMode(mode: SpeechMode) {
     setBusy(true); setMessage(""); setApiKey("");
+    clearServerModelList();
     try {
       const settings = await getSpeechSettings(mode);
       if (alive.current) { setProfile(settings.profile); setKeyStored(settings.key_stored); }
@@ -99,7 +108,26 @@ export function DictationSection() {
     finally { setBusy(false); }
   }
   function update(change: Partial<SpeechProfile>) {
+    if (change.base_url !== undefined || change.proxy !== undefined) clearServerModelList();
     setProfile(p => p ? { ...p, ...change } : p); setMessage("");
+  }
+  async function loadServerModels() {
+    if (profile?.mode !== "server") return;
+    setBusy(true);
+    setLoadingServerModels(true);
+    setMessage("");
+    clearServerModelList();
+    try {
+      const ids = await listServerSpeechModels(profile, apiKey.trim() || undefined);
+      if (alive.current) setServerModels(ids);
+    } catch (e) {
+      if (alive.current) toast.error(errorText(e));
+    } finally {
+      if (alive.current) {
+        setLoadingServerModels(false);
+        setBusy(false);
+      }
+    }
   }
   async function save(p: SpeechProfile, test = false) {
     await saveSpeechSettings(p, apiKey.trim() || undefined);
@@ -108,20 +136,20 @@ export function DictationSection() {
     const settings = await getSpeechSettings(p.mode);
     if (alive.current) {
       setKeyStored(settings.key_stored);
-      setMessage(test ? t("Connection works.") : p.mode === "local" ? t("Model ready. You can start dictating.") : t("Settings saved."));
+      setMessage(test || p.mode === "server" ? t("Connection works.") : p.mode === "local" ? t("Model ready. You can start dictating.") : t("Settings saved."));
     }
   }
   /** «Paste connection code»: a Glagol server on another computer (GL-010). */
   async function connectByCode() {
     if (!profile || !connectionCode.trim()) return;
-    setBusy(true); setMessage("");
+    setBusy(true); setMessage(t("Checking the server model…"));
     try {
       const found = await inspectLanConnectionCode(connectionCode);
       const next: SpeechProfile = { ...profile, mode: "server", base_url: found.base_url, model: found.model, language: "ru", proxy: "" };
       await saveSpeechSettings(next, found.key);
-      await testSpeechSettings();
       const settings = await getSpeechSettings("server");
       if (alive.current) {
+        clearServerModelList();
         setProfile(settings.profile); setKeyStored(settings.key_stored);
         setActive("server"); setActiveModel(next.model); setApiKey(""); setConnectionCode("");
         const connected = t("Connected to Glagol at {p0}. You can start dictating.", { p0: found.base_url.replace(/^http:\/\//, "").replace(/\/v1$/, "") });
@@ -134,7 +162,7 @@ export function DictationSection() {
   }
   async function remoteSave(test: boolean) {
     if (!profile) return;
-    setBusy(true); setMessage("");
+    setBusy(true); setMessage(profile.mode === "server" ? t("Checking the server model…") : "");
     try { await save(profile, test); }
     catch (e) { setMessage(errorText(e)); toast.error(errorText(e)); }
     finally { setBusy(false); }
@@ -177,12 +205,15 @@ export function DictationSection() {
   async function clearKey() {
     if (!profile) return;
     setBusy(true);
-    try { await deleteSpeechKey(profile.mode); setKeyStored(false); setApiKey(""); setMessage(t("Key deleted.")); }
+    try { await deleteSpeechKey(profile.mode); clearServerModelList(); setKeyStored(false); setApiKey(""); setMessage(t("Key deleted.")); }
     catch (e) { toast.error(errorText(e)); }
     finally { setBusy(false); }
   }
 
   const locked = busy || progress !== null || dictating;
+  const modelQuery = modelFilter.trim().toLowerCase();
+  const matchingServerModels = serverModels?.filter(id => id.toLowerCase().includes(modelQuery)) ?? [];
+  const visibleServerModels = matchingServerModels.slice(0, MAX_VISIBLE_SERVER_MODELS);
   const ctc = models?.models.find(m => m.id === "gigaam-v3-e2e-ctc");
   const visibleModels = models?.models.filter(m => m.language === (preferences?.stt_language ?? "en") || m.installed) ?? [];
   const activeLocalModel = active === "local" ? models?.models.find(m => m.id === activeModel && m.installed && m.download_bytes === 0) : undefined;
@@ -302,7 +333,7 @@ export function DictationSection() {
             <p className="text-xs text-muted-foreground">{t("Include the /v1 path.")}{profile.mode === "server" ? t(" HTTP is allowed for private IP addresses and localhost; use HTTPS for domain names.") : t(" Use HTTPS for external addresses.")}</p>
             {profile.mode === "server" && profile.base_url.startsWith("http://") && <p className="text-xs text-muted-foreground">{t("HTTP sends speech and keys without encryption. Use it only on a trusted office network.")}</p>}
           </div>
-          <div className="space-y-2"><Label htmlFor="speech-model">{t("Model name on server")}</Label><Input id="speech-model" value={profile.model} onChange={e => update({ model: e.target.value })} disabled={locked} spellCheck={false} /></div>
+          {profile.mode === "cloud" && <div className="space-y-2"><Label htmlFor="speech-model">{t("Model name on server")}</Label><Input id="speech-model" value={profile.model} onChange={e => update({ model: e.target.value })} disabled={locked} spellCheck={false} /></div>}
           <div className="space-y-2">
             <Label htmlFor="speech-language">{t("Language")}</Label>
             <Select value={profile.language} onValueChange={language => update({ language })} disabled={locked}>
@@ -313,12 +344,47 @@ export function DictationSection() {
           <div className="space-y-2"><Label htmlFor="speech-proxy">{t("Dictation proxy (optional)")}</Label><Input id="speech-proxy" value={profile.proxy} onChange={e => update({ proxy: e.target.value })} disabled={locked} autoComplete="off" placeholder={t("host:port or socks5://host:port")} /></div>
           <div className="space-y-2">
             <Label htmlFor="speech-key">{t("API key")}{profile.mode === "server" ? t(" (if required by the server)") : ""}</Label>
-            <Input id="speech-key" type="password" value={apiKey} onChange={e => setApiKey(e.target.value)} disabled={locked} autoComplete="off" placeholder={keyStored ? t("A key is saved for this profile") : t("Enter a key")} />
+            <Input id="speech-key" type="password" value={apiKey} onChange={e => { setApiKey(e.target.value); clearServerModelList(); }} disabled={locked} autoComplete="off" placeholder={keyStored ? t("A key is saved for this profile") : t("Enter a key")} />
             <p className="text-xs text-muted-foreground">{t("Cloud and server keys are stored separately. Enter a new key when changing the service address.")}</p>
           </div>
+          {profile.mode === "server" && <div className="space-y-3" data-tour="server-model-picker">
+            <div className="space-y-2">
+              <Label htmlFor="speech-model">{t("Model name on server")}</Label>
+              <div className="flex flex-wrap gap-2">
+                <Input id="speech-model" className="min-w-40 flex-1" value={profile.model}
+                  onChange={e => update({ model: e.target.value })} disabled={locked} spellCheck={false} />
+                <Button type="button" variant="outline" disabled={locked || !profile.base_url.trim()}
+                  onClick={() => void loadServerModels()}>
+                  {loadingServerModels ? t("Loading server models…") : t("Load models")}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">{t("Glagol checks the selected model with a short built-in audio clip before saving.")}</p>
+            </div>
+            {serverModels?.length === 0 && <p role="status" className="text-sm text-muted-foreground">
+              {t("The server did not return a model list. Enter the model name manually.")}
+            </p>}
+            {!!serverModels?.length && <div className="space-y-2">
+              <Label htmlFor="server-model-filter">{t("Filter models")}</Label>
+              <Input id="server-model-filter" value={modelFilter} disabled={locked} spellCheck={false}
+                onChange={e => setModelFilter(e.target.value)} />
+              {visibleServerModels.length ? <Select
+                value={visibleServerModels.includes(profile.model) ? profile.model : ""}
+                onValueChange={model => update({ model })} disabled={locked}>
+                <SelectTrigger className="w-full" aria-label={t("Choose a server model")}>
+                  <SelectValue placeholder={t("Choose a server model")} />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  {visibleServerModels.map(id => <SelectItem key={id} value={id}>{id}</SelectItem>)}
+                </SelectContent>
+              </Select> : <p role="status" className="text-sm text-muted-foreground">{t("No matching server models.")}</p>}
+              {matchingServerModels.length > MAX_VISIBLE_SERVER_MODELS && <p className="text-xs text-muted-foreground">
+                {t("Showing the first {p0} models. Narrow the filter to see more.", { p0: MAX_VISIBLE_SERVER_MODELS })}
+              </p>}
+            </div>}
+          </div>}
           <div className="flex flex-wrap gap-2">
             <Button disabled={locked} onClick={() => void remoteSave(false)}>{t("Save and use")}</Button>
-            <Button variant="secondary" disabled={locked} onClick={() => void remoteSave(true)}>{t("Save and test")}</Button>
+            {profile.mode === "cloud" && <Button variant="secondary" disabled={locked} onClick={() => void remoteSave(true)}>{t("Save and test")}</Button>}
             <Button variant="outline" disabled={locked || !keyStored} onClick={() => void clearKey()}>{t("Delete key")}</Button>
           </div>
         </>}

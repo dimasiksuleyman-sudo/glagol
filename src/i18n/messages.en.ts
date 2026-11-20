@@ -342,4 +342,11 @@ export const messages = {
   "aiModelHint": "Enter the address and key, then load the list: Glagol suggests a fast inexpensive model. Saving checks the connection first.",
   "Checking the connection…": "Checking the connection…",
   "aiCheckedAndSaved": "Connection checked, settings saved",
+  "Checking the server model…": "Checking the server model…",
+  "Loading server models…": "Loading server models…",
+  "Glagol checks the selected model with a short built-in audio clip before saving.": "Glagol checks the selected model with a short built-in audio clip before saving.",
+  "The server did not return a model list. Enter the model name manually.": "The server did not return a model list. Enter the model name manually.",
+  "Choose a server model": "Choose a server model",
+  "No matching server models.": "No matching server models.",
+  "Showing the first {p0} models. Narrow the filter to see more.": "Showing the first {p0} models. Narrow the filter to see more.",
 } as const;

@@ -287,6 +287,8 @@ export interface LocalModel { id: string; name: string; description: string; lan
 export interface ModelProgress { model_id: string; stage: string; downloaded: number; total: number }
 export interface LocalModelsStatus { supported: boolean; runtime_bytes: number; runtime_installed: boolean; models: LocalModel[]; progress: ModelProgress | null }
 export const getSpeechSettings = (mode?: SpeechMode) => invoke<SpeechSettings>("get_speech_settings", { mode });
+export const listServerSpeechModels = (profile: SpeechProfile, apiKey?: string) =>
+  invoke<string[]>("list_server_speech_models", { profile, apiKey });
 export const saveSpeechSettings = (profile: SpeechProfile, apiKey?: string) => invoke<void>("save_speech_settings", { profile, apiKey });
 export const testSpeechSettings = () => invoke<void>("test_speech_settings");
 export const deleteSpeechKey = (mode: SpeechMode) => invoke<void>("delete_speech_key", { mode });
