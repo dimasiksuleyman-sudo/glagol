@@ -24,10 +24,14 @@ const REQUEST_LIMIT: usize = 16 * 1024;
 const RESPONSE_LIMIT: usize = 1024;
 /// Model loading on a slow processor.
 const READY_TIMEOUT: Duration = Duration::from_secs(180);
-/// One chunk on a slow processor (≈ 15× slower than real time).
-const CHUNK_TIMEOUT: Duration = Duration::from_secs(15 * 60);
+/// One chunk on a slow processor (≈ 15× slower than real time; a long
+/// fragment is about a minute of speech).
+const CHUNK_TIMEOUT: Duration = Duration::from_secs(30 * 60);
 /// Characters per request: long enough for natural intonation.
-pub const MAX_INPUT_CHARS: usize = 400;
+/// 800: on the laptop 400-character fragments already ran at 0.63–0.71 of real
+/// time (the bench without splitting: 0.65), so longer fragments cost little
+/// and keep the intonation even across sentences.
+pub const MAX_INPUT_CHARS: usize = 800;
 /// Longest style instruction («read calmly, without emotion»).
 pub const MAX_STYLE_CHARS: usize = 200;
 
@@ -274,8 +278,8 @@ impl Worker {
         }
         .map_err(|error: String| match error.as_str() {
             "timeout" => crate::preferences::message(
-                "Qwen3-TTS did not finish a fragment in 15 minutes.",
-                "Qwen3-TTS не озвучил фрагмент за 15 минут.",
+                "Qwen3-TTS did not finish a fragment in 30 minutes.",
+                "Qwen3-TTS не озвучил фрагмент за 30 минут.",
             ),
             "worker exited" => crate::preferences::message(
                 "Qwen3-TTS stopped unexpectedly.",
