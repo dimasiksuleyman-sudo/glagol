@@ -3,8 +3,8 @@
   "observed_at": "2026-11-13T20:05:00.000Z",
   "active_workstream": [
     "tts-qwen",
-    "help-0.7",
-    "outlook-paste"
+    "outlook-paste",
+    "promotion"
   ],
   "links": [
     "AGENTS.md",
@@ -49,7 +49,9 @@
     "docs/workstreams/modifier-hotkey/README.md",
     "docs/workstreams/modifier-hotkey/log.md",
     "docs/workstreams/help-0.7/README.md",
-    "docs/workstreams/help-0.7/log.md"
+    "docs/workstreams/help-0.7/log.md",
+    "docs/workstreams/promotion/README.md",
+    "docs/workstreams/promotion/log.md"
   ],
   "observations": [
     {

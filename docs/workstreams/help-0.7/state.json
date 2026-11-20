@@ -2,8 +2,8 @@
   "schema_version": 1,
   "id": "help-0.7",
   "title": "Встроенная справка к 0.7.0: темы новых функций с подсветкой",
-  "status": "active",
-  "next": "P2",
+  "status": "done",
+  "next": null,
   "reason": null,
   "claim": null,
   "links": [
@@ -94,14 +94,30 @@
     {
       "id": "P2",
       "title": "Ручная проверка на Windows: «Показать» открывает экран и подсвечивает элемент для каждой новой темы",
-      "status": "pending",
+      "status": "done",
       "depends_on": [
         "P1"
       ],
       "required": [
         "manual"
       ],
-      "checks": []
+      "checks": [
+        {
+          "id": "manual",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Windows build of claude/optimistic-franklin-cvvbsr: every new Help topic, «Show» opens the screen and highlights the element",
+          "cwd": ".",
+          "at": "2026-11-21T02:00:00.000Z",
+          "environment": {
+            "os": "win32",
+            "arch": "x64"
+          },
+          "exit_code": null,
+          "output": "User: «Справку я проверил, и глазами, и руками, всё работает идеально.»",
+          "evidence": "docs/workstreams/help-0.7/log.md"
+        }
+      ]
     }
   ]
 }
