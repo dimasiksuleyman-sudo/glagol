@@ -10,6 +10,7 @@
 
 mod ai_fragments;
 pub mod ai_normalization;
+pub mod brackets;
 pub mod chunker;
 pub mod dictionary;
 pub mod normalize;

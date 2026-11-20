@@ -105,6 +105,7 @@ pub async fn preview_tts(
     provider: Option<String>,
     voice: String,
     text: Option<String>,
+    style: Option<String>,
 ) -> Result<String, String> {
     (async {
     let state = models.select(provider.as_deref())?;
@@ -152,7 +153,11 @@ pub async fn preview_tts(
 
         let synthesis_started = Instant::now();
         let synthesis_result = async {
+            let style = crate::tts::qwen::worker::clean_style(style.as_deref())?;
             let mut slot = state.worker.lock().await;
+            if let Some(crate::tts::LocalWorker::Qwen(worker)) = slot.as_mut() {
+                worker.set_style(style);
+            }
             use crate::tts::TtsBackend;
             let source = slot
                 .as_mut()

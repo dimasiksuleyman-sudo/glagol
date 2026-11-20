@@ -184,16 +184,22 @@ impl Engine {
         }
     }
 
-    /// Synthesize one chunk with a named speaker; mono f32 PCM at 24 kHz.
+    /// Synthesize one chunk with a named speaker and an optional style
+    /// instruction; mono f32 PCM at 24 kHz.
     pub fn synthesize(
         &mut self,
         text: &str,
         language: &str,
         speaker: &str,
+        style: Option<&str>,
     ) -> Result<Vec<f32>, Failure> {
         let text = CString::new(text).map_err(|_| Failure::Other)?;
         let language = CString::new(language).map_err(|_| Failure::Other)?;
         let speaker = CString::new(speaker).map_err(|_| Failure::Other)?;
+        let style = style
+            .map(CString::new)
+            .transpose()
+            .map_err(|_| Failure::Other)?;
         // SAFETY: the context is live until Drop; params come from the library's
         // defaults; the CStrings outlive the blocking call; the audio buffer is
         // owned by the library and released with qt_audio_free after copying.
@@ -204,6 +210,8 @@ impl Engine {
             params.text = text.as_ptr();
             params.lang = language.as_ptr();
             params.speaker = speaker.as_ptr();
+            // Optional style instruction (CustomVoice), e.g. a calm, even tone.
+            params.instruct = style.as_ref().map_or(std::ptr::null(), |s| s.as_ptr());
             // A fixed seed keeps a re-synthesized document identical.
             params.seed = 42;
             let mut audio = Audio {

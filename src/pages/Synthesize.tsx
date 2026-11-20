@@ -28,7 +28,10 @@ import { Textarea } from "@/components/ui/textarea";
 
 import { ScannedPdfDialog } from "@/components/ScannedPdfDialog";
 import { useTts } from "@/contexts/TtsContext";
-import { cancelTts, prepareTts } from "@/lib/tts";
+import { cancelTts, prepareTts, previewTts } from "@/lib/tts";
+import { convertFileSrc } from "@tauri-apps/api/core";
+import { AudioPlayer } from "@/components/AudioPlayer";
+import { Input } from "@/components/ui/input";
 import {
   exportAudio,
   readAndParseFile,
@@ -36,7 +39,7 @@ import {
   synthesizeDocument,
   type ProgressEvent,
 } from "@/lib/tauri";
-import { activeVoice, voicesFor } from "@/lib/voices";
+import { activeVoice, QWEN_STYLES, styleInstruction, voicesFor, type QwenStyleId } from "@/lib/voices";
 import { TtsLanguageSwitch } from "@/components/TtsLanguageSwitch";
 
 /**
@@ -60,6 +63,16 @@ export function Synthesize() {
   const speechLanguage = preferences?.tts_language ?? "ru";
   const voice = activeVoice(preferences, speechLanguage);
   const VOICES = voicesFor(speechLanguage, preferences?.tts_engine);
+  const qwen = preferences?.tts_engine === "qwen";
+  // Reading style (Qwen3-TTS only); remembered on this computer for convenience.
+  const [styleId, setStyleId] = useState<QwenStyleId>(() => {
+    try { const saved = localStorage.getItem("glagol.qwenStyle"); return QWEN_STYLES.some(s => s.id === saved) ? saved as QwenStyleId : "auto"; } catch { return "auto"; }
+  });
+  const [customStyle, setCustomStyle] = useState(() => { try { return localStorage.getItem("glagol.qwenStyleText") ?? ""; } catch { return ""; } });
+  useEffect(() => { try { localStorage.setItem("glagol.qwenStyle", styleId); localStorage.setItem("glagol.qwenStyleText", customStyle); } catch { /* per-viewer convenience only */ } }, [styleId, customStyle]);
+  const style = qwen ? styleInstruction(styleId, customStyle) : null;
+  const [styleAudio, setStyleAudio] = useState<string | null>(null);
+  const [isStylePreviewing, setIsStylePreviewing] = useState(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
@@ -113,7 +126,7 @@ export function Synthesize() {
       const documentId = await synthesizeDocument(text, voice, event => {
         if (event.kind === "normalizationFallback") toast.warning(t("aiNormalizationFallback"));
         else setProgress(event);
-      }, provider);
+      }, provider, style);
       setLastDocumentId(documentId);
       toast.success(t("Saved to library"), {
         action: {
@@ -285,6 +298,27 @@ export function Synthesize() {
               </SelectContent>
             </Select>
           </div>
+
+          {qwen && <div className="space-y-2" data-tour="reading-style">
+            <Label htmlFor="reading-style">{t("Reading style")}</Label>
+            <div className="flex flex-wrap gap-2">
+              <select id="reading-style" className="min-w-0 flex-1 rounded border bg-background p-2 text-sm" value={styleId} disabled={isLoading}
+                onChange={e => { setStyleId(e.target.value as QwenStyleId); setStyleAudio(null); }}>
+                {QWEN_STYLES.map(s => <option key={s.id} value={s.id}>{t(`style_${s.id}` as "style_auto")}</option>)}
+              </select>
+              <Button type="button" variant="outline" disabled={isLoading || isStylePreviewing || (styleId === "custom" && !customStyle.trim())}
+                onClick={() => void (async () => {
+                  setIsStylePreviewing(true); setStyleAudio(null);
+                  try { const path = await previewTts(voice, provider, null, style); setStyleAudio(convertFileSrc(path) + "?v=" + Date.now()); }
+                  catch (e) { toast.error(stringifyError(e)); }
+                  finally { setIsStylePreviewing(false); }
+                })()}>{isStylePreviewing ? t("Preparing speech…") : t("Listen")}</Button>
+            </div>
+            {styleId === "custom" && <Input maxLength={200} value={customStyle} placeholder={t("customStylePlaceholder")} disabled={isLoading}
+              onChange={e => { setCustomStyle(e.target.value); setStyleAudio(null); }} />}
+            <p className="text-xs text-muted-foreground">{t("readingStyleNote")}</p>
+            {styleAudio && <AudioPlayer key={styleAudio} autoPlay src={styleAudio} />}
+          </div>}
 
           <div className="space-y-2">
             <Button type="button" variant="outline" data-tour="speech-preview" onClick={handlePreview}

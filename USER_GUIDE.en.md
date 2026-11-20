@@ -84,6 +84,14 @@ speakers (Ryan, Aiden, Serena, Vivian and others); the same voice reads Russian 
 English text, and «Speech language» selects which. Try them with «Preview voice».
 Numbers, the pronunciation dictionary and AI normalization work as with Silero.
 
+**Reading style.** On the Synthesize page, below the Qwen3-TTS voice, «Reading
+style» offers «As the model decides» (natural intonation), «Even, without emotion»,
+«Calm and slow», «News anchor», «Warm and friendly», «Cheerful and energetic» or your
+own description of up to 200 characters. The description is sent to the model with
+each text fragment; the effect depends on the voice, so click «Listen» before
+synthesizing a long document. The choice is remembered on this computer. It does
+not apply to Silero.
+
 Speed depends on the computer. With a dedicated graphics card synthesis is faster
 than real time; on a modern laptop's integrated graphics it is about 1.5 times
 slower than real time (a minute of news in a minute and a half), and on old
@@ -167,6 +175,12 @@ provider. The key and choice are stored in the system credential store outside b
 If the provider is unreachable or a response changes the surrounding words,
 Glagol uses local rules for the affected excerpts. The audio itself is synthesized
 locally.
+
+**Do not read text in brackets** (Settings → Text to speech, off by default): asides
+in round and square brackets — explanations, references like [1], sources — are
+skipped in synthesis, nested ones too. An unclosed bracket or one that spans
+paragraphs stays as it is. The document text in the library does not change; see
+the result with «Preview how this is read».
 
 **Pronunciation dictionary** (Settings → Text to speech, below the Silero card) tells
 Glagol how to read names, abbreviations and terms: «Written as» → «Read as» (for example

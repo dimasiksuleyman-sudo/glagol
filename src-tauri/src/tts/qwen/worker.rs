@@ -28,6 +28,22 @@ const READY_TIMEOUT: Duration = Duration::from_secs(180);
 const CHUNK_TIMEOUT: Duration = Duration::from_secs(15 * 60);
 /// Characters per request: long enough for natural intonation.
 pub const MAX_INPUT_CHARS: usize = 400;
+/// Longest style instruction («read calmly, without emotion»).
+pub const MAX_STYLE_CHARS: usize = 200;
+
+/// A style instruction is short plain text, or nothing.
+pub fn clean_style(style: Option<&str>) -> Result<Option<String>, String> {
+    let Some(style) = style.map(str::trim).filter(|s| !s.is_empty()) else {
+        return Ok(None);
+    };
+    if style.chars().count() > MAX_STYLE_CHARS || style.chars().any(char::is_control) {
+        return Err(crate::preferences::message(
+            "The reading style is too long (at most 200 characters).",
+            "Описание манеры чтения слишком длинное (не больше 200 символов).",
+        ));
+    }
+    Ok(Some(style.to_string()))
+}
 
 /// Device settings, from fastest to safest. A device failure moves to the
 /// next profile, which is remembered for this computer.
@@ -107,10 +123,15 @@ pub struct Worker {
     output: BufReader<ChildStdout>,
     directory: PathBuf,
     cancel: Arc<AtomicBool>,
+    style: Option<String>,
     pub last_used: Instant,
 }
 
 impl Worker {
+    /// Reading style for the next fragments (`None`: the model decides).
+    pub fn set_style(&mut self, style: Option<String>) {
+        self.style = style;
+    }
     /// Start a worker for `language` (`russian`/`english`) with the remembered
     /// device profile.
     pub async fn start(
@@ -207,6 +228,7 @@ impl Worker {
             output,
             directory,
             cancel,
+            style: None,
             last_used: Instant::now(),
         };
         let ready = worker.response(READY_TIMEOUT).await?;
@@ -264,7 +286,9 @@ impl Worker {
     }
 
     async fn request(&mut self, text: &str, voice: &str) -> Result<serde_json::Value, String> {
-        let request = serde_json::json!({"text": text, "voice": voice}).to_string() + "\n";
+        let request = serde_json::json!({"text": text, "voice": voice, "style": self.style})
+            .to_string()
+            + "\n";
         if request.len() > REQUEST_LIMIT {
             return Err("Слишком длинный фрагмент текста.".into());
         }
@@ -295,6 +319,8 @@ impl Worker {
             self.language,
         )
         .await?;
+        let mut replacement = replacement;
+        replacement.style = self.style.take();
         let old = std::mem::replace(self, replacement);
         drop(old);
         Ok(true)
@@ -361,6 +387,8 @@ impl Drop for Worker {
 struct Request {
     text: String,
     voice: String,
+    #[serde(default)]
+    style: Option<String>,
 }
 
 /// The child never initializes Tauri, opens the database or registers hotkeys.
@@ -423,7 +451,11 @@ pub fn child_main(
             reply(&mut output, serde_json::json!({"ok": false}))?;
             continue;
         }
-        let value = match engine.synthesize(text, language, &request.voice) {
+        let Ok(style) = clean_style(request.style.as_deref()) else {
+            reply(&mut output, serde_json::json!({"ok": false}))?;
+            continue;
+        };
+        let value = match engine.synthesize(text, language, &request.voice, style.as_deref()) {
             Ok(samples) if samples.is_empty() => serde_json::json!({"ok": false, "device": true}),
             Ok(samples) => match write_wav(&wav, &samples) {
                 Ok(()) => serde_json::json!({"ok": true}),
@@ -471,6 +503,18 @@ mod tests {
         std::fs::write(root.join("device-profile.txt"), "unknown").unwrap();
         assert_eq!(Profile::load(&root), Profile::Gpu);
         std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn style_is_short_plain_text_or_nothing() {
+        assert_eq!(clean_style(None).unwrap(), None);
+        assert_eq!(clean_style(Some("  ")).unwrap(), None);
+        assert_eq!(
+            clean_style(Some(" Speak calmly. ")).unwrap().as_deref(),
+            Some("Speak calmly.")
+        );
+        assert!(clean_style(Some(&"a".repeat(201))).is_err());
+        assert!(clean_style(Some("line\nbreak")).is_err());
     }
 
     #[test]

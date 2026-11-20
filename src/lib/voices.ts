@@ -32,3 +32,20 @@ export function voicesFor(language: Language, engine?: string): readonly Voice[]
 }
 const legacy: Record<string,string> = { Nec_24000: "Наталья", Bys_24000: "Борис", May_24000: "Марфа", Tur_24000: "Тарас", Ost_24000: "Александра", Pon_24000: "Сергей", Kin_24000: "Кира" };
 export function getVoiceLabel(id: string): string { const qwen = QWEN_VOICES.find(v => v.id === id); if (qwen) return `Qwen · ${qwen.label}`; return /^en_[0-3]$/.test(id) ? id.replace("en_", "EN ") : currentLocale()==="en-US" && latin[id] ? latin[id] : VOICES.find(v => v.id === id)?.label ?? legacy[id] ?? id; }
+
+/** Qwen3-TTS reading styles: an instruction sent with each fragment (none: the model decides). */
+export const QWEN_STYLES = [
+  { id: "auto", instruction: null },
+  { id: "neutral", instruction: "Read in a neutral, even tone without emotion." },
+  { id: "calm", instruction: "Read calmly and slowly, in a soft voice." },
+  { id: "news", instruction: "Read like a professional news anchor: clear, confident, measured." },
+  { id: "warm", instruction: "Read in a warm, friendly tone." },
+  { id: "lively", instruction: "Read cheerfully and energetically." },
+  { id: "custom", instruction: null },
+] as const;
+export type QwenStyleId = (typeof QWEN_STYLES)[number]["id"];
+/** The instruction to send for a style choice. */
+export function styleInstruction(id: QwenStyleId, custom: string): string | null {
+  if (id === "custom") return custom.trim() || null;
+  return QWEN_STYLES.find(s => s.id === id)?.instruction ?? null;
+}

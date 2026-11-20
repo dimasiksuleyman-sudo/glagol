@@ -21,7 +21,7 @@ export function TtsSection({ compact = false }: { compact?: boolean }) {
   const { status, error, refresh, provider } = useTts();
   const [checked, setChecked] = useState(false);
   const [busy, setBusy] = useState(false);
-  const { preferences, setTtsVoice, setTtsEnabled, setTtsEngine, saving } = usePreferences();
+  const { preferences, setTtsVoice, setTtsEnabled, setTtsEngine, setTtsStripBrackets, saving } = usePreferences();
   const qwen = preferences?.tts_engine === "qwen";
   const enabled = preferences?.tts_enabled ?? true;
   const speechLanguage = preferences?.tts_language ?? "ru";
@@ -64,6 +64,14 @@ export function TtsSection({ compact = false }: { compact?: boolean }) {
         </select>
         <p className="text-xs text-muted-foreground">{qwen ? t("qwenEngineNote") : t("sileroEngineNote")}</p>
       </div>
+      {!compact && <div className="flex items-center justify-between gap-3" data-tour="strip-brackets">
+        <div className="space-y-0.5">
+          <label htmlFor="tts-strip-brackets" className="text-sm font-medium">{t("Do not read text in brackets")}</label>
+          <p className="text-muted-foreground text-xs">{t("stripBracketsNote")}</p>
+        </div>
+        <Switch id="tts-strip-brackets" checked={!!preferences?.tts_strip_brackets} disabled={!preferences || saving}
+          onCheckedChange={value => void setTtsStripBrackets(value).catch(e => toast.error(String(e)))} />
+      </div>}
       {error && <p role="alert" className="text-destructive text-sm">{error}</p>}
       {!status ? <p className="text-sm text-muted-foreground">{t("Checking status…")}</p> : <>
         {ready && <div className="space-y-2" data-tour="voice">

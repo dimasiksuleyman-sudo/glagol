@@ -27,6 +27,7 @@ pub enum ProgressEvent {
     Joining,
 }
 #[tauri::command]
+#[allow(clippy::too_many_arguments)] // Tauri command arguments mirror the IPC payload.
 pub async fn synthesize_document(
     app: tauri::AppHandle,
     state: tauri::State<'_, AppState>,
@@ -34,10 +35,12 @@ pub async fn synthesize_document(
     provider: Option<String>,
     text: String,
     voice: String,
+    style: Option<String>,
     on_progress: Channel<ProgressEvent>,
 ) -> Result<String, String> {
     (async {
         let tts = models.select(provider.as_deref())?;
+        let style = crate::tts::qwen::worker::clean_style(style.as_deref())?;
         if text.trim().is_empty() {
             return Err("Введите текст для озвучивания.".into());
         }
@@ -96,6 +99,10 @@ pub async fn synthesize_document(
                 }
                 let mut slot = tts.worker.lock().await;
                 let backend = slot.as_mut().ok_or("Движок не готов")?;
+                // The reading style applies to Qwen3-TTS only.
+                if let crate::tts::LocalWorker::Qwen(worker) = backend {
+                    worker.set_style(style.clone());
+                }
                 synthesize_prepared_impl(
                     &state.db,
                     &audio_root,

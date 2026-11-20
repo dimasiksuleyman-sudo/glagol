@@ -72,6 +72,22 @@ pub fn set_tts_preference(
     .map_err(crate::i18n::error)
 }
 
+/// «Do not read text in brackets» for synthesis.
+#[tauri::command]
+pub fn set_tts_strip_brackets(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, AppState>,
+    enabled: bool,
+) -> Result<Preferences, String> {
+    let value = {
+        let conn = state.db.lock().map_err(|e| e.to_string())?;
+        preferences::set_tts_strip_brackets(&conn, enabled).map_err(|e| e.to_string())?;
+        preferences::get(&conn).map_err(|e| e.to_string())?
+    };
+    let _ = app.emit("preferences-changed", &value);
+    Ok(value)
+}
+
 /// Choose the local synthesis engine; the other engine's worker is stopped.
 #[tauri::command]
 pub async fn set_tts_engine(

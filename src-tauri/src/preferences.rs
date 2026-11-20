@@ -70,6 +70,8 @@ pub struct Preferences {
     pub tts_engine: String,
     /// Selected Qwen3-TTS speaker (shared by both speech languages).
     pub tts_voice_qwen: String,
+    /// Do not read text in parentheses or square brackets.
+    pub tts_strip_brackets: bool,
 }
 
 fn read(conn: &Connection, key: &str, default: &str) -> rusqlite::Result<String> {
@@ -134,6 +136,7 @@ pub fn get(conn: &Connection) -> rusqlite::Result<Preferences> {
             _ => "silero".into(),
         },
         tts_voice_qwen: read(conn, "tts_voice_qwen", "ryan")?,
+        tts_strip_brackets: read(conn, "tts_strip_brackets", "0")? == "1",
     })
 }
 
@@ -216,6 +219,11 @@ pub fn finish_onboarding(conn: &Connection) -> rusqlite::Result<()> {
 /// Persist an explicit TTS language independently of the interface and dictation.
 pub fn set_tts_language(conn: &Connection, language: Language) -> rusqlite::Result<()> {
     put(conn, "tts_language", language.tag())
+}
+
+/// Persist «do not read text in brackets».
+pub fn set_tts_strip_brackets(conn: &Connection, enabled: bool) -> rusqlite::Result<()> {
+    put(conn, "tts_strip_brackets", if enabled { "1" } else { "0" })
 }
 
 /// Persist the local synthesis engine (`silero` or `qwen`).
