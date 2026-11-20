@@ -9,6 +9,8 @@ Offline English and Russian dictation and text-to-speech for Windows 10/11 x64.
 [Windows x64 installer](https://github.com/dimasiksuleyman-sudo/glagol/releases/download/v0.6.6/Glagol_0.6.6_x64-setup.exe)
 ([release notes and SHA-256](docs/releases/v0.6.6.md), 10,355,410 bytes). From 0.6.0, later versions install from Settings → General → Updates. / С 0.6.0 следующие версии ставятся из «Настройки» → «Общие» → «Обновления».
 
+[Code signing policy](#code-signing-policy) · [Политика подписи кода](#политика-подписи-кода)
+
 ## English
 
 ### See Glagol
@@ -116,6 +118,29 @@ and Silero consent. User text, document names and old history are never translat
 when changing the interface language. Daily logs (`logs`, kept 7 days) record timings,
 hardware and errors, never speech, recognized text or keys; Settings → General → Diagnostics
 opens the folder and offers an optional Detailed log.
+
+### Code signing policy
+
+**Planned, pending SignPath Foundation approval.** This policy covers only the
+Windows installer built by GitHub Actions from this repository. The project
+author and maintainer [dimasiksuleyman-sudo](https://github.com/dimasiksuleyman-sudo)
+is the committer, reviews changes from contributors who cannot commit directly,
+and manually approves each release signing request. All team members must use
+multi-factor authentication (MFA) on GitHub and SignPath.
+
+On approval, signed releases will carry this attribution.
+
+> Free code signing provided by [SignPath.io](https://signpath.io/), certificate by [SignPath Foundation](https://signpath.org/)
+
+Glagol collects no user data for the project. Local speech and documents are
+processed on your device. If you choose an office or cloud provider, remote
+dictation sends audio to that endpoint. If you enable AI text preparation, the
+provider you choose receives short text excerpts. Those providers process
+requests under their own terms and privacy policies.
+[Glagol data handling](SECURITY.md#english) ·
+[AITunnel](https://aitunnel.ru/privacy) · [ProxyAPI](https://proxyapi.ru/privacy) ·
+[VseGPT](https://vsegpt.ru/privacy) · [GroqCloud](https://console.groq.com/docs/legal) ·
+[RouterAI](https://routerai.ru/terms/privacy).
 
 ### Development and validation
 
@@ -235,6 +260,30 @@ OS-ключи и согласие Silero. При смене интерфейса
 7 дней) содержат время этапов, сведения об оборудовании и ошибки, но не речь,
 распознанный текст и ключи; «Настройки» → «Общие» → «Диагностика» открывает папку и
 предлагает необязательный «Подробный журнал».
+
+### Политика подписи кода
+
+**Планируется, пока заявка в SignPath Foundation не одобрена.** Политика
+охватывает только установщик Windows, собранный GitHub Actions из этого
+репозитория. Автор и сопровождающий проекта
+[dimasiksuleyman-sudo](https://github.com/dimasiksuleyman-sudo) может коммитить
+напрямую, проверяет изменения участников без такого доступа и вручную
+одобряет каждый запрос на подпись выпуска. Все участники команды обязаны
+использовать многофакторную аутентификацию (MFA) в GitHub и SignPath.
+
+После одобрения эта строка будет у подписанных выпусков.
+
+> Free code signing provided by [SignPath.io](https://signpath.io/), certificate by [SignPath Foundation](https://signpath.org/)
+
+Глагол не собирает пользовательские данные для проекта. В локальном режиме
+речь и документы обрабатываются на устройстве. При выборе офисного или
+облачного провайдера диктовка отправляет аудио на указанный сервер. Если
+включить ИИ-подготовку текста, выбранный провайдер получает короткие фрагменты.
+Провайдеры обрабатывают запросы по своим условиям и политикам конфиденциальности.
+[Как Глагол работает с данными](SECURITY.md#русский) ·
+[AITunnel](https://aitunnel.ru/privacy) · [ProxyAPI](https://proxyapi.ru/privacy) ·
+[VseGPT](https://vsegpt.ru/privacy) · [GroqCloud](https://console.groq.com/docs/legal) ·
+[RouterAI](https://routerai.ru/terms/privacy).
 
 ### Разработка и проверка
 
