@@ -10,6 +10,7 @@ Options:
   -Models   0.6b-cv-q8, 1.7b-cv-q4, 1.7b-cv-q8, 0.6b-base-q8 (comma-separated)
   -Devices  Vulkan0, CPU, CUDA0 (comma-separated; default Vulkan0,CPU)
   -Speakers speaker names (default: the first 3 the model offers)
+  -ServerArgs extra tts-server flags, e.g. "--no-fa --clamp-fp16" for older GPUs
   -RefWav / -RefText  your own 10-15 s recording (24 kHz+ WAV) and its exact
             text: clones your voice; needs model 0.6b-base-q8
 
@@ -24,6 +25,7 @@ param(
     [string]$Speakers = "",
     [string]$RefWav = "",
     [string]$RefText = "",
+    [string]$ServerArgs = "",
     [int]$Port = 8089
 )
 $ErrorActionPreference = "Stop"
@@ -86,7 +88,7 @@ foreach ($modelKey in ($Models -split ",") | ForEach-Object { $_.Trim() } | Wher
         $log = Join-Path $OutDir "server-$modelKey-$device.log"
         $proc = Start-Process -FilePath $Server -PassThru -WindowStyle Hidden `
             -RedirectStandardError $log -RedirectStandardOutput "$log.out" `
-            -ArgumentList @("--model", "`"$model`"", "--codec", "`"$codec`"", "--device", $device, "--port", $Port, "--lang", "Russian")
+            -ArgumentList (@("--model", "`"$model`"", "--codec", "`"$codec`"", "--device", $device, "--port", $Port, "--lang", "Russian") + ($ServerArgs -split " " | Where-Object { $_ }))
         try {
             $loaded = [Diagnostics.Stopwatch]::StartNew()
             $ready = $false
@@ -107,9 +109,15 @@ foreach ($modelKey in ($Models -split ",") | ForEach-Object { $_.Trim() } | Wher
             }
             if (-not $chosen) { Write-Host "No voices: base models need -RefWav"; continue }
             foreach ($voice in $chosen) {
-                Invoke-Speech $Warmup $voice (Join-Path $OutDir "warmup.wav") | Out-Null
                 $file = Join-Path $OutDir "$modelKey-$device-$voice.wav"
-                $elapsed, $audio = Invoke-Speech $Text $voice $file
+                try {
+                    Invoke-Speech $Warmup $voice (Join-Path $OutDir "warmup.wav") | Out-Null
+                    $elapsed, $audio = Invoke-Speech $Text $voice $file
+                } catch {
+                    Write-Host "$voice FAILED: $($_.ErrorDetails.Message) (log: $log)"
+                    $results += [pscustomobject]@{ model = $modelKey; device = $device; voice = $voice; speech_s = 0; synthesis_s = 0; speech_per_second = "FAILED" }
+                    continue
+                }
                 $speed = if ($elapsed -gt 0) { $audio / $elapsed } else { 0 }
                 Write-Host ("{0,-10} speech {1,6:N1} s, synthesis {2,6:N1} s, {3,5:N2} s of speech per second" -f $voice, $audio, $elapsed, $speed)
                 $results += [pscustomobject]@{ model = $modelKey; device = $device; voice = $voice; speech_s = [math]::Round($audio, 1); synthesis_s = [math]::Round($elapsed, 1); speech_per_second = [math]::Round($speed, 2) }
