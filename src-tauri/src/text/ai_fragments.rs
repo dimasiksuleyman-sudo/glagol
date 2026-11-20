@@ -5,6 +5,8 @@ use std::{ops::Range, sync::LazyLock};
 pub(super) const MAX_FRAGMENTS: usize = 120;
 const MAX_FRAGMENT_CHARS: usize = 160;
 const MAX_DISCLOSED_CHARS: usize = 8_000;
+/// One part in this many of the original text may be sent.
+const DISCLOSED_SHARE: usize = 10;
 
 static TOKEN: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\S+").unwrap());
 static NUMBER: LazyLock<Regex> = LazyLock::new(|| {
@@ -33,15 +35,12 @@ fn overlaps(left: &Range<usize>, right: &Range<usize>) -> bool {
     left.start < right.end && right.start < left.end
 }
 
-fn word_target(word: &str, english: bool, follows_number: bool) -> bool {
+fn word_target(word: &str, follows_number: bool) -> bool {
+    // Names and other Latin words are content, not notation: they stay local
+    // (the dictionary and the built-in rules handle them).
     let length = word.chars().count();
     let abbreviation = (2..=7).contains(&length) && word.chars().all(char::is_uppercase);
-    let latin = !english
-        && word.chars().all(|c| c.is_ascii_alphabetic() || c == '-')
-        && word.len() > 1
-        && word.bytes().any(|b| b.is_ascii_alphabetic());
     abbreviation
-        || latin
         || follows_number
             && matches!(
                 word.to_lowercase().as_str(),
@@ -69,14 +68,10 @@ fn word_target(word: &str, english: bool, follows_number: bool) -> bool {
             )
 }
 
-pub(super) fn select(
-    text: &str,
-    protected: &[Range<usize>],
-    english: bool,
-    original_text: &str,
-) -> Vec<Fragment> {
-    let budget =
-        (original_text.chars().filter(|c| !c.is_whitespace()).count() / 3).min(MAX_DISCLOSED_CHARS);
+pub(super) fn select(text: &str, protected: &[Range<usize>], original_text: &str) -> Vec<Fragment> {
+    // At most a tenth of the document (non-space characters) leaves the computer.
+    let budget = (original_text.chars().filter(|c| !c.is_whitespace()).count() / DISCLOSED_SHARE)
+        .min(MAX_DISCLOSED_CHARS);
     let mut blocked_ranges = protected.to_vec();
     blocked_ranges.extend(crate::text::preprocessor::contact_ranges(text));
     blocked_ranges.extend(PRIVATE_NUMBER.find_iter(text).map(|m| m.range()));
@@ -111,8 +106,8 @@ pub(super) fn select(
         tokens.push(Token {
             full: token.range(),
             core: start..start + core.len(),
-            target: !blocked && (number || word_target(core, english, follows_number)),
-            number: number || follows_number && word_target(core, english, true),
+            target: !blocked && (number || word_target(core, follows_number)),
+            number: number || follows_number && word_target(core, true),
             blocked,
             ends_sentence: raw
                 .trim_end_matches(['»', '"', '”', '’', '\'', ')', ']', '}'])
@@ -206,10 +201,14 @@ impl Fragment {
 mod tests {
     use super::*;
 
+    /// Local-only filler so the excerpts stay within a tenth of the text.
+    const FILLER_RU: &str = "Этот длинный абзац описывает общий контекст документа и никогда не покидает компьютер, потому что в нём нет ни чисел, ни сокращений, ни других особых обозначений. ";
+    const FILLER_EN: &str = "This long paragraph describes the general context of the document and never leaves the computer because it has no numbers, abbreviations or other special notation. ";
+
     #[test]
     fn excerpts_stay_inside_sentences_and_keep_context() {
-        let text = "Большой вводный абзац о результатах работы и о планах на далёкое будущее. Около 980 млн человек пришли. Следующее предложение тоже остаётся на компьютере.";
-        let fragments = select(text, &[], false, text);
+        let text = &format!("{FILLER_RU}Около 980 млн человек пришли. {FILLER_RU}");
+        let fragments = select(text, &[], text);
         let [fragment] = fragments.as_slice() else {
             panic!("expected one fragment")
         };
@@ -239,10 +238,11 @@ mod tests {
 
     #[test]
     fn avoids_full_text_contacts_identifiers_and_dictionary_output() {
-        assert!(select("Цена 20 рублей.", &[], false, "Цена 20 рублей.").is_empty());
-        let text = "Вводная часть довольно длинного текста без специальных выражений. Связь test9@example.org. Номер +7 (999) 123-45-67. Особая замена ABC. Рост 45% за год.";
+        assert!(select("Цена 20 рублей.", &[], "Цена 20 рублей.").is_empty());
+        let text = &format!("{FILLER_RU}{FILLER_RU}Связь test9@example.org. Номер +7 (999) 123-45-67. Особая замена ABC. Рост 45% за год. Компания Anthropic.");
         let keep = text.find("ABC").unwrap();
-        let fragments = select(text, std::slice::from_ref(&(keep..keep + 3)), false, text);
+        let fragments = select(text, std::slice::from_ref(&(keep..keep + 3)), text);
+        // Latin names («Anthropic») are not sent either.
         assert_eq!(fragments.len(), 1);
         assert_eq!(&text[fragments[0].range.clone()], "Рост 45% за год.");
     }
@@ -250,17 +250,19 @@ mod tests {
     #[test]
     fn whitespace_and_dictionary_expansion_cannot_increase_the_budget() {
         let padded = format!("{}Цена 20 рублей.", " ".repeat(100));
-        assert!(select(&padded, &[], false, &padded).is_empty());
+        assert!(select(&padded, &[], &padded).is_empty());
 
         let original = "До. Цена 20 рублей.";
         let expanded = format!("{}. Цена 20 рублей.", "Длинная замена ".repeat(10));
-        assert!(select(&expanded, &[], false, original).is_empty());
+        assert!(select(&expanded, &[], original).is_empty());
     }
 
     #[test]
-    fn overlapping_context_is_sent_once_and_english_allows_latin_words() {
-        let text = "There is substantial background on this project elsewhere in the report. About 10 cats and 20 dogs arrived. That is all the information available now.";
-        let fragments = select(text, &[], true, text);
+    fn overlapping_context_is_sent_once() {
+        let text = &format!(
+            "{FILLER_EN}{FILLER_EN}About 10 cats and 20 dogs arrived. {FILLER_EN}{FILLER_EN}"
+        );
+        let fragments = select(text, &[], text);
         assert_eq!(fragments.len(), 1);
         let fragment = &fragments[0];
         assert_eq!(

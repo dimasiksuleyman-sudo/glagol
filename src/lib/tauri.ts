@@ -631,11 +631,9 @@ export const importPronunciations = (path: string) => invoke<[number, number]>("
 /** How a phrase will be read: the dictionary, then the built-in rules. */
 export const previewNormalized = (text: string, language: "ru" | "en") => invoke<string>("preview_normalized", { text, language });
 
-export type AiNormalizationProvider = "router_ai" | "ai_tunnel" | "custom";
-
 export interface AiNormalizationSettings {
   enabled: boolean;
-  provider: AiNormalizationProvider;
+  /** Any OpenAI-compatible HTTPS base URL, e.g. https://routerai.ru/api/v1. */
   base_url: string;
   model: string;
 }
@@ -655,5 +653,9 @@ export const getAiNormalizationSettings = () =>
 export const saveAiNormalizationSettings = (settings: AiNormalizationSettings, apiKey?: string) =>
   invoke<AiNormalizationSettingsView>("save_ai_normalization_settings", { settings, apiKey });
 export const testAiNormalization = () => invoke<void>("test_ai_normalization");
+/** Mirrors `commands::ai_normalization::ModelsView`. */
+export interface AiModels { models: string[]; suggested: string | null }
+/** The endpoint's model list; without `apiKey` the saved key for the same address is used. */
+export const listAiModels = (baseUrl: string, apiKey?: string) => invoke<AiModels>("list_ai_models", { baseUrl, apiKey });
 export const previewDocumentNormalization = (text: string, language: "ru" | "en") =>
   invoke<NormalizedDocument>("preview_document_normalization", { text, language });

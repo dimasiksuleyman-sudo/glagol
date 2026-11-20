@@ -87,8 +87,10 @@ verified at startup nor preloaded, and the Synthesize page is hidden.
 
 **Optional AI text preparation** can improve how numbers and abbreviations are read.
 It is off by default. When enabled, the selected provider receives only short excerpts
-around those expressions, up to a third of the text. Silero synthesizes audio locally.
-See [the guide](USER_GUIDE.en.md#reading-a-document) for presets, preview and fallback.
+around those expressions, up to a tenth of the text. Any OpenAI-compatible service
+works: enter its address and key, and Glagol suggests a model and checks the connection
+before saving. Silero synthesizes audio locally. See
+[the guide](USER_GUIDE.en.md#reading-a-document) for preview and fallback.
 
 ### Licenses and data
 
@@ -191,8 +193,10 @@ Python/PyTorch и словарей произношения. Начальную 
 
 **Необязательная ИИ-нормализация** помогает читать числа и сокращения. По умолчанию
 она выключена. После включения выбранный провайдер получает короткие фрагменты рядом
-с такими выражениями, суммарно до трети текста. Silero создаёт аудио локально.
-Пресеты, предпросмотр и запасной режим описаны в [руководстве](USER_GUIDE.ru.md).
+с такими выражениями, не больше десятой части текста. Подходит любой
+OpenAI-совместимый сервис: введите адрес и ключ, Глагол предложит модель и проверит
+подключение перед сохранением. Silero создаёт аудио локально. Предпросмотр и запасной
+режим описаны в [руководстве](USER_GUIDE.ru.md).
 
 ### Лицензии и данные
 

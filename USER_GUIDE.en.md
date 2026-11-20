@@ -127,14 +127,19 @@ twenty twenty-six»). The case is inferred from neighbouring words and can occas
 be off; listen to unusual notation. Choosing a language is not translation.
 
 **Improve number reading with AI** is off by default. In Settings → Text to speech,
-choose RouterAI (default model `google/gemini-3.5-flash-lite`), AITunnel
-(`gemini-3.5-flash-lite`) or a custom OpenAI-compatible HTTPS endpoint. You can edit
-the model name. Enter the provider's API key and save the settings. **Test AI
-connection** sends a built-in sample. Saving the enabled switch allows document
-preview and synthesis to send short excerpts near numbers, amounts and abbreviations,
-including neighboring words. The excerpts total at most a third of the text.
-Use this only for documents you are comfortable sharing with the selected provider.
-The key and choice are stored in the system credential store outside backups.
+enter the address of any OpenAI-compatible service (usually ending with `/v1`; the
+RouterAI and AITunnel buttons fill it in) and its API key, then click **Load models**:
+Glagol reads the service's model list and suggests a fast inexpensive text model
+(Gemini Flash Lite when available); you can pick another one. **Save** with the switch
+on first checks the address, key and model with a built-in sample and saves only if
+the check passes; otherwise a message names the problem (address not answering, key
+not accepted, no such model). **Test AI connection** repeats the check later — useful
+because providers retire and rename models. Once enabled, document preview and
+synthesis send short excerpts near numbers, amounts and abbreviations, including
+neighboring words — at most a tenth of the text. Names and other words in Latin
+letters, links, email addresses, phone numbers and dictionary words stay on the
+computer. Use this only for documents you are comfortable sharing with the selected
+provider. The key and choice are stored in the system credential store outside backups.
 
 **Preview how this is read** on the Synthesize page shows the prepared document.
 If the provider is unreachable or a response changes the surrounding words,

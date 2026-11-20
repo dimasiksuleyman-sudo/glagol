@@ -334,6 +334,7 @@ pub fn run() {
             commands::ai_normalization::get_ai_normalization_settings,
             commands::ai_normalization::save_ai_normalization_settings,
             commands::ai_normalization::test_ai_normalization,
+            commands::ai_normalization::list_ai_models,
             commands::ai_normalization::preview_document_normalization,
             commands::diagnostics::get_diagnostics_settings,
             commands::diagnostics::set_detailed_logging,

@@ -39,9 +39,10 @@ providers; use the current code/release when testing fixes.
 - Optional AI text preparation is off by default. Once enabled, document preview
   and synthesis send selected short excerpts and neighboring words over verified
   HTTPS to the configured provider, with redirects disabled. Recognized links,
-  email addresses, phone numbers, IP addresses and dictionary replacements are
-  excluded. Limits cap the excerpts at a third of the original input and 8,000
-  characters. Other sensitive text can occur in those excerpts. Responses must
+  email addresses, phone numbers, IP addresses, dictionary replacements and
+  words in Latin letters (names) are excluded. Limits cap the excerpts at a tenth
+  of the original input and 8,000 characters. Model lists (`GET /models`) and the
+  pre-save check use the same HTTPS client and key; no document text is sent then. Other sensitive text can occur in those excerpts. Responses must
   preserve context, with local fallback for errors. The cache is bounded and
   memory-only. Logs hold counts and timings. The OS credential store keeps the
   explicit choice, endpoint and API key together, outside transferable backups.

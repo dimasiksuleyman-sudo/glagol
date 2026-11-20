@@ -46,57 +46,142 @@ pub fn get_ai_normalization_settings() -> Result<SettingsView, String> {
     })
 }
 
-/// Save consent and settings with a key bound to the selected URL.
+fn normalize_base_url(raw: &str) -> Result<String, String> {
+    ai::endpoint(raw.trim())
+        .filter(|url| url.as_str().len() <= 256)
+        .map(|url| url.as_str().trim_end_matches('/').to_string())
+        .ok_or_else(|| {
+            message(
+                "Enter a valid HTTPS address, for example https://routerai.ru/api/v1.",
+                "Укажите корректный адрес HTTPS, например https://routerai.ru/api/v1.",
+            )
+        })
+}
+
+fn clean_key(value: &str) -> Result<Option<String>, String> {
+    let value = value.trim();
+    if value.is_empty() {
+        return Ok(None);
+    }
+    if value.len() > 512 || !value.bytes().all(|b| b.is_ascii_graphic()) {
+        return Err(message(
+            "Enter a valid API key.",
+            "Укажите корректный ключ API.",
+        ));
+    }
+    Ok(Some(value.into()))
+}
+
+/// A new key, or the saved one when it belongs to the same address.
+fn key_for(base_url: &str, api_key: Option<String>) -> Result<Option<String>, String> {
+    match api_key {
+        Some(value) => clean_key(&value),
+        None => Ok(configuration()?
+            .filter(|saved| saved.settings.base_url == base_url)
+            .and_then(|saved| saved.api_key)),
+    }
+}
+
+fn models_error(error: ai::ModelsError) -> String {
+    match error {
+        ai::ModelsError::BadAddress => normalize_base_url("").unwrap_err(),
+        ai::ModelsError::Unreachable => message(
+            "The address does not answer. Check it and your internet connection.",
+            "Адрес не отвечает. Проверьте его и подключение к интернету.",
+        ),
+        ai::ModelsError::KeyRejected => message(
+            "The provider did not accept the key.",
+            "Провайдер не принял ключ.",
+        ),
+        ai::ModelsError::NoModelList => message(
+            "This address does not provide an OpenAI-compatible model list. Check the address (it usually ends with /v1) or enter the model name manually.",
+            "По этому адресу нет OpenAI-совместимого списка моделей. Проверьте адрес (обычно он заканчивается на /v1) или впишите название модели вручную.",
+        ),
+    }
+}
+
+/// Models offered by an endpoint and the one Glagol suggests.
+#[derive(Serialize)]
+pub struct ModelsView {
+    models: Vec<String>,
+    suggested: Option<String>,
+}
+
+/// Read the endpoint's model list with the given (or saved) key.
 #[tauri::command]
-pub fn save_ai_normalization_settings(
+pub async fn list_ai_models(
+    state: State<'_, AppState>,
+    base_url: String,
+    api_key: Option<String>,
+) -> Result<ModelsView, String> {
+    let base_url = normalize_base_url(&base_url)?;
+    let key = key_for(&base_url, api_key)?
+        .ok_or_else(|| message("Enter the API key.", "Укажите ключ API."))?;
+    let models = state
+        .ai_normalizer
+        .list_models(&base_url, &key)
+        .await
+        .map_err(models_error)?;
+    Ok(ModelsView {
+        suggested: ai::suggest_model(&models),
+        models,
+    })
+}
+
+/// Full check of a configuration: key, model availability (when the
+/// endpoint lists models) and a built-in sample phrase.
+async fn check(state: &AppState, config: &Configuration) -> Result<(), String> {
+    let key = config
+        .api_key
+        .as_deref()
+        .ok_or_else(|| message("Enter the API key.", "Укажите ключ API."))?;
+    match state
+        .ai_normalizer
+        .list_models(&config.settings.base_url, key)
+        .await
+    {
+        Ok(models) if !models.contains(&config.settings.model) => {
+            return Err(message(
+                "The provider has no such model now. Choose another model from the list.",
+                "У провайдера сейчас нет такой модели. Выберите другую из списка.",
+            ))
+        }
+        Ok(_) | Err(ai::ModelsError::NoModelList) => {}
+        Err(error) => return Err(models_error(error)),
+    }
+    if state.ai_normalizer.test_connection(config).await {
+        Ok(())
+    } else {
+        Err(message(
+            "The provider answered but did not normalize the test phrase. Try another model.",
+            "Провайдер ответил, но не обработал проверочную фразу. Попробуйте другую модель.",
+        ))
+    }
+}
+
+/// Save the settings. When AI normalization is on, the address, key and
+/// model are checked first and nothing is saved if the check fails.
+#[tauri::command]
+pub async fn save_ai_normalization_settings(
     state: State<'_, AppState>,
     mut settings: Settings,
     api_key: Option<String>,
 ) -> Result<SettingsView, String> {
-    if settings.provider != ai::Provider::Custom {
-        settings.base_url = settings.provider.endpoint().into();
-    }
+    settings.base_url = normalize_base_url(&settings.base_url)?;
     settings.model = settings.model.trim().into();
-    settings.base_url = settings.base_url.trim().into();
-    let url = ai::endpoint(&settings.base_url).filter(|url| url.as_str().len() <= 256);
-    settings.base_url = url
-        .ok_or_else(|| {
-            message(
-                "Enter a valid HTTPS endpoint.",
-                "Укажите корректный адрес HTTPS.",
-            )
-        })?
-        .as_str()
-        .trim_end_matches('/')
-        .into();
     if settings.model.is_empty()
         || settings.model.len() > 128
         || settings.model.chars().any(char::is_control)
     {
         return Err(message(
-            "Enter a model name (up to 128 bytes).",
-            "Укажите название модели (до 128 байт).",
+            "Choose a model (up to 128 bytes).",
+            "Выберите модель (до 128 байт).",
         ));
     }
-    let key = match api_key {
-        Some(value) if value.trim().is_empty() => None,
-        Some(value) => {
-            let value = value.trim();
-            if value.len() > 512 || !value.bytes().all(|b| b.is_ascii_graphic()) {
-                return Err(message(
-                    "Enter a valid API key.",
-                    "Укажите корректный ключ API.",
-                ));
-            }
-            Some(value.into())
-        }
-        None => configuration()?
-            .filter(|saved| saved.settings.base_url == settings.base_url)
-            .and_then(|saved| saved.api_key),
-    };
+    let key = key_for(&settings.base_url, api_key)?;
     if settings.enabled && key.is_none() {
         return Err(message(
-            "Enter an API key for this endpoint.",
+            "Enter an API key for this address.",
             "Укажите ключ API для этого адреса.",
         ));
     }
@@ -104,6 +189,9 @@ pub fn save_ai_normalization_settings(
         settings,
         api_key: key,
     };
+    if config.settings.enabled {
+        check(&state, &config).await?;
+    }
     let value = serde_json::to_string(&config).map_err(|_| credential_error())?;
     keyring::set_ai_normalization(&value).map_err(|_| credential_error())?;
     state.ai_normalizer.clear_cache();
@@ -113,7 +201,7 @@ pub fn save_ai_normalization_settings(
     })
 }
 
-/// Send a built-in sample to the saved provider.
+/// Check the saved configuration again (models change and get retired).
 #[tauri::command]
 pub async fn test_ai_normalization(state: State<'_, AppState>) -> Result<(), String> {
     let config = configuration()?
@@ -124,14 +212,7 @@ pub async fn test_ai_normalization(state: State<'_, AppState>) -> Result<(), Str
                 "Сохраните ключ API перед проверкой.",
             )
         })?;
-    if state.ai_normalizer.test_connection(&config).await {
-        Ok(())
-    } else {
-        Err(message(
-            "The provider did not normalize the test phrase. Check the endpoint, key and model.",
-            "Провайдер не обработал проверочную фразу. Проверьте адрес, ключ и модель.",
-        ))
-    }
+    check(&state, &config).await
 }
 
 pub(crate) async fn prepare_document(

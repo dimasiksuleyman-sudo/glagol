@@ -16,45 +16,16 @@ const REQUEST_TIMEOUT: Duration = Duration::from_secs(20);
 const MAX_RESPONSE_BYTES: usize = 256 * 1024;
 const MAX_CACHE_ENTRIES: usize = 1024;
 
-#[derive(Clone, Copy, Default, Deserialize, Serialize, PartialEq, Eq)]
-#[serde(rename_all = "snake_case")]
-/// Built-in providers or a user-supplied OpenAI-compatible HTTPS endpoint.
-pub enum Provider {
-    #[default]
-    RouterAi,
-    AiTunnel,
-    Custom,
-}
+/// Model suggested when the endpoint offers it: cheap and fast enough.
+pub const PREFERRED_MODEL: &str = "gemini-3.5-flash-lite";
 
-impl Provider {
-    /// Return the base URL for a built-in provider.
-    pub fn endpoint(self) -> &'static str {
-        match self {
-            Self::RouterAi => "https://routerai.ru/api/v1",
-            Self::AiTunnel => "https://api.aitunnel.ru/v1",
-            Self::Custom => "",
-        }
-    }
-}
-
-#[derive(Clone, Deserialize, Serialize)]
+#[derive(Clone, Default, Deserialize, Serialize)]
 /// Public settings displayed in the webview.
 pub struct Settings {
     pub enabled: bool,
-    pub provider: Provider,
+    /// OpenAI-compatible base URL (any provider), e.g. `https://routerai.ru/api/v1`.
     pub base_url: String,
     pub model: String,
-}
-
-impl Default for Settings {
-    fn default() -> Self {
-        Self {
-            enabled: false,
-            provider: Provider::RouterAi,
-            base_url: Provider::RouterAi.endpoint().into(),
-            model: "google/gemini-3.5-flash-lite".into(),
-        }
-    }
 }
 
 #[derive(Deserialize, Serialize)]
@@ -92,6 +63,58 @@ fn completions_url(raw: &str) -> Option<Url> {
         url.path_segments_mut().ok()?.pop_if_empty();
     }
     Some(url)
+}
+
+fn models_url(raw: &str) -> Option<Url> {
+    let mut url = endpoint(raw)?;
+    let path = url.path().trim_end_matches('/').to_string();
+    let base = path
+        .strip_suffix("/chat/completions")
+        .unwrap_or(&path)
+        .to_string();
+    url.set_path(&format!("{base}/models"));
+    Some(url)
+}
+
+#[derive(Deserialize)]
+struct ModelList {
+    data: Vec<ModelId>,
+}
+
+#[derive(Deserialize)]
+struct ModelId {
+    id: String,
+}
+
+/// Pick the model to suggest: the preferred one, then any «flash-lite», any
+/// «flash», any «mini» text model, otherwise the first.
+pub fn suggest_model(models: &[String]) -> Option<String> {
+    // Text chat models only: skip speech, image, embedding and preview variants.
+    let special = [
+        "tts", "image", "audio", "embed", "preview", "vision", "realtime",
+    ];
+    let find = |needle: &str| {
+        models.iter().find(|m| {
+            let m = m.to_lowercase();
+            m.contains(needle) && !special.iter().any(|s| m.contains(s))
+        })
+    };
+    find(PREFERRED_MODEL)
+        .or_else(|| find("flash-lite"))
+        .or_else(|| find("flash"))
+        .or_else(|| find("mini"))
+        .or_else(|| models.first())
+        .cloned()
+}
+
+/// Strip a Markdown code fence some models wrap around JSON.
+fn strip_fence(content: &str) -> &str {
+    let trimmed = content.trim();
+    let Some(rest) = trimmed.strip_prefix("```") else {
+        return trimmed;
+    };
+    let rest = rest.split_once('\n').map_or("", |(_, body)| body);
+    rest.trim_end().strip_suffix("```").unwrap_or(rest).trim()
 }
 
 #[derive(Serialize)]
@@ -192,12 +215,52 @@ impl AiNormalizer {
                 body.extend_from_slice(&chunk);
             }
             let response: ChatResponse = serde_json::from_slice(&body).ok()?;
-            let reply: Vec<String> = serde_json::from_str(&response.choices.first()?.message.content).ok()?;
+            let reply: Vec<String> = serde_json::from_str(strip_fence(&response.choices.first()?.message.content)).ok()?;
             (reply.len() == fragments.len()).then_some(reply)
         })
         .await
         .ok()
         .flatten()
+    }
+
+    /// The endpoint's model ids (`GET {base}/models`), sorted; `Err` carries a
+    /// short reason for the user.
+    pub async fn list_models(&self, base_url: &str, key: &str) -> Result<Vec<String>, ModelsError> {
+        let http = self.http.as_ref().ok_or(ModelsError::Unreachable)?;
+        let url = models_url(base_url).ok_or(ModelsError::BadAddress)?;
+        let response = http
+            .get(url)
+            .bearer_auth(key)
+            .send()
+            .await
+            .map_err(|_| ModelsError::Unreachable)?;
+        match response.status().as_u16() {
+            200..=299 => {}
+            401 | 403 => return Err(ModelsError::KeyRejected),
+            404 => return Err(ModelsError::NoModelList),
+            _ => return Err(ModelsError::Unreachable),
+        }
+        let body = response
+            .bytes()
+            .await
+            .map_err(|_| ModelsError::Unreachable)?;
+        if body.len() > 4 * 1024 * 1024 {
+            return Err(ModelsError::NoModelList);
+        }
+        let list: ModelList =
+            serde_json::from_slice(&body).map_err(|_| ModelsError::NoModelList)?;
+        let mut ids: Vec<String> = list
+            .data
+            .into_iter()
+            .map(|m| m.id)
+            .filter(|id| !id.is_empty() && id.len() <= 128 && !id.chars().any(char::is_control))
+            .collect();
+        ids.sort();
+        ids.dedup();
+        if ids.is_empty() {
+            return Err(ModelsError::NoModelList);
+        }
+        Ok(ids)
     }
 
     /// Check the endpoint with a built-in example, without reading a document.
@@ -312,6 +375,19 @@ impl AiNormalizer {
     }
 }
 
+/// Why the model list could not be read.
+#[derive(Debug, PartialEq, Eq)]
+pub enum ModelsError {
+    /// Not a valid HTTPS address.
+    BadAddress,
+    /// No answer, a network error or a server error.
+    Unreachable,
+    /// 401/403: the key was not accepted.
+    KeyRejected,
+    /// The address answers but offers no OpenAI-style model list.
+    NoModelList,
+}
+
 #[derive(Serialize)]
 /// Prepared text and whether any selected excerpt fell back to local rules.
 pub struct Prepared {
@@ -330,7 +406,7 @@ pub async fn prepare(
     let english = language == "en";
     let mut prepared = if let Some(config) = config.filter(|config| config.settings.enabled) {
         let (with_dictionary, protected) = dictionary::apply_with_ranges(text, entries, language);
-        let fragments = ai_fragments::select(&with_dictionary, &protected, english, text);
+        let fragments = ai_fragments::select(&with_dictionary, &protected, text);
         if fragments.is_empty() {
             Prepared {
                 text: with_dictionary,
@@ -372,13 +448,53 @@ mod tests {
         );
     }
 
+    #[test]
+    fn model_list_address_fence_and_suggestion() {
+        assert_eq!(
+            models_url("https://example.com/v1/").unwrap().as_str(),
+            "https://example.com/v1/models"
+        );
+        assert_eq!(
+            models_url("https://example.com/v1/chat/completions")
+                .unwrap()
+                .as_str(),
+            "https://example.com/v1/models"
+        );
+        assert_eq!(strip_fence("```json\n[\"a\"]\n```"), "[\"a\"]");
+        assert_eq!(strip_fence(" [\"a\"] "), "[\"a\"]");
+        let models = |ids: &[&str]| ids.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+        assert_eq!(
+            suggest_model(&models(&[
+                "openai/gpt-5",
+                "google/gemini-3.5-flash-lite",
+                "google/gemini-3.5-flash"
+            ]))
+            .as_deref(),
+            Some("google/gemini-3.5-flash-lite")
+        );
+        assert_eq!(
+            suggest_model(&models(&["a/big", "b/gpt-5-mini"])).as_deref(),
+            Some("b/gpt-5-mini")
+        );
+        assert_eq!(
+            suggest_model(&models(&[
+                "g/gemini-3.8-flash-lite-tts",
+                "g/gemini-3.1-flash-lite"
+            ]))
+            .as_deref(),
+            Some("g/gemini-3.1-flash-lite")
+        );
+        assert_eq!(suggest_model(&[]), None);
+    }
+
     #[tokio::test]
     async fn rules_prepare_the_document_when_ai_is_disabled_or_fails() {
         let normalizer = AiNormalizer {
             http: None,
             ..AiNormalizer::default()
         };
-        let text = "There is substantial unrelated background material in the report. About 20 people arrived. The rest of the report remains on this machine.";
+        let background = "There is substantial unrelated background material in the report, and it goes on for quite a while before anything numeric appears. ";
+        let text = &format!("{background}{background}About 20 people arrived. {background}");
         let local = prepare(&normalizer, None, text, &[], "en").await;
         assert!(local.text.contains("About twenty people arrived."));
         assert!(!local.fallback);
@@ -386,7 +502,8 @@ mod tests {
         let config = Configuration {
             settings: Settings {
                 enabled: true,
-                ..Settings::default()
+                base_url: "https://example.com/v1".into(),
+                model: "m".into(),
             },
             api_key: Some("test-key".into()),
         };
