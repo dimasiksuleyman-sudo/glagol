@@ -9,15 +9,15 @@
 
 ### Выбранная серия: **Qwen3-TTS: качественные голоса (Apache 2.0) на смену Silero для организаций**.
 
-**NEXT: Q2 — Выбор C++/GGML-порта (лицензия, Vulkan/CUDA, Windows), закрепление версии, замер на GTX 1060, RX 550 и процессоре** (in_progress).
+**NEXT: Q3 — Движок tts/qwen: закреплённые файлы, проверка, TtsBackend, устройство, голоса RU/EN** (in_progress).
 
 [Решения](workstreams/tts-qwen/README.md) · [Состояние](workstreams/tts-qwen/state.json) · [Журнал](workstreams/tts-qwen/log.md)
 
-Выполняет: Claude Code (cloud session); ветка claude/optimistic-franklin-cvvbsr; с 2026-11-20T22:00:00.000Z.
+Выполняет: Claude Code (cloud session); ветка claude/optimistic-franklin-cvvbsr; с 2026-11-20T21:40:00.000Z.
 
-Последний завершённый шаг серии: **Q1 — Прослушать демо Qwen3-TTS 0.6B/1.7B на русских и английских текстах пользователя, сравнить с Silero**.
+Последний завершённый шаг серии: **Q2 — Выбор C++/GGML-порта (лицензия, Vulkan/CUDA, Windows), закрепление версии, замер на GTX 1060, RX 550 и процессоре**.
 
-Проверка 2026-11-20T12:00:00.000Z: «Квен обладает более живой озвучкой, меньше синтетического привкуса»; обеим моделям нужна нормализация («980 млн» → «девяносто восемдесят малерад»); «Квен 1.7 с нормализацией цифр и сокращений был бы топчик для прослушивания новостей, с выбором языка» (reported) ([evidence](../docs/workstreams/tts-qwen/log.md)).
+Проверка 2026-11-20T21:40:00.000Z: qwentts.cpp 2edb35f chosen and pinned; laptop 0.6B Q8: Vulkan 0.65, CPU 0.46 s of speech per second; RX 550 works with --clamp-fp16 but runs out of VRAM in the codec; Sandy Bridge CPU ≈ RTF 15; Russian voice ryan «без акцента, живой». GTX 1060 measurement deferred by the user to the built-in engine. ([evidence](../docs/workstreams/tts-qwen/log.md)).
 
 ### Выбранная серия: **Встроенная справка к 0.7.0: темы новых функций с подсветкой**.
 

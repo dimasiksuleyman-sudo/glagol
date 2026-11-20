@@ -3,11 +3,11 @@
   "id": "tts-qwen",
   "title": "Qwen3-TTS: качественные голоса (Apache 2.0) на смену Silero для организаций",
   "status": "active",
-  "next": "Q2",
+  "next": "Q3",
   "reason": null,
   "claim": {
     "owner": "Claude Code (cloud session)",
-    "at": "2026-11-20T22:00:00.000Z",
+    "at": "2026-11-20T21:40:00.000Z",
     "branch": "claude/optimistic-franklin-cvvbsr"
   },
   "links": [
@@ -43,19 +43,35 @@
     {
       "id": "Q2",
       "title": "Выбор C++/GGML-порта (лицензия, Vulkan/CUDA, Windows), закрепление версии, замер на GTX 1060, RX 550 и процессоре",
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [
         "Q1"
       ],
       "required": [
         "manual"
       ],
-      "checks": []
+      "checks": [
+        {
+          "id": "manual",
+          "status": "PASS",
+          "method": "manual",
+          "command": "scripts/qwen/bench.ps1 with the qwen-spike build (run 44800753681) on the user's PC (RX 550 2 GB, Sandy Bridge CPU) and laptop (Ryzen 7, integrated Radeon)",
+          "cwd": ".",
+          "at": "2026-11-20T21:40:00.000Z",
+          "environment": {
+            "os": "win32",
+            "arch": "x64"
+          },
+          "exit_code": null,
+          "output": "qwentts.cpp 2edb35f chosen and pinned; laptop 0.6B Q8: Vulkan 0.65, CPU 0.46 s of speech per second; RX 550 works with --clamp-fp16 but runs out of VRAM in the codec; Sandy Bridge CPU ≈ RTF 15; Russian voice ryan «без акцента, живой». GTX 1060 measurement deferred by the user to the built-in engine.",
+          "evidence": "docs/workstreams/tts-qwen/log.md"
+        }
+      ]
     },
     {
       "id": "Q3",
       "title": "Движок tts/qwen: закреплённые файлы, проверка, TtsBackend, устройство, голоса RU/EN",
-      "status": "pending",
+      "status": "in_progress",
       "depends_on": [
         "Q2"
       ],
