@@ -118,7 +118,10 @@ export function checkRunbooks(root = ROOT) {
     record(p, ['schema_version','observed_at','active_workstream','links','observations','git_refs']);
     need(p.schema_version === 1, 'unsupported schema_version');
     need(date(p.observed_at), 'observed_at must be UTC ISO');
-    need(p.active_workstream === null || (typeof p.active_workstream === 'string' && seriesPattern.test(p.active_workstream)), 'invalid active_workstream');
+    // null, one series ID, or a list of IDs (parallel agents, one series each).
+    const selected = p.active_workstream === null ? [] : Array.isArray(p.active_workstream) ? p.active_workstream : [p.active_workstream];
+    need(selected.every((id) => typeof id === 'string' && seriesPattern.test(id)), 'invalid active_workstream');
+    need(new Set(selected).size === selected.length, 'duplicate active_workstream');
     links(p.links); uniqueIds(p.observations, 'observations'); need(p.observations.length > 0, 'observations empty');
     for (const o of p.observations) {
       record(o, ['id','label','status','summary','observed_at','source']);
@@ -142,9 +145,13 @@ export function checkRunbooks(root = ROOT) {
     }
   });
   if (project) attempt('selection', () => {
-    const active = series.filter((s) => s.status === 'active');
-    if (project.active_workstream === null) need(active.length === 0, 'active series without selection');
-    else need(active.length === 1 && active[0].id === project.active_workstream, 'selection must name the only active series');
+    const active = series.filter((s) => s.status === 'active').map((s) => s.id).sort();
+    const selected = project.active_workstream === null ? [] : [].concat(project.active_workstream).sort();
+    if (selected.length === 0) need(active.length === 0, 'active series without selection');
+    else need(active.length === selected.length && active.every((id, i) => id === selected[i]), 'selection must name exactly the active series');
+    // Parallel series must be worked on different branches.
+    const branches = series.filter((s) => s.claim).map((s) => s.claim.branch);
+    need(new Set(branches).size === branches.length, 'two series claimed on the same branch');
   });
   attempt('versions', () => checkVersions(root));
 

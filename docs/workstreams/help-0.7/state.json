@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "id": "help-0.7",
+  "title": "Встроенная справка к 0.7.0: темы новых функций с подсветкой",
+  "status": "active",
+  "next": "P1",
+  "reason": null,
+  "claim": null,
+  "links": [
+    "docs/workstreams/help-0.7/README.md",
+    "docs/workstreams/help-0.7/log.md",
+    "docs/roadmap.md"
+  ],
+  "steps": [
+    {
+      "id": "P1",
+      "title": "Семь новых тем справки (заминки, Ctrl+Win, сервер, код подключения, словарь, «Как прочитается», ИИ-нормализация): маркеры data-tour, тексты RU/EN",
+      "status": "pending",
+      "depends_on": [],
+      "required": [
+        "frontend"
+      ],
+      "checks": []
+    },
+    {
+      "id": "P2",
+      "title": "Ручная проверка на Windows: «Показать» открывает экран и подсвечивает элемент для каждой новой темы",
+      "status": "pending",
+      "depends_on": [
+        "P1"
+      ],
+      "required": [
+        "manual"
+      ],
+      "checks": []
+    }
+  ]
+}

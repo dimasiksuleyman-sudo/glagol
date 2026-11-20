@@ -19,15 +19,17 @@ JSON разбирается строго, неизвестные поля вер
 шаблона в workstreams/<id>, заменить id/title/шаги, затем выбрать его в project.json.
 Все обычные каталоги workstreams проверяются, включая каталог с пропавшим state.
 
-Проект: schema_version=1, observed_at (UTC ISO), active_workstream (id или null),
+Проект: schema_version=1, observed_at (UTC ISO), active_workstream (id, список id
+параллельных серий или null),
 links (пути от корня), observations, git_refs. Наблюдение: id, label, status
 (`observed`, `reported`, `unknown`), summary, observed_at, source (путь evidence).
 Не превращать пользовательский отчёт о релизе в observed без проверки GitHub.
 
 Серия: schema_version=1, id, title, status (`active`, `paused`, `done`, `cancelled`),
 next (ID шага или null), reason (строка или null), claim (объект или null),
-links, steps. Выбранная серия должна быть active. Другие серии — paused/done/cancelled.
-Если active_workstream=null, активных серий нет. У paused есть причина и точка
+links, steps. Выбранные серии — ровно все active; другие — paused/done/cancelled.
+Параллельные серии ведут разные агенты: claim двух серий не может указывать одну
+ветку. Если active_workstream=null, активных серий нет. У paused есть причина и точка
 продолжения; у done/cancelled NEXT=null и нет незавершённых шагов.
 
 Шаг: id, title, status (`pending`, `in_progress`, `blocked`, `done`, `cancelled`),
