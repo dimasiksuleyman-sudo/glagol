@@ -1,0 +1,125 @@
+{
+  "schema_version": 1,
+  "id": "outlook-paste",
+  "title": "GL-013: автоматическая вставка диктовки в новый Outlook",
+  "status": "active",
+  "next": "O2",
+  "reason": null,
+  "claim": null,
+  "links": [
+    "docs/workstreams/outlook-paste/README.md",
+    "docs/workstreams/outlook-paste/log.md",
+    "docs/findings/README.md"
+  ],
+  "steps": [
+    {
+      "id": "O1",
+      "title": "Разобрать и исправить автоматическую вставку диктовки после отпускания модификаторов",
+      "status": "done",
+      "depends_on": [],
+      "required": [
+        "rust",
+        "frontend"
+      ],
+      "checks": [
+        {
+          "id": "rust",
+          "status": "PASS",
+          "method": "command",
+          "command": "cargo fmt --manifest-path src-tauri/Cargo.toml --check && cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings && cargo test --manifest-path src-tauri/Cargo.toml",
+          "cwd": ".",
+          "at": "2026-11-20T22:09:58.325Z",
+          "environment": {
+            "os": "Debian 13 (Linux container)",
+            "node": "v24.22.1",
+            "pnpm": "11.25.0",
+            "rustc": "1.100.0"
+          },
+          "exit_code": 0,
+          "output": "test result: ok. 441 passed; 0 failed; 6 ignored",
+          "evidence": "docs/workstreams/outlook-paste/log.md"
+        },
+        {
+          "id": "frontend",
+          "status": "PASS",
+          "method": "command",
+          "command": "pnpm exec tsc --noEmit && pnpm build",
+          "cwd": ".",
+          "at": "2026-11-20T22:09:58.325Z",
+          "environment": {
+            "os": "Debian 13 (Linux container)",
+            "node": "v24.22.1",
+            "pnpm": "11.25.0",
+            "rustc": "1.100.0"
+          },
+          "exit_code": 0,
+          "output": "I18N PASS: 473 keys with matching parameters; Vite built",
+          "evidence": "docs/workstreams/outlook-paste/log.md"
+        },
+        {
+          "id": "version",
+          "status": "PASS",
+          "method": "command",
+          "command": "node scripts/check-version.mjs",
+          "cwd": ".",
+          "at": "2026-11-20T22:09:58.325Z",
+          "environment": {
+            "os": "Debian 13 (Linux container)",
+            "node": "v24.22.1",
+            "pnpm": "11.25.0",
+            "rustc": "1.100.0"
+          },
+          "exit_code": 0,
+          "output": "Glagol 0.6.9: package, Tauri and Cargo versions match.",
+          "evidence": "docs/workstreams/outlook-paste/log.md"
+        },
+        {
+          "id": "runbook-tests",
+          "status": "PASS",
+          "method": "command",
+          "command": "pnpm runbook:test",
+          "cwd": ".",
+          "at": "2026-11-20T22:09:58.325Z",
+          "environment": {
+            "os": "Debian 13 (Linux container)",
+            "node": "v24.22.1",
+            "pnpm": "11.25.0",
+            "rustc": "1.100.0"
+          },
+          "exit_code": 0,
+          "output": "53 passed, 0 failed",
+          "evidence": "docs/workstreams/outlook-paste/log.md"
+        },
+        {
+          "id": "windows-adapter",
+          "status": "PASS",
+          "method": "command",
+          "command": "env -u RUSTFLAGS cargo clippy --manifest-path /workspace/work/outlook-keyboard-check/Cargo.toml --offline --target x86_64-pc-windows-msvc -- -D warnings",
+          "cwd": ".",
+          "at": "2026-11-20T22:09:58.325Z",
+          "environment": {
+            "os": "Debian 13 (Linux container)",
+            "node": "v24.22.1",
+            "pnpm": "11.25.0",
+            "rustc": "1.100.0"
+          },
+          "exit_code": 0,
+          "output": "Finished dev profile for the isolated Windows adapter and Ctrl+Win hook",
+          "evidence": "docs/workstreams/outlook-paste/log.md"
+        }
+      ]
+    },
+    {
+      "id": "O2",
+      "title": "Ручная проверка пользователем в новом Outlook на Windows",
+      "status": "pending",
+      "depends_on": [
+        "O1"
+      ],
+      "required": [
+        "manual"
+      ],
+      "checks": []
+    }
+  ]
+}

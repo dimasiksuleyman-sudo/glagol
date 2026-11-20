@@ -41,7 +41,9 @@ local dictation. Upgrades retain modes, server addresses, credentials and voices
 - Hold `Ctrl+Shift+Space`, wait for the recording signal, speak, release, then receive
   the final text once. Auto-paste or clipboard only; optional history is off by default.
   Hesitation sounds ("uh", "um", «эм», «э-э») are removed from the text by default.
-  Optionally dictate by holding Ctrl+Win, as in Wispr Flow.
+  Optionally dictate by holding Ctrl+Win, as in Wispr Flow. On Windows,
+  auto-paste briefly waits for the shortcut modifiers to clear. If they stay
+  down, the text is available in the clipboard.
 - Built-in recognition server: one computer with a graphics card serves Russian
   dictation to Glagol on office computers over the local network — speech stays in
   the office, connection by pasting a code, access key always required.
@@ -155,7 +157,9 @@ the development machine; importing pinned files was exercised separately.
 - Удерживайте `Ctrl+Shift+Space`, дождитесь сигнала записи, говорите и отпустите:
   готовый текст вставится один раз. Доступен режим буфера; история изначально выключена.
   Звуки-заминки («эм», «э-э», «uh», «um») по умолчанию убираются из текста.
-  По желанию — диктовка по удержанию Ctrl+Win, как в Wispr Flow.
+  По желанию — диктовка по удержанию Ctrl+Win, как в Wispr Flow. В Windows
+  автовставка недолго ждёт отпускания модификаторов. Если они остаются
+  нажатыми, текст доступен в буфере обмена.
 - Встроенный сервер распознавания: один компьютер с видеокартой раздаёт русскую
   диктовку Глаголу на офисных компьютерах по локальной сети — речь не покидает офис,
   подключение вставкой кода, ключ доступа обязателен.

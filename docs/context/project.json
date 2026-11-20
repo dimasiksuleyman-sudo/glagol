@@ -4,7 +4,8 @@
   "active_workstream": [
     "tts-qwen",
     "help-0.7",
-    "stt-model-picker"
+    "stt-model-picker",
+    "outlook-paste"
   ],
   "links": [
     "AGENTS.md",
