@@ -99,3 +99,11 @@ RouterAI примерно вдвое дешевле AITunnel на этих мо�
 Следующее: прогон CI, затем замер пользователем на ПК (RX 550), ПК сына
 (GTX 1060) и ноутбуке (CPU). CUDA-сборка — только если Vulkan на 1060 окажется
 медленным.
+
+## 2026-11-20T19:25:00.000Z — Q2: сборка Windows готова
+
+GitHub Actions «Qwen3-TTS spike build», run 44800753681 (коммит 78d6ad5):
+success. Артефакт `qwentts-windows-x64` (16,8 МБ, хранится до 2026-11-23):
+tts-server.exe, qwen-tts.exe, qwen-codec.exe, ggml-vulkan.dll, ggml-cpu-*.dll
+(sse42…alderlake), LICENSE, VERSION, SHA256SUMS. Замер на машинах
+пользователя — следующий шаг.
