@@ -1,0 +1,84 @@
+name: Qwen runtime release
+
+# tts-qwen Q3: the pinned qwentts.cpp (MIT) runtime that Glagol downloads on
+# demand (like the Moonshine and GigaAM runtimes). Pushing a tag
+# qwen-runtime-<short sha> builds qwen.dll (only qt_* exported) with the
+# ggml CPU variants and Vulkan, and publishes one zip plus SHA256SUMS as a
+# pre-release. It is not a Glagol release and never becomes "latest", so the
+# in-app updater (latest.json of Glagol releases) is not affected.
+
+on:
+  push:
+    tags: ["qwen-runtime-*"]
+
+permissions:
+  contents: write
+
+env:
+  QWENTTS_REPO: ServeurpersoCom/qwentts.cpp
+  QWENTTS_SHA: 2edb35f87b709a070b2d5379f77e5c52a1daa585
+  VULKAN_VERSION: 1.4.313.2
+
+jobs:
+  build:
+    name: qwen.dll (Windows x64, CPU + Vulkan)
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout qwentts.cpp at the pinned commit
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.QWENTTS_REPO }}
+          ref: ${{ env.QWENTTS_SHA }}
+          submodules: recursive
+          path: qwentts
+
+      - name: Install Vulkan SDK
+        shell: pwsh
+        run: |
+          $installer = "$env:RUNNER_TEMP\VulkanSDK-Installer.exe"
+          curl.exe -fL -o $installer "https://sdk.lunarg.com/sdk/download/$env:VULKAN_VERSION/windows/vulkansdk-windows-X64-$env:VULKAN_VERSION.exe"
+          & $installer --accept-licenses --default-answer --confirm-command install
+          Add-Content $env:GITHUB_ENV "VULKAN_SDK=C:\VulkanSDK\$env:VULKAN_VERSION"
+          Add-Content $env:GITHUB_PATH "C:\VulkanSDK\$env:VULKAN_VERSION\bin"
+
+      - name: Build
+        shell: pwsh
+        working-directory: qwentts
+        run: |
+          # Dynamic MSVC runtime, the same vcruntime140 Glagol itself uses.
+          cmake -S . -B build -DQWEN_SHARED=ON -DGGML_VULKAN=ON -DGGML_CPU_ALL_VARIANTS=ON -DGGML_BACKEND_DL=ON
+          cmake --build build --config Release -j $env:NUMBER_OF_PROCESSORS
+
+      - name: Package
+        id: package
+        shell: pwsh
+        run: |
+          $name = "qwen-runtime-windows-x64-$($env:QWENTTS_SHA.Substring(0,7))"
+          New-Item -ItemType Directory $name | Out-Null
+          Get-ChildItem qwentts/build -Recurse -Include *.dll |
+            Where-Object { $_.FullName -match '\\Release\\' } |
+            Copy-Item -Destination $name
+          if (-not (Test-Path "$name/qwen.dll")) { throw "qwen.dll was not built" }
+          Copy-Item qwentts/LICENSE "$name/LICENSE-qwentts.txt"
+          if (Test-Path qwentts/ggml/LICENSE) { Copy-Item qwentts/ggml/LICENSE "$name/LICENSE-ggml.txt" }
+          Copy-Item qwentts/src/qwen.h "$name/qwen.h"
+          "qwentts.cpp $env:QWENTTS_SHA (MIT), ggml (MIT), Vulkan SDK $env:VULKAN_VERSION" | Set-Content "$name/VERSION.txt"
+          Get-ChildItem $name -File | Sort-Object Name | ForEach-Object {
+            "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower(), $_.Name
+          } | Set-Content "$name/FILES.sha256"
+          Compress-Archive -Path "$name/*" -DestinationPath "$name.zip"
+          $hash = (Get-FileHash "$name.zip" -Algorithm SHA256).Hash.ToLower()
+          "$hash  $name.zip" | Set-Content SHA256SUMS.txt
+          Get-Content SHA256SUMS.txt
+          (Get-Item "$name.zip").Length
+          "zip=$name.zip" | Add-Content $env:GITHUB_OUTPUT
+
+      - name: Publish pre-release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $notes = "Qwen3-TTS runtime for Glagol (not a Glagol release): qwentts.cpp $env:QWENTTS_SHA (MIT) built with CPU variants and Vulkan. Downloaded by Glagol on demand and verified by SHA-256."
+          gh release create "$env:GITHUB_REF_NAME" "${{ steps.package.outputs.zip }}" SHA256SUMS.txt `
+            --repo "$env:GITHUB_REPOSITORY" --prerelease --latest=false --title "$env:GITHUB_REF_NAME" --notes $notes
