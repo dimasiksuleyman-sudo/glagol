@@ -85,7 +85,8 @@ English text, and «Speech language» selects which. Try them with «Preview voi
 Numbers, the pronunciation dictionary and AI normalization work as with Silero.
 
 **Reading style.** On the Synthesize page, below the Qwen3-TTS voice, «Reading
-style» offers «As the model decides» (natural intonation), «Even, without emotion»,
+style» offers «Even, without emotion» (the default: Qwen reads emotionally, which
+news and documents do not need), «As the model decides» (natural intonation),
 «Calm and slow», «News anchor», «Warm and friendly», «Cheerful and energetic» or your
 own description of up to 200 characters. The description is sent to the model with
 each text fragment; the effect depends on the voice, so click «Listen» before

@@ -66,7 +66,7 @@ export function Synthesize() {
   const qwen = preferences?.tts_engine === "qwen";
   // Reading style (Qwen3-TTS only); remembered on this computer for convenience.
   const [styleId, setStyleId] = useState<QwenStyleId>(() => {
-    try { const saved = localStorage.getItem("glagol.qwenStyle"); return QWEN_STYLES.some(s => s.id === saved) ? saved as QwenStyleId : "auto"; } catch { return "auto"; }
+    try { const saved = localStorage.getItem("glagol.qwenStyle"); return QWEN_STYLES.some(s => s.id === saved) ? saved as QwenStyleId : "neutral"; } catch { return "neutral"; }
   });
   const [customStyle, setCustomStyle] = useState(() => { try { return localStorage.getItem("glagol.qwenStyleText") ?? ""; } catch { return ""; } });
   useEffect(() => { try { localStorage.setItem("glagol.qwenStyle", styleId); localStorage.setItem("glagol.qwenStyleText", customStyle); } catch { /* per-viewer convenience only */ } }, [styleId, customStyle]);
