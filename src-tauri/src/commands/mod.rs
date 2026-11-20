@@ -15,6 +15,7 @@ pub mod metrics;
 pub mod preferences;
 pub mod pronunciations;
 pub mod speech;
+pub mod speech_model_check;
 pub mod storage;
 pub mod synthesize;
 pub mod tts;
