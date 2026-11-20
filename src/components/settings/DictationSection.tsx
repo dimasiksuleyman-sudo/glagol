@@ -16,7 +16,7 @@ import {
   localModelsStatus, downloadLocalModel, cancelModelDownload, removeLocalModel,
   localEngineState, setLocalEngineOptions, DICTATION_STATE_EVENT, SPEECH_MODEL_STATUS_EVENT,
   type DictationState,
-  type SpeechMode, type SpeechModelStatus, type SpeechProfile, type SpeechSettings, type LocalModelsStatus, type ModelProgress,
+  type SpeechMode, type SpeechModelStatus, type SpeechProfile, type SpeechSettings, type LocalModel, type LocalModelsStatus, type ModelProgress,
   type LocalEngineOptions, type LocalEngineState,
 } from "@/lib/tauri";
 
@@ -30,6 +30,12 @@ const MAX_VISIBLE_SERVER_MODELS = 100;
 const size = (bytes: number) => t("{p0} MB", { p0: new Intl.NumberFormat(currentLocale(), { maximumFractionDigits: 1 }).format(bytes / 1_000_000) });
 const errorText = (error: unknown) => error instanceof Error ? error.message : String(error);
 
+type RemoteDraft = { profile: SpeechProfile; apiKey: string; connectionCode: string };
+
+function hasModelFiles(model: LocalModel) {
+  return model.installed && model.download_bytes === 0;
+}
+
 export function DictationSection() {
   const { language } = useI18n();
   const { preferences } = usePreferences();
@@ -38,6 +44,7 @@ export function DictationSection() {
     local: t("On this computer"), server: t("Organization server"), cloud: t("Cloud service"),
   };
   const [profile, setProfile] = useState<SpeechProfile | null>(null);
+  const [savedProfile, setSavedProfile] = useState<SpeechProfile | null>(null);
   const [active, setActive] = useState<SpeechMode>("cloud");
   const [activeModel, setActiveModel] = useState("");
   const [models, setModels] = useState<LocalModelsStatus | null>(null);
@@ -54,13 +61,17 @@ export function DictationSection() {
   const [loadError, setLoadError] = useState("");
   const [engine, setEngine] = useState<LocalEngineState | null>(null);
   const alive = useRef(true);
+  const remoteDrafts = useRef<Partial<Record<"cloud" | "server", RemoteDraft>>>({});
 
   useEffect(() => { void refreshModels().catch(() => undefined); }, [language]);
   useEffect(() => {
     if (profile?.mode !== "local") return;
     let disposed = false;
     void getSpeechSettings("local").then(settings => {
-      if (!disposed) { setProfile(settings.profile); setActiveModel(settings.profile.model); }
+      if (!disposed) {
+        setProfile(current => current?.mode === "local" ? settings.profile : current);
+        if (settings.active_mode === "local") setActiveModel(settings.profile.model);
+      }
     }).catch(() => undefined);
     return () => { disposed = true; };
   }, [preferences?.stt_language]);
@@ -91,7 +102,7 @@ export function DictationSection() {
     });
     void Promise.all([getSpeechSettings(), localModelsStatus()]).then(([settings, status]) => {
       if (cancelled) return;
-      setProfile(settings.profile); setActive(settings.active_mode);
+      setProfile(settings.profile); setSavedProfile(settings.profile); setActive(settings.active_mode);
       setActiveModel(settings.profile.model); setKeyStored(settings.key_stored);
       rememberModelStatus(settings);
       setModels(status); setProgress(status.progress);
@@ -111,17 +122,41 @@ export function DictationSection() {
     setModelFilter("");
   }
   async function chooseMode(mode: SpeechMode) {
-    setBusy(true); setMessage(""); setApiKey("");
-    clearServerModelList();
+    setBusy(true); setMessage("");
     try {
-      const settings = await getSpeechSettings(mode);
-      if (alive.current) {
-        setProfile(settings.profile);
-        setKeyStored(settings.key_stored);
-        rememberModelStatus(settings);
+      const [settings, freshModels] = await Promise.all([
+        getSpeechSettings(mode),
+        mode === "local" ? localModelsStatus() : null,
+      ]);
+      if (!alive.current) return;
+      if (profile && profile.mode !== "local") {
+        if (remoteEdited || connectionCode.trim()) {
+          remoteDrafts.current[profile.mode] = { profile, apiKey, connectionCode };
+        } else {
+          delete remoteDrafts.current[profile.mode];
+        }
       }
-    } catch (e) { toast.error(errorText(e)); }
-    finally { setBusy(false); }
+      const draft = mode === "local" ? undefined : remoteDrafts.current[mode];
+      clearServerModelList();
+      setProfile(draft?.profile ?? settings.profile);
+      setSavedProfile(settings.profile);
+      setKeyStored(settings.key_stored);
+      setApiKey(draft?.apiKey ?? "");
+      setConnectionCode(draft?.connectionCode ?? "");
+      rememberModelStatus(settings);
+
+      if (freshModels) {
+        setModels(freshModels);
+        setProgress(freshModels.progress);
+        const selected = freshModels.models.find(m => m.id === settings.profile.model);
+        if (mode !== settings.active_mode && freshModels.supported && selected && hasModelFiles(selected)) {
+          setMessage(t("Preparing model…"));
+          await save(settings.profile);
+        }
+      }
+    } catch (e) {
+      if (alive.current) { setMessage(errorText(e)); toast.error(errorText(e)); }
+    } finally { if (alive.current) setBusy(false); }
   }
   function update(change: Partial<SpeechProfile>) {
     if (change.base_url !== undefined || change.proxy !== undefined) clearServerModelList();
@@ -146,13 +181,18 @@ export function DictationSection() {
     }
   }
   async function save(p: SpeechProfile, test = false) {
-    await saveSpeechSettings(p, apiKey.trim() || undefined);
-    if (alive.current) { setActive(p.mode); setActiveModel(p.model); setApiKey(""); }
+    await saveSpeechSettings(p, p.mode === "local" ? undefined : apiKey.trim() || undefined);
+    if (alive.current) {
+      setActive(p.mode); setActiveModel(p.model); setApiKey(""); setSavedProfile(p);
+      if (p.mode !== "local") delete remoteDrafts.current[p.mode];
+    }
     const settings = await getSpeechSettings(p.mode);
-    if (alive.current) rememberModelStatus(settings);
+    if (alive.current) {
+      setProfile(settings.profile); setSavedProfile(settings.profile);
+      setKeyStored(settings.key_stored); rememberModelStatus(settings);
+    }
     if (test) await testSpeechSettings();
     if (alive.current) {
-      setKeyStored(settings.key_stored);
       setMessage(test || p.mode === "server" ? t("Connection works.") : p.mode === "local" ? t("Model ready. You can start dictating.") : t("Settings saved."));
     }
   }
@@ -167,7 +207,8 @@ export function DictationSection() {
       const settings = await getSpeechSettings("server");
       if (alive.current) {
         clearServerModelList();
-        setProfile(settings.profile); setKeyStored(settings.key_stored);
+        setProfile(settings.profile); setSavedProfile(settings.profile); setKeyStored(settings.key_stored);
+        delete remoteDrafts.current.server;
         rememberModelStatus(settings);
         setActive("server"); setActiveModel(next.model); setApiKey(""); setConnectionCode("");
         const connected = t("Connected to Glagol at {p0}. You can start dictating.", { p0: found.base_url.replace(/^http:\/\//, "").replace(/\/v1$/, "") });
@@ -185,15 +226,14 @@ export function DictationSection() {
     catch (e) { setMessage(errorText(e)); toast.error(errorText(e)); }
     finally { setBusy(false); }
   }
-  async function useModel(id: string, installed: boolean) {
+  async function useModel(model: LocalModel, repair = false) {
     if (!profile) return;
-    setBusy(true); setMessage(installed ? t("Preparing model…") : t("Downloading model…"));
+    setBusy(true); setMessage(repair || hasModelFiles(model) ? t("Preparing model…") : t("Downloading model…"));
     try {
-      if (!installed || (models?.models.find(m => m.id === id)?.download_bytes ?? 0) > 0) await downloadLocalModel(id);
+      if (repair || !hasModelFiles(model)) await downloadLocalModel(model.id);
       if (!alive.current) return;
       setMessage(t("Preparing model…"));
-      const p = { ...profile, mode: "local" as const, model: id, language: models?.models.find(m => m.id === id)?.language ?? profile.language };
-      await save(p); setProfile(p);
+      await save({ ...profile, mode: "local", model: model.id, language: model.language });
     } catch (e) { if (alive.current) { setMessage(errorText(e)); toast.error(errorText(e)); } }
     finally { if (alive.current) { setBusy(false); await refreshModels(); } }
   }
@@ -208,7 +248,7 @@ export function DictationSection() {
     const recommendation = engine.recommendation;
     const model = models?.models.find(m => m.id === recommendation.model);
     if (!model) return;
-    if (active !== "local" || activeModel !== recommendation.model) await useModel(model.id, model.installed);
+    if (active !== "local" || activeModel !== recommendation.model) await useModel(model);
     if (engine.options.device !== recommendation.device) await changeEngine({ device: recommendation.device });
   }
   async function changeEngine(change: Partial<LocalEngineOptions>) {
@@ -258,6 +298,14 @@ export function DictationSection() {
   }
 
   const locked = busy || progress !== null || dictating;
+  const remoteEdited = !!profile && profile.mode !== "local" && (
+    !!apiKey.trim() || profile.base_url !== savedProfile?.base_url ||
+    profile.model !== savedProfile?.model || profile.language !== savedProfile?.language ||
+    profile.proxy !== savedProfile?.proxy
+  );
+  const codePending = profile?.mode === "server" && !!connectionCode.trim();
+  const unsaved = !!profile && (profile.mode !== active || remoteEdited || codePending);
+  const localChoice = profile?.mode === "local" ? models?.models.find(m => m.id === profile.model) : undefined;
   const modelStatus = profile ? modelStatuses[profile.mode] : undefined;
   const modelQuery = modelFilter.trim().toLowerCase();
   const matchingServerModels = serverModels?.filter(id => id.toLowerCase().includes(modelQuery)) ?? [];
@@ -288,6 +336,15 @@ export function DictationSection() {
           </Select>
           {profile.mode !== active && <p className="text-xs text-muted-foreground">{t("Currently using:")}{" "}{MODES[active]}.</p>}
         </div>
+        {unsaved && <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-500/50 bg-amber-500/10 p-3">
+          <p role="status" className="text-sm font-medium">{t("There are unsaved changes")}</p>
+          {profile.mode === "local" ? localChoice && <Button size="sm" disabled={locked || !models?.supported}
+            onClick={() => void useModel(localChoice)}>
+            {hasModelFiles(localChoice) ? t("Use") : localChoice.partial_bytes > 0 ? t("Resume and use") : t("Download and use")}
+          </Button> : codePending
+            ? <Button size="sm" disabled={locked} onClick={() => void connectByCode()}>{t("Connect")}</Button>
+            : <Button size="sm" disabled={locked} onClick={() => void remoteSave(false)}>{t("Save and use")}</Button>}
+        </div>}
         {profile.mode === "local" ? <>
           <SttLanguageSwitch disabled={locked} />
           {models && !models.supported && <p role="alert">{t("Local models currently require Windows x64. Server connections also work on other systems.")}</p>}
@@ -341,9 +398,9 @@ export function DictationSection() {
                   {m.download_bytes > 0 && <p className="text-xs text-muted-foreground">{t("downloadRequired", { size: new Intl.NumberFormat(currentLocale(), { maximumFractionDigits: 1 }).format(m.download_bytes / 1_000_000) })}</p>}
                   <div className="flex flex-wrap gap-2">
                     {selected
-                      ? <Button size="sm" variant="outline" disabled={locked} onClick={() => void useModel(m.id, false)}>{t("Verify files and repair")}</Button>
-                      : <Button size="sm" disabled={locked || !models?.supported} onClick={() => void useModel(m.id, m.installed)}>
-                        {m.installed ? t("Use") : m.partial_bytes > 0 ? t("Resume and use") : t("Download and use")}
+                      ? <Button size="sm" variant="outline" disabled={locked} onClick={() => void useModel(m, true)}>{t("Verify files and repair")}</Button>
+                      : <Button size="sm" disabled={locked || !models?.supported} onClick={() => void useModel(m)}>
+                        {hasModelFiles(m) ? t("Use") : m.partial_bytes > 0 ? t("Resume and use") : t("Download and use")}
                       </Button>}
                     {!selected && (m.installed || m.partial_bytes > 0) && <Button size="sm" variant="outline" disabled={locked} onClick={() => void remove(m.id)}>{t("Remove ·")}{" "}{size(m.installed ? m.bytes : m.partial_bytes)}</Button>}
                   </div>

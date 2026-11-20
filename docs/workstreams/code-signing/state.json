@@ -2,13 +2,14 @@
   "schema_version": 1,
   "id": "code-signing",
   "title": "Подпись установщика Windows (Authenticode) через SignPath Foundation",
-  "status": "paused",
+  "status": "active",
   "next": "C1",
-  "reason": "TODO 2026-11-19 по итогам побочного исследования; четвёртая в docs/roadmap.md, после Ctrl+Win; начинать по просьбе пользователя.",
+  "reason": null,
   "claim": null,
   "links": [
     "docs/workstreams/code-signing/README.md",
     "docs/workstreams/code-signing/log.md",
+    "docs/workstreams/code-signing/application.md",
     "docs/roadmap.md",
     "docs/runbooks/release.md"
   ],
@@ -16,10 +17,107 @@
     {
       "id": "C1",
       "title": "Подготовка и заявка в SignPath Foundation: страница политики подписи в README RU/EN, роли, MFA; заявку подаёт пользователь",
-      "status": "pending",
+      "status": "blocked",
       "depends_on": [],
       "required": ["manual"],
-      "checks": []
+      "checks": [
+        {
+          "id": "manual",
+          "status": "BLOCKED",
+          "method": "manual",
+          "command": "Сопровождающий подаёт заявку через SignPath Foundation Apply и сообщает результат.",
+          "cwd": ".",
+          "at": "2026-11-20T22:40:16.714Z",
+          "environment": {
+            "service": "SignPath Foundation Apply",
+            "actor": "сопровождающий проекта"
+          },
+          "exit_code": null,
+          "output": "Ждёт подачи заявки пользователем.",
+          "evidence": "docs/workstreams/code-signing/log.md#подача-заявки-и-проверка-c1"
+        },
+        {
+          "id": "context-refresh",
+          "status": "PASS",
+          "method": "command",
+          "command": "pnpm context:refresh",
+          "cwd": ".",
+          "at": "2026-11-20T22:40:44.128Z",
+          "environment": {
+            "os": "Linux x86_64",
+            "node": "v24.22.1",
+            "pnpm": "11.25.0"
+          },
+          "exit_code": 0,
+          "output": "context-status write: OK",
+          "evidence": "docs/workstreams/code-signing/log.md#автоматические-проверки-c1"
+        },
+        {
+          "id": "runbook-direct",
+          "status": "PASS",
+          "method": "command",
+          "command": "node scripts/runbook-check.mjs",
+          "cwd": ".",
+          "at": "2026-11-20T22:40:44.128Z",
+          "environment": {
+            "os": "Linux x86_64",
+            "node": "v24.22.1",
+            "pnpm": "11.25.0"
+          },
+          "exit_code": 0,
+          "output": "runbook-check OK (26 series)",
+          "evidence": "docs/workstreams/code-signing/log.md#автоматические-проверки-c1"
+        },
+        {
+          "id": "runbook-check",
+          "status": "PASS",
+          "method": "command",
+          "command": "pnpm runbook:check",
+          "cwd": ".",
+          "at": "2026-11-20T22:40:44.128Z",
+          "environment": {
+            "os": "Linux x86_64",
+            "node": "v24.22.1",
+            "pnpm": "11.25.0"
+          },
+          "exit_code": 0,
+          "output": "runbook-check OK (26 series)",
+          "evidence": "docs/workstreams/code-signing/log.md#автоматические-проверки-c1"
+        },
+        {
+          "id": "runbook-tests",
+          "status": "PASS",
+          "method": "command",
+          "command": "pnpm runbook:test",
+          "cwd": ".",
+          "at": "2026-11-20T22:40:44.128Z",
+          "environment": {
+            "os": "Linux x86_64",
+            "node": "v24.22.1",
+            "pnpm": "11.25.0"
+          },
+          "exit_code": 0,
+          "output": "53 passed, 0 failed",
+          "evidence": "docs/workstreams/code-signing/log.md#автоматические-проверки-c1"
+        },
+        {
+          "id": "diff-check",
+          "status": "PASS",
+          "method": "command",
+          "command": "git diff --check",
+          "cwd": ".",
+          "at": "2026-11-20T22:40:44.128Z",
+          "environment": {
+            "os": "Linux x86_64",
+            "node": "v24.22.1",
+            "pnpm": "11.25.0"
+          },
+          "exit_code": 0,
+          "output": "Код 0, вывод пуст.",
+          "evidence": "docs/workstreams/code-signing/log.md#автоматические-проверки-c1"
+        }
+      ],
+      "reason": "Ждёт подачи заявки пользователем"
     },
     {
       "id": "C2",

@@ -64,6 +64,7 @@ export const messages: {[K in keyof typeof en]: string} = {
   "Connection works.": "Подключение работает.",
   "Model ready. You can start dictating.": "Модель готова. Можно диктовать.",
   "Settings saved.": "Настройки сохранены.",
+  "There are unsaved changes": "Есть несохранённые изменения",
   "Preparing model…": "Подготовка модели…",
   "Downloading model…": "Скачивание модели…",
   "Key deleted.": "Ключ удалён.",

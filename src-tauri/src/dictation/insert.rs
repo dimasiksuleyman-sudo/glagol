@@ -27,6 +27,9 @@ use std::time::{Duration, Instant};
 
 #[cfg(any(windows, test))]
 mod keyboard;
+mod target;
+
+pub use target::PasteOrigin;
 
 #[cfg(not(windows))]
 const VK_V: u32 = 0x56;
@@ -373,15 +376,28 @@ fn log_timing(start: Instant, outcome: InsertOutcome) {
 // ── Real implementations ────────────────────────────────────────────────
 
 /// The production inserter, with native input on Windows and Enigo elsewhere.
-#[derive(Clone, Copy, Default)]
-pub struct SystemInserter;
+#[derive(Clone, Copy)]
+pub struct SystemInserter {
+    #[cfg(windows)]
+    origin: PasteOrigin,
+}
+
+impl SystemInserter {
+    /// Use the foreground window captured at the start of this dictation.
+    pub fn new(_origin: PasteOrigin) -> Self {
+        Self {
+            #[cfg(windows)]
+            origin: _origin,
+        }
+    }
+}
 
 #[cfg(windows)]
 impl TextInserter for SystemInserter {
-    type Target = windows::Win32::Foundation::HWND;
+    type Target = PasteOrigin;
 
     fn prepare_paste(&self) -> Result<Self::Target, String> {
-        keyboard::prepare()
+        keyboard::prepare(self.origin)
     }
 
     fn paste(&self, target: Self::Target) -> Result<(), String> {

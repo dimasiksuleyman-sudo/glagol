@@ -143,13 +143,14 @@ impl ModifierTrigger {
 /// Whether Ctrl+Win dictation can run on this platform.
 pub const SUPPORTED: bool = cfg!(windows);
 
-/// Unassigned virtual key sent at the start of Ctrl+Win to suppress Start.
+/// Unassigned virtual key sent while Ctrl+Win is held to suppress Start.
 #[cfg(windows)]
 pub(super) const MENU_MASK_VK: u16 = 0xE8;
 
 #[cfg(windows)]
 mod imp {
     use super::{classify, Action, Key, ModifierTrigger, MENU_MASK_VK};
+    use crate::dictation::insert::PasteOrigin;
     use std::sync::mpsc::{self, RecvTimeoutError, Sender};
     use std::sync::Mutex;
     use std::time::Instant;
@@ -157,8 +158,8 @@ mod imp {
     use windows::Win32::System::LibraryLoader::GetModuleHandleW;
     use windows::Win32::System::Threading::GetCurrentThreadId;
     use windows::Win32::UI::Input::KeyboardAndMouse::{
-        SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYBD_EVENT_FLAGS, KEYEVENTF_KEYUP,
-        VIRTUAL_KEY,
+        GetAsyncKeyState, SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYBD_EVENT_FLAGS,
+        KEYEVENTF_KEYUP, VIRTUAL_KEY, VK_CONTROL, VK_LWIN, VK_RWIN,
     };
     use windows::Win32::UI::WindowsAndMessaging::{
         CallNextHookEx, GetMessageW, PostThreadMessageW, SetWindowsHookExW, UnhookWindowsHookEx,
@@ -166,8 +167,14 @@ mod imp {
         WM_QUIT, WM_SYSKEYDOWN, WM_SYSKEYUP,
     };
 
-    /// Key classes from the hook to the worker; only the class leaves the hook.
-    static EVENTS: Mutex<Option<Sender<(Key, bool)>>> = Mutex::new(None);
+    struct KeyEvent {
+        key: Key,
+        down: bool,
+        at: Instant,
+        origin: Option<PasteOrigin>,
+    }
+
+    static EVENTS: Mutex<Option<Sender<KeyEvent>>> = Mutex::new(None);
     /// Thread id of the running hook thread, for [`stop`].
     static HOOK_THREAD: Mutex<Option<u32>> = Mutex::new(None);
 
@@ -186,7 +193,14 @@ mod imp {
                 if down || up {
                     if let Ok(events) = EVENTS.lock() {
                         if let Some(tx) = events.as_ref() {
-                            let _ = tx.send((classify(info.vkCode), down));
+                            let key = classify(info.vkCode);
+                            let _ = tx.send(KeyEvent {
+                                key,
+                                down,
+                                at: Instant::now(),
+                                origin: (down && matches!(key, Key::Ctrl | Key::Win))
+                                    .then(PasteOrigin::capture),
+                            });
                         }
                     }
                 }
@@ -198,7 +212,15 @@ mod imp {
     }
 
     /// Press and release the unassigned mask key while Win is still held.
-    fn send_menu_mask() {
+    fn send_menu_mask() -> bool {
+        let down = |key: VIRTUAL_KEY| {
+            // SAFETY: these are valid virtual keys. Read only the high bit.
+            (unsafe { GetAsyncKeyState(i32::from(key.0)) }) < 0
+        };
+        if !down(VK_CONTROL) || !(down(VK_LWIN) || down(VK_RWIN)) {
+            return false;
+        }
+
         let key = |flags: KEYBD_EVENT_FLAGS| INPUT {
             r#type: INPUT_KEYBOARD,
             Anonymous: INPUT_0 {
@@ -214,20 +236,25 @@ mod imp {
         let inputs = [key(KEYBD_EVENT_FLAGS(0)), key(KEYEVENTF_KEYUP)];
         // SAFETY: `inputs` is a valid array of keyboard INPUT records and the
         // size argument is the size of one INPUT, as SendInput requires.
-        let sent = unsafe { SendInput(&inputs, std::mem::size_of::<INPUT>() as i32) };
-        if sent != inputs.len() as u32 {
-            tracing::debug!(sent, "Ctrl+Win: Start menu mask not fully sent");
+        let input_size = std::mem::size_of::<INPUT>() as i32;
+        let sent = unsafe { SendInput(&inputs, input_size) };
+        if sent == 1 {
+            // SAFETY: the suffix contains the mask's valid key-up record.
+            unsafe { SendInput(&inputs[1..], input_size) };
         }
+        let mask_sent = sent == inputs.len() as u32;
+        tracing::debug!(target: "glagol_lib::paste_diagnostics", mask_sent, "Start menu mask attempt");
+        mask_sent
     }
 
     /// Install the hook (if it is not running) and call `on_action` for every
     /// trigger decision, from a worker thread.
-    pub fn start(on_action: impl Fn(Action) + Send + 'static) {
+    pub fn start(on_action: impl Fn(Action, PasteOrigin) + Send + 'static) {
         let mut thread = HOOK_THREAD.lock().expect("hook thread mutex poisoned");
         if thread.is_some() {
             return;
         }
-        let (tx, rx) = mpsc::channel::<(Key, bool)>();
+        let (tx, rx) = mpsc::channel::<KeyEvent>();
         *EVENTS.lock().expect("hook events mutex poisoned") = Some(tx);
         let (tid_tx, tid_rx) = mpsc::channel::<Option<u32>>();
         let hook = std::thread::Builder::new()
@@ -274,22 +301,36 @@ mod imp {
             .name("ctrl-win-trigger".into())
             .spawn(move || {
                 let mut trigger = ModifierTrigger::default();
+                let mut origin = PasteOrigin::default();
+                let mut mask_sent = false;
                 loop {
                     let event = match trigger.deadline() {
                         Some(at) => rx.recv_timeout(at.saturating_duration_since(Instant::now())),
                         None => rx.recv().map_err(|_| RecvTimeoutError::Disconnected),
                     };
                     let action = match event {
-                        Ok((key, down)) => trigger.on_key(key, down, Instant::now()),
+                        Ok(event) => {
+                            let was_armed = trigger.deadline().is_some();
+                            let action = trigger.on_key(event.key, event.down, event.at);
+                            if !was_armed && trigger.deadline().is_some() {
+                                origin = event.origin.unwrap_or_default();
+                                // Don't wait for the hold timer to suppress Start.
+                                // The foreground window was read on the hook thread.
+                                mask_sent = send_menu_mask();
+                            }
+                            action
+                        }
                         Err(RecvTimeoutError::Timeout) => trigger.on_tick(Instant::now()),
                         Err(RecvTimeoutError::Disconnected) => break,
                     };
                     if let Some(action) = action {
-                        if action == Action::Press {
-                            send_menu_mask();
+                        if action == Action::Press && !mask_sent {
+                            // The second physical key may not yet have been
+                            // delivered at arming time. Retry while both are down.
+                            let _ = send_menu_mask();
                         }
                         tracing::debug!(?action, "Ctrl+Win dictation trigger");
-                        on_action(action);
+                        on_action(action, origin);
                     }
                 }
             });
@@ -318,8 +359,9 @@ mod imp {
 #[cfg(not(windows))]
 mod imp {
     use super::Action;
+    use crate::dictation::insert::PasteOrigin;
     /// Ctrl+Win dictation is Windows-only.
-    pub fn start(_on_action: impl Fn(Action) + Send + 'static) {}
+    pub fn start(_on_action: impl Fn(Action, PasteOrigin) + Send + 'static) {}
     /// No-op outside Windows.
     pub fn stop() {}
 }

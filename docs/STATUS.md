@@ -5,7 +5,7 @@
 
 Начало работы: [AGENTS](../AGENTS.md) → этот обзор → состояние и журнал серии.
 
-Активных серий: 3 — у каждой свой исполнитель и своя ветка.
+Активных серий: 4 — у каждой свой исполнитель и своя ветка.
 
 ### Выбранная серия: **Qwen3-TTS: качественные голоса (Apache 2.0) на смену Silero для организаций**.
 
@@ -17,15 +17,25 @@
 
 Проверка 2026-11-21T02:05:00.000Z: test result: ok. 457 passed; Windows: user ran Qwen inside Glagol on the laptop (profile gpu, 0.63–0.71 of real time), «текст более человечный, живой» ([evidence](../docs/workstreams/tts-qwen/log.md)).
 
-### Выбранная серия: **GL-013: автоматическая вставка диктовки в новый Outlook**.
+### Выбранная серия: **Диктовка Windows: вставка и сохранение режима (GL-013–GL-015)**.
 
-**NEXT: O2 — Ручная проверка пользователем в новом Outlook на Windows** (pending).
+**NEXT: O5 — Ручная проверка GL-014 и GL-015 пользователем на Windows 11** (pending).
 
 [Решения](workstreams/outlook-paste/README.md) · [Состояние](workstreams/outlook-paste/state.json) · [Журнал](workstreams/outlook-paste/log.md)
 
-Последний завершённый шаг серии: **O1 — Разобрать и исправить автоматическую вставку диктовки после отпускания модификаторов**.
+Последний завершённый шаг серии: **O4 — GL-015 — Сохранять готовую локальную модель и показывать несохранённый выбор**.
 
-Проверка 2026-11-20T22:09:58.325Z: test result: ok. 441 passed; 0 failed; 6 ignored ([evidence](../docs/workstreams/outlook-paste/log.md)).
+Проверка 2026-11-20T23:42:21.304Z: I18N PASS: 489 keys with matching parameters; Vite built ([evidence](../docs/workstreams/outlook-paste/log.md#автоматические-проверки-o3-и-o4)).
+
+### Выбранная серия: **Подпись установщика Windows (Authenticode) через SignPath Foundation**.
+
+**NEXT: C1 — Подготовка и заявка в SignPath Foundation: страница политики подписи в README RU/EN, роли, MFA; заявку подаёт пользователь** (blocked).
+
+[Решения](workstreams/code-signing/README.md) · [Состояние](workstreams/code-signing/state.json) · [Журнал](workstreams/code-signing/log.md)
+
+Блокер C1: Ждёт подачи заявки пользователем.
+
+В этой серии ещё нет завершённых шагов. Предыдущие результаты — в связанных журналах.
 
 ### Выбранная серия: **Продвижение: выпуск 0.7.0, витрина, Хабр, каталоги и репутация для подписи кода**.
 

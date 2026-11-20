@@ -63,6 +63,7 @@ export const messages = {
   "Connection works.": "Connection works.",
   "Model ready. You can start dictating.": "Model ready. You can start dictating.",
   "Settings saved.": "Settings saved.",
+  "There are unsaved changes": "There are unsaved changes",
   "Preparing model…": "Preparing model…",
   "Downloading model…": "Downloading model…",
   "Key deleted.": "Key deleted.",

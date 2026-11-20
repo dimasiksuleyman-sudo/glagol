@@ -253,6 +253,13 @@ speech language remembers its local model and voice.
 - **Cloud service:** choose a preset or compatible endpoint, model, key and optional
   dictation-only proxy. The existing remote `auto` language option is retained.
 
+In Settings → Dictation, choosing **On this computer** activates the selected
+local model when all of its files are ready. If files are missing, **There are
+unsaved changes** appears next to the mode selector with a download button.
+The previous recognition mode remains active until the model is ready.
+Edits to server and cloud profiles also show the notice and a save or connect
+button. Drafts stay available while you switch between Settings tabs.
+
 **Saved model availability.** In Settings → Dictation, select a saved Organization
 server or Cloud service profile and click **Check saved model**. Glagol reads only
 the model list at the saved address. The settings show the last result and date.
@@ -340,9 +347,10 @@ Good to know:
 ## Windows limitations
 
 - Release all shortcut keys after dictating. Auto-paste waits up to half a second
-  for Ctrl, Shift, Alt and Win to clear. If a modifier stays down or you switch
-  windows while the paste is being prepared, the text goes to the clipboard
-  for manual `Ctrl+V`.
+  for Ctrl, Shift, Alt and Win to clear. It checks that the window where you
+  started is still active. If a modifier stays down, another window is active,
+  or the target is Windows Search, Start or another shell window, the text goes
+  to the clipboard for manual `Ctrl+V`.
 - Auto-paste restores previous text clipboard contents, but cannot restore images/files.
   Clipboard managers changing line endings can prevent restoration. Windows Win+V
   history may retain transcripts independently of Glagol's history setting.
