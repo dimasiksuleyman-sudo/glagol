@@ -14,7 +14,9 @@
 
 ## Также в очереди
 
-- [tts-qwen](workstreams/tts-qwen/README.md) — оценка Qwen3-TTS (Apache 2.0) как «качественных голосов», начато 2026-11-20 с прослушивания.
+- [tts-normalization](workstreams/tts-normalization/README.md) — правила чтения чисел и сокращений, словарь пользователя, ИИ-нормализация фрагментами (план 2026-11-20, N1–N4).
+- [tts-qwen](workstreams/tts-qwen/README.md) — Qwen3-TTS (Apache 2.0) как основной движок озвучки, Silero — лёгкий вариант или замена (план 2026-11-20, Q2–Q6).
+- Порядок: N1 (правила) → Q2 (замер Qwen на ПК сына) → Q3–Q4 и N2–N3 → Q5 (озвучка через сервер) → N4/Q6.
 - GL-013 — вставка в новый Outlook ([реестр](findings/README.md)).
 
 ## Порядок и почему

@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "id": "tts-qwen",
-  "title": "Оценка Qwen3-TTS как «качественных голосов» (Apache 2.0)",
+  "title": "Qwen3-TTS: качественные голоса (Apache 2.0) на смену Silero для организаций",
   "status": "paused",
   "next": "Q2",
-  "reason": "Q1 пройден: Qwen звучит живее; обязательна нормализация текста. Дальше — замер Q2 и серия нормализации.",
+  "reason": "План согласован 2026-11-20; начинать по команде пользователя после/параллельно tts-normalization N1 (см. docs/roadmap.md).",
   "claim": null,
   "links": [
     "docs/workstreams/tts-qwen/README.md",
@@ -38,7 +38,7 @@
     },
     {
       "id": "Q2",
-      "title": "Замер скорости и памяти на ПК пользователя (RX 550 4 ГБ? / процессор) и ПК сына (GTX 1060 6 ГБ); формат выполнения без Python, если возможно",
+      "title": "Выбор C++/GGML-порта (лицензия, Vulkan/CUDA, Windows), закрепление версии, замер на GTX 1060, RX 550 и процессоре",
       "status": "pending",
       "depends_on": [
         "Q1"
@@ -50,13 +50,51 @@
     },
     {
       "id": "Q3",
-      "title": "Решение: встраивать ли как необязательный компонент рядом с Silero; план",
+      "title": "Движок tts/qwen: закреплённые файлы, проверка, TtsBackend, устройство, голоса RU/EN",
       "status": "pending",
       "depends_on": [
         "Q2"
       ],
       "required": [
-        "decision"
+        "rust"
+      ],
+      "checks": []
+    },
+    {
+      "id": "Q4",
+      "title": "Интерфейс: выбор движка и размера модели, рекомендация по железу",
+      "status": "pending",
+      "depends_on": [
+        "Q3"
+      ],
+      "required": [
+        "rust",
+        "frontend"
+      ],
+      "checks": []
+    },
+    {
+      "id": "Q5",
+      "title": "Озвучка через сервер Глагола: POST /v1/audio/speech для офисных клиентов",
+      "status": "pending",
+      "depends_on": [
+        "Q4"
+      ],
+      "required": [
+        "rust",
+        "frontend"
+      ],
+      "checks": []
+    },
+    {
+      "id": "Q6",
+      "title": "Решение о Silero, документы RU/EN, позиционирование",
+      "status": "pending",
+      "depends_on": [
+        "Q4"
+      ],
+      "required": [
+        "manual"
       ],
       "checks": []
     }

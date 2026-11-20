@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "tts-normalization",
+  "title": "Нормализация текста для озвучки: правила, словарь, ИИ-фрагменты",
+  "status": "paused",
+  "next": "N1",
+  "reason": "План согласован 2026-11-20; начинать по команде пользователя. Порядок с tts-qwen — в docs/roadmap.md.",
+  "claim": null,
+  "links": ["docs/workstreams/tts-normalization/README.md", "docs/workstreams/tts-normalization/log.md", "docs/workstreams/tts-qwen/README.md"],
+  "steps": [
+    {"id": "N1", "title": "Правила RU/EN в Rust: числа с падежом, дроби, деньги, единицы, даты, время, аббревиатуры; тесты ≥ 200 случаев", "status": "pending", "depends_on": [], "required": ["rust"], "checks": []},
+    {"id": "N2", "title": "Словарь произношения: миграция SQLite, раздел в настройках, импорт/экспорт, «Послушать», бэкап", "status": "pending", "depends_on": ["N1"], "required": ["rust", "frontend"], "checks": []},
+    {"id": "N3", "title": "ИИ-нормализация фрагментами по разрешению: провайдер/модель/ключ, валидация, откат на правила, кэш, предпросмотр", "status": "pending", "depends_on": ["N1"], "required": ["rust", "frontend"], "checks": []},
+    {"id": "N4", "title": "Документы RU/EN, SECURITY, ручная проверка на новостях", "status": "pending", "depends_on": ["N2", "N3"], "required": ["manual"], "checks": []}
+  ]
+}
