@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "id": "tts-qwen",
+  "title": "Оценка Qwen3-TTS как «качественных голосов» (Apache 2.0)",
+  "status": "paused",
+  "next": "Q1",
+  "reason": "Пользователь 2026-11-20: «давай обязательно пощупаем КВЕН». Сначала оценка на слух (Q1), затем решение о встраивании.",
+  "claim": null,
+  "links": ["docs/workstreams/tts-qwen/README.md", "docs/workstreams/tts-qwen/log.md"],
+  "steps": [
+    {"id": "Q1", "title": "Прослушать демо Qwen3-TTS 0.6B/1.7B на русских и английских текстах пользователя, сравнить с Silero", "status": "pending", "depends_on": [], "required": ["manual"], "checks": []},
+    {"id": "Q2", "title": "Замер скорости и памяти на ПК пользователя (RX 550 4 ГБ? / процессор) и ПК сына (GTX 1060 6 ГБ); формат выполнения без Python, если возможно", "status": "pending", "depends_on": ["Q1"], "required": ["manual"], "checks": []},
+    {"id": "Q3", "title": "Решение: встраивать ли как необязательный компонент рядом с Silero; план", "status": "pending", "depends_on": ["Q2"], "required": ["decision"], "checks": []}
+  ]
+}
