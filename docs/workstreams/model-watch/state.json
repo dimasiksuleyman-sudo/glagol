@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "id": "model-watch",
+  "title": "Слежение за моделями: ежемесячная сверка и замеры новых версий",
+  "status": "paused",
+  "next": "W1",
+  "reason": "Создана 2026-11-20 по просьбе пользователя; сверка идёт ежемесячной задачей, замеры W1–W3 — после tts-normalization, по решению пользователя.",
+  "claim": null,
+  "links": [
+    "docs/workstreams/model-watch/README.md",
+    "docs/workstreams/model-watch/log.md",
+    "docs/roadmap.md"
+  ],
+  "steps": [
+    {
+      "id": "W1",
+      "title": "Замер Moonshine: Small quantized_26_11_07 + moonshine-voice 0.1.6 и Medium Streaming против текущей Small 26_08_21",
+      "status": "pending",
+      "depends_on": [],
+      "required": ["manual"],
+      "checks": []
+    },
+    {
+      "id": "W2",
+      "title": "GigaAM Multilingual Large CTC против GigaAM v3 e2e (после конвертации под transcribe.cpp)",
+      "status": "pending",
+      "depends_on": [],
+      "required": ["manual"],
+      "checks": []
+    },
+    {
+      "id": "W3",
+      "title": "transcribe.cpp новее v0.2.3: изменения и обновление при пользе",
+      "status": "pending",
+      "depends_on": [],
+      "required": ["rust", "manual"],
+      "checks": []
+    }
+  ]
+}
