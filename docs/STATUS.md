@@ -5,15 +5,17 @@
 
 Начало работы: [AGENTS](../AGENTS.md) → этот обзор → состояние и журнал серии.
 
-Выбранная серия: **Нормализация текста для озвучки: правила, словарь, ИИ-фрагменты**.
+Выбранная серия: **Qwen3-TTS: качественные голоса (Apache 2.0) на смену Silero для организаций**.
 
-**NEXT: N4 — Документы RU/EN, SECURITY, ручная проверка на новостях** (pending).
+**NEXT: Q2 — Выбор C++/GGML-порта (лицензия, Vulkan/CUDA, Windows), закрепление версии, замер на GTX 1060, RX 550 и процессоре** (in_progress).
 
-[Решения](workstreams/tts-normalization/README.md) · [Состояние](workstreams/tts-normalization/state.json) · [Журнал](workstreams/tts-normalization/log.md)
+[Решения](workstreams/tts-qwen/README.md) · [Состояние](workstreams/tts-qwen/state.json) · [Журнал](workstreams/tts-qwen/log.md)
 
-Последний завершённый шаг серии: **N3 — ИИ-нормализация фрагментами по разрешению: провайдер/модель/ключ, валидация, откат на правила, кэш, предпросмотр**.
+Выполняет: Claude Code (cloud session); ветка claude/optimistic-franklin-cvvbsr; с 2026-11-20T22:00:00.000Z.
 
-Проверка 2026-11-20T17:07:04.522Z: test result: ok. 431 passed; 0 failed; 6 ignored (6 new tests for AI normalization and excerpt selection) ([evidence](../docs/workstreams/tts-normalization/log.md)).
+Последний завершённый шаг серии: **Q1 — Прослушать демо Qwen3-TTS 0.6B/1.7B на русских и английских текстах пользователя, сравнить с Silero**.
+
+Проверка 2026-11-20T12:00:00.000Z: «Квен обладает более живой озвучкой, меньше синтетического привкуса»; обеим моделям нужна нормализация («980 млн» → «девяносто восемдесят малерад»); «Квен 1.7 с нормализацией цифр и сокращений был бы топчик для прослушивания новостей, с выбором языка» (reported) ([evidence](../docs/workstreams/tts-qwen/log.md)).
 
 ## Доставка и наблюдения
 

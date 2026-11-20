@@ -52,6 +52,18 @@ node scripts/lan-server-bench.mjs "<код подключения>" 10 3
 
 Аргументы: код подключения, число клиентов (10), число кругов (3).
 
+## Qwen3-TTS: замер скорости (tts-qwen Q2)
+
+Скачать артефакт `qwentts-windows-x64` из последнего запуска «Qwen3-TTS spike
+build» в GitHub Actions, распаковать, затем:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\qwen\bench.ps1 -BinDir <папка с tts-server.exe>
+```
+
+Модели скачиваются один раз в `%LOCALAPPDATA%\glagol-qwen-bench\models`
+(≈ 1,5 ГБ по умолчанию), результаты и WAV — в `...\glagol-qwen-bench\out`.
+
 ## Выпуск
 
 Только по [ранбуку выпуска](release.md): сборка, подпись обновления ключом

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "observed_at": "2026-11-13T20:05:00.000Z",
-  "active_workstream": "tts-normalization",
+  "active_workstream": "tts-qwen",
   "links": [
     "AGENTS.md",
     "CLAUDE.md",

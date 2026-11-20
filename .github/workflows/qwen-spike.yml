@@ -1,0 +1,73 @@
+name: Qwen3-TTS spike build
+
+# tts-qwen Q2: builds the pinned qwentts.cpp (MIT) for Windows x64 with the
+# CPU (all x86 variants) and Vulkan backends, so the maintainer can measure
+# speed on real GPUs without installing the Vulkan SDK. The artifact is kept
+# for 3 days only (Actions storage). Not part of Glagol releases.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["claude/**"]
+    paths: [".github/workflows/qwen-spike.yml"]
+
+permissions:
+  contents: read
+
+env:
+  QWENTTS_REPO: ServeurpersoCom/qwentts.cpp
+  # Pinned 2026-11-17 «codec: run the causal conv1d as an implicit GEMM».
+  QWENTTS_SHA: 2edb35f87b709a070b2d5379f77e5c52a1daa585
+  VULKAN_VERSION: 1.4.313.2
+
+jobs:
+  build:
+    name: qwentts.cpp (Windows, CPU + Vulkan)
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout qwentts.cpp at the pinned commit
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.QWENTTS_REPO }}
+          ref: ${{ env.QWENTTS_SHA }}
+          submodules: recursive
+          path: qwentts
+
+      - name: Install Vulkan SDK
+        shell: pwsh
+        run: |
+          $installer = "$env:RUNNER_TEMP\VulkanSDK-Installer.exe"
+          curl.exe -fL -o $installer "https://sdk.lunarg.com/sdk/download/$env:VULKAN_VERSION/windows/vulkansdk-windows-X64-$env:VULKAN_VERSION.exe"
+          & $installer --accept-licenses --default-answer --confirm-command install
+          Add-Content $env:GITHUB_ENV "VULKAN_SDK=C:\VulkanSDK\$env:VULKAN_VERSION"
+          Add-Content $env:GITHUB_PATH "C:\VulkanSDK\$env:VULKAN_VERSION\bin"
+
+      - name: Build
+        shell: pwsh
+        working-directory: qwentts
+        run: |
+          cmake -S . -B build -DGGML_VULKAN=ON -DGGML_CPU_ALL_VARIANTS=ON -DGGML_BACKEND_DL=ON
+          cmake --build build --config Release -j $env:NUMBER_OF_PROCESSORS
+
+      - name: Collect binaries
+        shell: pwsh
+        run: |
+          $out = "qwentts-windows-x64"
+          New-Item -ItemType Directory $out | Out-Null
+          Get-ChildItem qwentts/build -Recurse -Include *.exe,*.dll |
+            Where-Object { $_.FullName -match '\\Release\\' } |
+            Copy-Item -Destination $out
+          Copy-Item qwentts/LICENSE "$out/LICENSE-qwentts.txt"
+          "qwentts.cpp $env:QWENTTS_SHA, Vulkan SDK $env:VULKAN_VERSION" | Set-Content "$out/VERSION.txt"
+          Get-ChildItem $out -File | ForEach-Object {
+            "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower(), $_.Name
+          } | Set-Content "$out/SHA256SUMS.txt"
+          Get-ChildItem $out
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: qwentts-windows-x64
+          path: qwentts-windows-x64
+          retention-days: 3

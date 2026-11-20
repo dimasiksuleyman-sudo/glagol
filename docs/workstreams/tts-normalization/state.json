@@ -2,8 +2,8 @@
   "schema_version": 1,
   "id": "tts-normalization",
   "title": "Нормализация текста для озвучки: правила, словарь, ИИ-фрагменты",
-  "status": "active",
-  "next": "N4",
+  "status": "done",
+  "next": null,
   "reason": null,
   "claim": null,
   "links": [
@@ -139,7 +139,7 @@
     {
       "id": "N4",
       "title": "Документы RU/EN, SECURITY, ручная проверка на новостях",
-      "status": "pending",
+      "status": "done",
       "depends_on": [
         "N2",
         "N3"
@@ -147,7 +147,23 @@
       "required": [
         "manual"
       ],
-      "checks": []
+      "checks": [
+        {
+          "id": "manual",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Windows build of claude/optimistic-franklin-cvvbsr: dictionary steps 1–13, AI normalization via RouterAI/AITunnel, test news text (docs/workstreams/tts-normalization/log.md)",
+          "cwd": ".",
+          "at": "2026-11-20T22:00:00.000Z",
+          "environment": {
+            "os": "win32",
+            "arch": "x64"
+          },
+          "exit_code": null,
+          "output": "User: «все пункты работают»; «тест закрыт, всё работает»; dictionary entries «кв. м», «тыс.» added by the user",
+          "evidence": "docs/workstreams/tts-normalization/log.md"
+        }
+      ]
     }
   ]
 }
