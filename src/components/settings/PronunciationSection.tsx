@@ -56,7 +56,7 @@ export function PronunciationSection() {
   const listen = (text: string) => run(async () => { setAudio(null); const path = await previewTts(voice, provider, text); setAudio(convertFileSrc(path) + "?v=" + Date.now()); });
   const languageLabel = (l: PronunciationEntry["language"]) => l === "ru" ? t("Russian") : l === "en" ? t("English") : t("Any language");
 
-  return <Card id="pronunciation">
+  return <Card id="pronunciation" data-tour="pronunciation">
     <CardHeader>
       <CardTitle>{t("Pronunciation dictionary")}</CardTitle>
       <CardDescription>{t("pronDescription")}</CardDescription>
