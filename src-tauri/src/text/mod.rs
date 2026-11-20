@@ -8,6 +8,9 @@
 //! Pipeline order in `synthesize_impl`: `preprocessor` →
 //! `chunker` → sequential synthesis → streamed WAV.
 
+mod ai_fragments;
+pub mod ai_normalization;
 pub mod chunker;
+pub mod dictionary;
 pub mod normalize;
 pub mod preprocessor;

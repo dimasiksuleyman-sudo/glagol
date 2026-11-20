@@ -99,11 +99,36 @@ pub async fn remove_tts(
 pub async fn preview_tts(
     app: tauri::AppHandle,
     models: tauri::State<'_, Models>,
+    app_state: tauri::State<'_, crate::state::AppState>,
     provider: Option<String>,
     voice: String,
+    text: Option<String>,
 ) -> Result<String, String> {
     (async {
     let state = models.select(provider.as_deref())?;
+    let english = state.model.language == crate::preferences::Language::En;
+    // A user phrase (pronunciation dictionary check) is prepared exactly as
+    // synthesis prepares documents; at most 200 characters.
+    let phrase = match text.as_deref().map(str::trim).filter(|t| !t.is_empty()) {
+        Some(t) if t.chars().count() > 200 => {
+            return Err("Фраза для прослушивания длиннее 200 символов.".to_string())
+        }
+        Some(t) => {
+            let entries = {
+                let conn = app_state.db.lock().map_err(|e| e.to_string())?;
+                crate::commands::pronunciations::for_synthesis(&conn)
+            };
+            Some(crate::commands::pronunciations::prepare_for_speech(
+                t,
+                &entries,
+                if english { "en" } else { "ru" },
+            ))
+        }
+        None => None,
+    };
+    if phrase.as_ref().is_some_and(|p| p.chars().count() > 280) {
+        return Err("После подготовки фраза слишком длинная, сократите её.".to_string());
+    }
     let started = Instant::now();
     let mut preparation_ms = 0;
     let mut synthesis_ms = 0;
@@ -131,7 +156,7 @@ pub async fn preview_tts(
                 .as_mut()
                 .unwrap()
                 .synthesize_chunk(
-                    if state.model.language == crate::preferences::Language::En { "Hello! This is Glagol. I can read your documents without an internet connection." } else { "Привет! Это Глагол. Теперь я могу озвучивать ваши тексты без интернета." },
+                    phrase.as_deref().unwrap_or(if english { "Hello! This is Glagol. I can read your documents without an internet connection." } else { "Привет! Это Глагол. Теперь я могу озвучивать ваши тексты без интернета." }),
                     &voice,
                 )
                 .await?

@@ -85,6 +85,18 @@ static EMAIL_REGEX: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b").expect("EMAIL_REGEX compiles")
 });
 
+/// Ranges of raw contact details that must stay local before speech preprocessing.
+pub fn contact_ranges(text: &str) -> impl Iterator<Item = std::ops::Range<usize>> + '_ {
+    [
+        &*EMAIL_REGEX,
+        &*URL_SCHEMA_REGEX,
+        &*URL_WWW_REGEX,
+        &*URL_BARE_REGEX,
+    ]
+    .into_iter()
+    .flat_map(|regex| regex.find_iter(text).map(|matched| matched.range()))
+}
+
 /// Multi-letter Russian abbreviations expanded by [`expand_abbreviations`].
 ///
 /// Two entries per phrase — lowercase and sentence-start capitalised —
@@ -120,6 +132,15 @@ pub fn preprocess(text: &str) -> String {
     // Numbers, money, dates and abbreviations as words in the right case
     // (tts-normalization N1); engine-independent.
     crate::text::normalize::ru::normalize(&text)
+}
+
+/// Apply the shared local rules after dictionary (and optional AI) processing.
+pub fn after_dictionary(text: &str, language: &str) -> String {
+    if language == "en" {
+        preprocess_english(&super::dictionary::strip_stress(text))
+    } else {
+        preprocess(text)
+    }
 }
 
 /// Normalise whitespace: CRLF → LF, NBSP/tab → space, collapse runs of

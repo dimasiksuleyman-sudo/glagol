@@ -92,6 +92,7 @@ const mutations = [
   ['cycle',(f)=>{f.state.steps[0].status='pending';f.state.steps[0].depends_on=['R2'];f.state.next='R1';},/dependency cycle/],
   ['unmet running dependency',(f)=>{f.state.steps[0].status='pending';f.state.steps[1].status='in_progress';},/dependency R1 not done/],
   ['unselected active series',(f)=>f.project.active_workstream=null,/active series without selection/],
+  ['duplicate selection',(f)=>f.project.active_workstream=['demo','demo'],/duplicate active_workstream/],
   ['invalid selection path',(f)=>f.project.active_workstream='../escape',/invalid active_workstream/],
   ['missing evidence file',(f)=>f.check.evidence='docs/missing.md',/missing link/],
   ['missing evidence anchor',(f)=>f.check.evidence='docs/workstreams/demo/log.md#absent',/missing anchor/],
@@ -129,6 +130,28 @@ test('dotted release workstream ID passes including active selection',t=>{
   write(f.root,'docs/workstreams/verification-0.4.0/README.md','# Verification');
   write(f.root,'docs/workstreams/verification-0.4.0/log.md','# Log');
   f.state.status='paused';f.state.reason='queued';f.project.active_workstream=dotted.id;f.save();run(f,0);
+});
+function second(f, extra={}) {
+  const other={...f.state,id:'help',claim:null,...extra};
+  write(f.root,'docs/workstreams/help/state.json',other);
+  write(f.root,'docs/workstreams/help/README.md','# Help');
+  write(f.root,'docs/workstreams/help/log.md','# Log');
+  return other;
+}
+const running=(state,branch)=>{state.steps[1].status='in_progress';state.claim={owner:'agent',at,branch};};
+test('parallel active series listed in the selection pass',t=>{
+  const f=fixture(t);running(f.state,'claude/a');
+  const other={...f.state,id:'help',steps:f.state.steps.map(s=>({...s})),claim:{owner:'codex',at,branch:'codex/help'}};
+  second(f,other);f.project.active_workstream=['demo','help'];f.save();run(f,0,/runbook-check OK/);
+  assert.match(renderStatus(f.root),/Активных серий: 2/);
+});
+test('an active series missing from the selection list fails',t=>{
+  const f=fixture(t);second(f);f.project.active_workstream=['demo'];f.save();run(f,1,/selection must name exactly the active series/);
+});
+test('two series claimed on one branch fail',t=>{
+  const f=fixture(t);running(f.state,'same');
+  second(f,{steps:f.state.steps.map(s=>({...s})),claim:{owner:'codex',at,branch:'same'}});
+  f.project.active_workstream=['demo','help'];f.save();run(f,1,/same branch/);
 });
 test('artifact SHA, UUID and deleted historical paths are not Git evidence',t=>{
   const f=fixture(t);write(f.root,'docs/workstreams/demo/log.md','# Проверка\n50081637b602126ee06cb3bc8a744d25651d2da149ee8864b9a379bfdd934437\n01234567-abcd-4321-abcd-0123456789ab\nremoved/file.rs\n');run(f,0);

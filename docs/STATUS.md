@@ -5,15 +5,27 @@
 
 Начало работы: [AGENTS](../AGENTS.md) → этот обзор → состояние и журнал серии.
 
-Выбранная серия: **Нормализация текста для озвучки: правила, словарь, ИИ-фрагменты**.
+Активных серий: 2 — у каждой свой исполнитель и своя ветка.
 
-**NEXT: N2 — Словарь произношения: миграция SQLite, раздел в настройках, импорт/экспорт, «Послушать», бэкап** (pending).
+### Выбранная серия: **Qwen3-TTS: качественные голоса (Apache 2.0) на смену Silero для организаций**.
 
-[Решения](workstreams/tts-normalization/README.md) · [Состояние](workstreams/tts-normalization/state.json) · [Журнал](workstreams/tts-normalization/log.md)
+**NEXT: Q2 — Выбор C++/GGML-порта (лицензия, Vulkan/CUDA, Windows), закрепление версии, замер на GTX 1060, RX 550 и процессоре** (in_progress).
 
-Последний завершённый шаг серии: **N1 — Правила RU/EN в Rust: числа с падежом, дроби, деньги, единицы, даты, время, аббревиатуры; тесты ≥ 200 случаев**.
+[Решения](workstreams/tts-qwen/README.md) · [Состояние](workstreams/tts-qwen/state.json) · [Журнал](workstreams/tts-qwen/log.md)
 
-Проверка 2026-11-20T17:00:00.000Z: test result: ok. 416 passed; 0 failed; 6 ignored (≈80 normalization cases incl. the user's news text verbatim) ([evidence](../docs/workstreams/tts-normalization/log.md)).
+Выполняет: Claude Code (cloud session); ветка claude/optimistic-franklin-cvvbsr; с 2026-11-20T22:00:00.000Z.
+
+Последний завершённый шаг серии: **Q1 — Прослушать демо Qwen3-TTS 0.6B/1.7B на русских и английских текстах пользователя, сравнить с Silero**.
+
+Проверка 2026-11-20T12:00:00.000Z: «Квен обладает более живой озвучкой, меньше синтетического привкуса»; обеим моделям нужна нормализация («980 млн» → «девяносто восемдесят малерад»); «Квен 1.7 с нормализацией цифр и сокращений был бы топчик для прослушивания новостей, с выбором языка» (reported) ([evidence](../docs/workstreams/tts-qwen/log.md)).
+
+### Выбранная серия: **Встроенная справка к 0.7.0: темы новых функций с подсветкой**.
+
+**NEXT: P1 — Семь новых тем справки (заминки, Ctrl+Win, сервер, код подключения, словарь, «Как прочитается», ИИ-нормализация): маркеры data-tour, тексты RU/EN** (pending).
+
+[Решения](workstreams/help-0.7/README.md) · [Состояние](workstreams/help-0.7/state.json) · [Журнал](workstreams/help-0.7/log.md)
+
+В этой серии ещё нет завершённых шагов. Предыдущие результаты — в связанных журналах.
 
 ## Доставка и наблюдения
 
@@ -73,5 +85,7 @@
 - [docs/workstreams/ux-help/log.md](../docs/workstreams/ux-help/log.md)
 - [docs/workstreams/modifier-hotkey/README.md](../docs/workstreams/modifier-hotkey/README.md)
 - [docs/workstreams/modifier-hotkey/log.md](../docs/workstreams/modifier-hotkey/log.md)
+- [docs/workstreams/help-0.7/README.md](../docs/workstreams/help-0.7/README.md)
+- [docs/workstreams/help-0.7/log.md](../docs/workstreams/help-0.7/log.md)
 
 PASS в старом журнале — результат той даты, не новая проверка. Сборка, установка и публикация учитываются отдельно.

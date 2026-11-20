@@ -50,6 +50,9 @@ local dictation. Upgrades retain modes, server addresses, credentials and voices
   a selectable thread count and a one-click recommendation for the computer's hardware. Independent office-server and cloud profiles remain available.
 - Optional offline Silero synthesis: v3_en with EN 0–3 (default EN 0), and v5.5 RU
   with Aidar, Baya, Kseniya, Xenia and Eugene. Voice preview, progress and cancellation.
+- Numbers, amounts, dates and abbreviations are read as words in the right Russian
+  case; your pronunciation dictionary («written as → read as», stress with «+») comes
+  first; optional AI help for tricky numbers through any OpenAI-compatible service.
 - Paste text or import TXT/MD/DOCX/PDF. Long documents use a sequential WAV pipeline.
   Library, rename, localized player, 0.5–2× playback, WAV export and backups.
   Existing recordings and their metadata remain usable.
@@ -85,6 +88,13 @@ A new installation starts with text to speech off; turn it on in Settings → Te
 speech when needed. If you only dictate, keep it off: Silero is then neither offered,
 verified at startup nor preloaded, and the Synthesize page is hidden.
 
+**Optional AI text preparation** can improve how numbers and abbreviations are read.
+It is off by default. When enabled, the selected provider receives only short excerpts
+around those expressions, up to a tenth of the text. Any OpenAI-compatible service
+works: enter its address and key, and Glagol suggests a model and checks the connection
+before saving. Silero synthesizes audio locally. See
+[the guide](USER_GUIDE.en.md#reading-a-document) for preview and fallback.
+
 ### Licenses and data
 
 Glagol is free and MIT licensed. Dictation can be used in organizations, subject to
@@ -108,6 +118,9 @@ Tauri 2, Rust, React 19, TypeScript, SQLite. `pnpm install --frozen-lockfile`,
 `pnpm tauri build`. [Architecture](PROJECT_STRUCTURE.md), [contributing](CONTRIBUTING.md),
 [Windows checks](docs/runbooks/windows-build.md), [TTS runtime](docs/local-tts-runtime.md),
 [STT runtime](docs/local-dictation-runtime.md), [changelog](CHANGELOG.md).
+Working with AI agents or forking: [AGENTS.md](AGENTS.md) is the workflow and
+[docs/agents/handoff-prompt.md](docs/agents/handoff-prompt.md) a ready prompt to hand
+a task to any agent without it reading the whole codebase.
 Current implementation evidence and unperformed manual checks are recorded in the
 [0.5.0 workstream](docs/workstreams/english-first/log.md). Synthetic audio tests are
 not a listening-quality result. Direct Silero-origin delivery was unavailable from
@@ -149,6 +162,9 @@ the development machine; importing pinned files was exercised separately.
   с настраиваемым числом потоков и рекомендацией под железо компьютера в один клик. Сохраняются отдельные офисный и облачный профили.
 - Необязательная офлайн-озвучка Silero: v3_en с EN 0–3 (по умолчанию EN 0) и
   v5.5 RU с Айдаром, Баей, Ксенией, Xenia и Евгением. Есть образец голоса, прогресс и отмена.
+- Числа, суммы, даты и сокращения читаются словами в нужном падеже; раньше правил
+  работает ваш словарь произношения («как написано → как читать», ударение «+»);
+  по желанию — помощь ИИ со сложными числами через любой OpenAI-совместимый сервис.
 - Текст или TXT/MD/DOCX/PDF; последовательная озвучка длинных документов в WAV.
   Библиотека, переименование, локализованный плеер, скорость 0.5–2×, экспорт и бэкапы.
   Старые записи и метаданные остаются доступны.
@@ -184,6 +200,13 @@ Python/PyTorch и словарей произношения. Начальную 
 не предлагается, не проверяется при запуске и не загружается заранее, экран
 «Озвучить» скрыт.
 
+**Необязательная ИИ-нормализация** помогает читать числа и сокращения. По умолчанию
+она выключена. После включения выбранный провайдер получает короткие фрагменты рядом
+с такими выражениями, не больше десятой части текста. Подходит любой
+OpenAI-совместимый сервис: введите адрес и ключ, Глагол предложит модель и проверит
+подключение перед сохранением. Silero создаёт аудио локально. Предпросмотр и запасной
+режим описаны в [руководстве](USER_GUIDE.ru.md).
+
 ### Лицензии и данные
 
 Глагол бесплатен, код — MIT. Диктовка доступна организациям с учётом условий
@@ -211,6 +234,9 @@ React 19, TypeScript, SQLite. `pnpm install --frozen-lockfile`, `pnpm tauri buil
 [Архитектура](PROJECT_STRUCTURE.md), [вклад](CONTRIBUTING.md),
 [проверки Windows](docs/runbooks/windows-build.md), [TTS runtime](docs/local-tts-runtime.ru.md),
 [STT runtime](docs/local-dictation-runtime.md), [изменения](CHANGELOG.md).
+Работа с ИИ-агентами и форки: процесс — [AGENTS.md](AGENTS.md), готовый промпт для
+поручения задачи любому агенту без чтения всего кода —
+[docs/agents/handoff-prompt.md](docs/agents/handoff-prompt.md).
 Результаты 0.5.0 и недоступные ручные проверки — в [журнале](docs/workstreams/english-first/log.md).
 Синтетические WAV не подтверждают качество на слух. Прямой сервер Silero с
 машины разработки был недоступен; импорт закреплённых файлов проверен отдельно.

@@ -778,5 +778,57 @@
   {
     "en": "The server did not report a recognition model.",
     "ru": "Сервер не сообщил модель распознавания."
+  },
+  {
+    "en": "Enter how the word is written.",
+    "ru": "Укажите, как слово написано."
+  },
+  {
+    "en": "Enter how the word is read.",
+    "ru": "Укажите, как слово читать."
+  },
+  {
+    "en": "The dictionary entry is too long.",
+    "ru": "Слишком длинная запись словаря."
+  },
+  {
+    "en": "Invalid language of the dictionary entry.",
+    "ru": "Недопустимый язык записи словаря."
+  },
+  {
+    "en": "This word is already in the dictionary for this language.",
+    "ru": "Такое слово для этого языка уже есть в словаре."
+  },
+  {
+    "en": "The dictionary already has the maximum number of entries.",
+    "ru": "В словаре уже максимальное число записей."
+  },
+  {
+    "en": "Could not read the dictionary: {e}",
+    "ru": "Не удалось прочитать словарь: {e}"
+  },
+  {
+    "en": "Could not delete the dictionary entry: {e}",
+    "ru": "Не удалось удалить запись словаря: {e}"
+  },
+  {
+    "en": "Could not save the dictionary: {e}",
+    "ru": "Не удалось сохранить словарь: {e}"
+  },
+  {
+    "en": "The dictionary file is larger than 1 MB.",
+    "ru": "Файл словаря больше 1 МБ."
+  },
+  {
+    "en": "Could not read the dictionary file: {e}",
+    "ru": "Не удалось прочитать файл словаря: {e}"
+  },
+  {
+    "en": "The phrase to preview is longer than 200 characters.",
+    "ru": "Фраза для прослушивания длиннее 200 символов."
+  },
+  {
+    "en": "The phrase is too long after preparation; shorten it.",
+    "ru": "После подготовки фраза слишком длинная, сократите её."
   }
 ]

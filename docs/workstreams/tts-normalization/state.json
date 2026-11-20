@@ -2,8 +2,8 @@
   "schema_version": 1,
   "id": "tts-normalization",
   "title": "Нормализация текста для озвучки: правила, словарь, ИИ-фрагменты",
-  "status": "active",
-  "next": "N2",
+  "status": "done",
+  "next": null,
   "reason": null,
   "claim": null,
   "links": [
@@ -35,7 +35,7 @@
             "pnpm": "10.28.0"
           },
           "exit_code": 0,
-          "output": "test result: ok. 416 passed; 0 failed; 6 ignored (≈80 normalization cases incl. the user's news text verbatim)",
+          "output": "test result: ok. 416 passed; 0 failed; 6 ignored (approximately 80 normalization cases)",
           "evidence": "docs/workstreams/tts-normalization/log.md"
         }
       ]
@@ -43,7 +43,7 @@
     {
       "id": "N2",
       "title": "Словарь произношения: миграция SQLite, раздел в настройках, импорт/экспорт, «Послушать», бэкап",
-      "status": "pending",
+      "status": "done",
       "depends_on": [
         "N1"
       ],
@@ -51,12 +51,47 @@
         "rust",
         "frontend"
       ],
-      "checks": []
+      "checks": [
+        {
+          "id": "rust",
+          "status": "PASS",
+          "method": "command",
+          "command": "cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test",
+          "cwd": "src-tauri",
+          "at": "2026-11-20T18:30:00.000Z",
+          "environment": {
+            "os": "Linux container",
+            "rustc": "1.97.0",
+            "node": "v22.23.4",
+            "pnpm": "10.28.0"
+          },
+          "exit_code": 0,
+          "output": "test result: ok. 425 passed; 0 failed; 6 ignored (9 new dictionary/storage tests)",
+          "evidence": "docs/workstreams/tts-normalization/log.md"
+        },
+        {
+          "id": "frontend",
+          "status": "PASS",
+          "method": "command",
+          "command": "pnpm exec tsc --noEmit && pnpm build",
+          "cwd": ".",
+          "at": "2026-11-20T18:30:00.000Z",
+          "environment": {
+            "os": "Linux container",
+            "rustc": "1.97.0",
+            "node": "v22.23.4",
+            "pnpm": "10.28.0"
+          },
+          "exit_code": 0,
+          "output": "I18N PASS: 409 keys with matching parameters; built",
+          "evidence": "docs/workstreams/tts-normalization/log.md"
+        }
+      ]
     },
     {
       "id": "N3",
       "title": "ИИ-нормализация фрагментами по разрешению: провайдер/модель/ключ, валидация, откат на правила, кэш, предпросмотр",
-      "status": "pending",
+      "status": "done",
       "depends_on": [
         "N1"
       ],
@@ -64,12 +99,47 @@
         "rust",
         "frontend"
       ],
-      "checks": []
+      "checks": [
+        {
+          "id": "rust",
+          "status": "PASS",
+          "method": "command",
+          "command": "cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test",
+          "cwd": "src-tauri",
+          "at": "2026-11-20T17:07:04.522Z",
+          "environment": {
+            "os": "Debian 13 (Linux container)",
+            "rustc": "1.100.0",
+            "node": "v24.22.1",
+            "pnpm": "11.25.0"
+          },
+          "exit_code": 0,
+          "output": "test result: ok. 431 passed; 0 failed; 6 ignored (6 new tests for AI normalization and excerpt selection)",
+          "evidence": "docs/workstreams/tts-normalization/log.md"
+        },
+        {
+          "id": "frontend",
+          "status": "PASS",
+          "method": "command",
+          "command": "pnpm exec tsc --noEmit && pnpm build",
+          "cwd": ".",
+          "at": "2026-11-20T17:07:04.522Z",
+          "environment": {
+            "os": "Debian 13 (Linux container)",
+            "rustc": "1.100.0",
+            "node": "v24.22.1",
+            "pnpm": "11.25.0"
+          },
+          "exit_code": 0,
+          "output": "I18N PASS: 428 keys with matching parameters; Vite built",
+          "evidence": "docs/workstreams/tts-normalization/log.md"
+        }
+      ]
     },
     {
       "id": "N4",
       "title": "Документы RU/EN, SECURITY, ручная проверка на новостях",
-      "status": "pending",
+      "status": "done",
       "depends_on": [
         "N2",
         "N3"
@@ -77,7 +147,23 @@
       "required": [
         "manual"
       ],
-      "checks": []
+      "checks": [
+        {
+          "id": "manual",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Windows build of claude/optimistic-franklin-cvvbsr: dictionary steps 1–13, AI normalization via RouterAI/AITunnel, test news text (docs/workstreams/tts-normalization/log.md)",
+          "cwd": ".",
+          "at": "2026-11-20T22:00:00.000Z",
+          "environment": {
+            "os": "win32",
+            "arch": "x64"
+          },
+          "exit_code": null,
+          "output": "User: «все пункты работают»; «тест закрыт, всё работает»; dictionary entries «кв. м», «тыс.» added by the user",
+          "evidence": "docs/workstreams/tts-normalization/log.md"
+        }
+      ]
     }
   ]
 }

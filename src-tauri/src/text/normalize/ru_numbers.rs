@@ -31,7 +31,8 @@ impl Case {
         }
     }
 
-    fn is_direct(self) -> bool {
+    /// Nominative or accusative: the cases where 2–4 take the genitive singular.
+    pub fn is_direct(self) -> bool {
         matches!(self, Case::Nom | Case::Acc)
     }
 }
@@ -192,6 +193,47 @@ pub const KILOMETRE: Noun = Noun {
         "километры",
         "километрами",
         "километрах",
+    ],
+    gender: Gender::M,
+};
+/// «кв. м»: adjective + noun; after 2–4 in the direct cases the adjective is
+/// plural («два квадратных метра»), see `square_paucal`.
+pub const SQUARE_METRE: Noun = Noun {
+    sg: [
+        "квадратный метр",
+        "квадратного метра",
+        "квадратному метру",
+        "квадратный метр",
+        "квадратным метром",
+        "квадратном метре",
+    ],
+    pl: [
+        "квадратные метры",
+        "квадратных метров",
+        "квадратным метрам",
+        "квадратные метры",
+        "квадратными метрами",
+        "квадратных метрах",
+    ],
+    gender: Gender::M,
+};
+/// «кв. км».
+pub const SQUARE_KILOMETRE: Noun = Noun {
+    sg: [
+        "квадратный километр",
+        "квадратного километра",
+        "квадратному километру",
+        "квадратный километр",
+        "квадратным километром",
+        "квадратном километре",
+    ],
+    pl: [
+        "квадратные километры",
+        "квадратных километров",
+        "квадратным километрам",
+        "квадратные километры",
+        "квадратными километрами",
+        "квадратных километрах",
     ],
     gender: Gender::M,
 };

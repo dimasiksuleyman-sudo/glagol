@@ -83,6 +83,23 @@ const MIGRATIONS_SLICE: &[M<'static>] = &[
     M::up("ALTER TABLE documents ADD COLUMN provider TEXT NOT NULL DEFAULT 'salutespeech-legacy';"),
     // Do not guess the language of existing user documents or legacy audio.
     M::up("ALTER TABLE documents ADD COLUMN speech_language TEXT CHECK (speech_language IN ('en', 'ru') OR speech_language IS NULL);"),
+    // 7: the user's pronunciation dictionary (tts-normalization N2).
+    M::up(
+        r#"
+    CREATE TABLE pronunciations (
+        id              INTEGER PRIMARY KEY AUTOINCREMENT,
+        pattern         TEXT NOT NULL,
+        replacement     TEXT NOT NULL,
+        language        TEXT NOT NULL DEFAULT 'any' CHECK (language IN ('ru', 'en', 'any')),
+        whole_word      INTEGER NOT NULL DEFAULT 1,
+        case_sensitive  INTEGER NOT NULL DEFAULT 0,
+        enabled         INTEGER NOT NULL DEFAULT 1,
+        created_at      INTEGER NOT NULL,
+        updated_at      INTEGER NOT NULL,
+        UNIQUE (pattern, language)
+    );
+    "#,
+    ),
 ];
 
 /// Apply every pending migration to `conn`. Idempotent: calling twice on the

@@ -2,10 +2,14 @@
   "schema_version": 1,
   "id": "tts-qwen",
   "title": "Qwen3-TTS: качественные голоса (Apache 2.0) на смену Silero для организаций",
-  "status": "paused",
+  "status": "active",
   "next": "Q2",
-  "reason": "План согласован 2026-11-20; начинать по команде пользователя после/параллельно tts-normalization N1 (см. docs/roadmap.md).",
-  "claim": null,
+  "reason": null,
+  "claim": {
+    "owner": "Claude Code (cloud session)",
+    "at": "2026-11-20T22:00:00.000Z",
+    "branch": "claude/optimistic-franklin-cvvbsr"
+  },
   "links": [
     "docs/workstreams/tts-qwen/README.md",
     "docs/workstreams/tts-qwen/log.md"
@@ -39,7 +43,7 @@
     {
       "id": "Q2",
       "title": "Выбор C++/GGML-порта (лицензия, Vulkan/CUDA, Windows), закрепление версии, замер на GTX 1060, RX 550 и процессоре",
-      "status": "pending",
+      "status": "in_progress",
       "depends_on": [
         "Q1"
       ],

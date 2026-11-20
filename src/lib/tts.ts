@@ -12,4 +12,5 @@ export const prepareTts = (provider = "silero") => invoke<void>("prepare_tts", {
 export const installTts = (accepted: boolean, licenseHash: string, modelPath: string | null = null, provider = "silero") => invoke<void>("install_tts", { accepted, licenseHash, modelPath, provider });
 export const cancelTts = () => invoke<void>("cancel_tts");
 export const removeTts = (provider = "silero") => invoke<void>("remove_tts", { provider });
-export const previewTts = (voice: string, provider = "silero") => invoke<string>("preview_tts", { voice, provider });
+/** A sample of `voice`; with `text` (≤200 characters) that phrase, prepared like a document. */
+export const previewTts = (voice: string, provider = "silero", text: string | null = null) => invoke<string>("preview_tts", { voice, provider, text });

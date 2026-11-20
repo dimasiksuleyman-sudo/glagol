@@ -5,6 +5,7 @@
 //! are converted to plain strings at this boundary because Tauri's IPC
 //! layer serializes errors to strings on the JavaScript side anyway.
 
+pub mod ai_normalization;
 pub mod backup;
 pub mod diagnostics;
 pub mod dictation;
@@ -12,6 +13,7 @@ pub mod file;
 pub mod lan_server;
 pub mod metrics;
 pub mod preferences;
+pub mod pronunciations;
 pub mod speech;
 pub mod storage;
 pub mod synthesize;

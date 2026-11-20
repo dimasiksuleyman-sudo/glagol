@@ -2,6 +2,12 @@
 
 [English](#english) · [Русский](#русский)
 
+Working with AI agents (Claude Code, Codex…) or forking: the workflow is in
+[AGENTS.md](AGENTS.md), and [docs/agents/handoff-prompt.md](docs/agents/handoff-prompt.md)
+has a ready prompt to hand any agent a task. / Работа с ИИ-агентами и форки:
+процесс — в [AGENTS.md](AGENTS.md), готовый промпт для поручения задачи —
+в [docs/agents/handoff-prompt.md](docs/agents/handoff-prompt.md).
+
 ---
 
 ## English

@@ -1,4 +1,5 @@
 //! Sequential bounded TTS with transactional library persistence.
+use super::ai_normalization::{self, MAX_TEXT_CHARS};
 use crate::{
     db::{self, repository::DocumentRecord},
     paths,
@@ -19,6 +20,8 @@ use tauri::{ipc::Channel, Emitter};
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum ProgressEvent {
     Preparing,
+    Normalizing,
+    NormalizationFallback,
     Chunked { total: usize },
     SynthesizingChunk { current: usize, total: usize },
     Joining,
@@ -38,7 +41,7 @@ pub async fn synthesize_document(
         if text.trim().is_empty() {
             return Err("Введите текст для озвучивания.".into());
         }
-        if text.chars().count() > 500_000 {
+        if text.chars().count() > MAX_TEXT_CHARS {
             return Err("Текст слишком большой: максимум 500 000 символов.".into());
         }
         if !tts.model.voices.contains(&voice.as_str()) {
@@ -65,11 +68,45 @@ pub async fn synthesize_document(
 
             let synthesis_started = Instant::now();
             let synthesis_result = async {
+                let language = if tts.model.provider == "silero-en" {
+                    "en"
+                } else {
+                    "ru"
+                };
+                let config = ai_normalization::configuration().ok().flatten();
+                if config
+                    .as_ref()
+                    .is_some_and(|config| config.settings.enabled)
+                {
+                    let _ = on_progress.send(ProgressEvent::Normalizing);
+                }
+                let prepare =
+                    ai_normalization::prepare_document(&state, config.as_ref(), &text, language);
+                let prepared = tokio::select! {
+                    biased;
+                    _ = async {
+                        while !tts.cancel.load(Ordering::Relaxed) {
+                            tokio::time::sleep(std::time::Duration::from_millis(80)).await;
+                        }
+                    } => return Err("Озвучка отменена.".into()),
+                    result = prepare => result?,
+                };
+                if prepared.fallback {
+                    let _ = on_progress.send(ProgressEvent::NormalizationFallback);
+                }
                 let mut slot = tts.worker.lock().await;
                 let backend = slot.as_mut().ok_or("Движок не готов")?;
-                synthesize_impl(&state.db, &audio_root, &text, &voice, backend, |e| {
-                    let _ = on_progress.send(e);
-                })
+                synthesize_prepared_impl(
+                    &state.db,
+                    &audio_root,
+                    &text,
+                    &prepared.text,
+                    &voice,
+                    backend,
+                    |e| {
+                        let _ = on_progress.send(e);
+                    },
+                )
                 .await
             }
             .await;
@@ -110,7 +147,8 @@ pub async fn synthesize_document(
     .map_err(crate::i18n::error)
 }
 
-/// Backend seam allows offline tests and future providers without changing storage.
+/// Offline seam for backend and native worker tests.
+#[cfg(test)]
 pub async fn synthesize_impl(
     db: &Mutex<rusqlite::Connection>,
     audio_root: &Path,
@@ -119,16 +157,33 @@ pub async fn synthesize_impl(
     backend: &mut impl TtsBackend,
     progress: impl Fn(ProgressEvent),
 ) -> Result<String, String> {
+    let entries = {
+        let conn = db.lock().map_err(|e| e.to_string())?;
+        super::pronunciations::for_synthesis(&conn)
+    };
+    let language = if backend.capabilities().provider == "silero-en" {
+        "en"
+    } else {
+        "ru"
+    };
+    let prepared = super::pronunciations::prepare_for_speech(text, &entries, language);
+    synthesize_prepared_impl(db, audio_root, text, &prepared, voice, backend, progress).await
+}
+
+async fn synthesize_prepared_impl(
+    db: &Mutex<rusqlite::Connection>,
+    audio_root: &Path,
+    text: &str,
+    prepared_text: &str,
+    voice: &str,
+    backend: &mut impl TtsBackend,
+    progress: impl Fn(ProgressEvent),
+) -> Result<String, String> {
     let caps = backend.capabilities();
     if !caps.voices.contains(&voice) {
         return Err("Неизвестный голос.".into());
     }
-    let clean = if backend.capabilities().provider == "silero-en" {
-        crate::text::preprocessor::preprocess_english(text)
-    } else {
-        crate::text::preprocessor::preprocess(text)
-    };
-    let chunks = chunk_text(&clean, caps.max_input_chars);
+    let chunks = chunk_text(prepared_text, caps.max_input_chars);
     if chunks.is_empty() {
         return Err("Введите текст для озвучивания.".into());
     }

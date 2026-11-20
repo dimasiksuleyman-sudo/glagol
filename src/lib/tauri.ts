@@ -16,6 +16,8 @@ export async function reportUiReady(): Promise<void> {
  */
 export type ProgressEvent =
   | { kind: "preparing" }
+  | { kind: "normalizing" }
+  | { kind: "normalizationFallback" }
   | { kind: "chunked"; total: number }
   | { kind: "synthesizingChunk"; current: number; total: number }
   | { kind: "joining" };
@@ -610,3 +612,50 @@ export interface LanConnection { base_url: string; key: string; model: string }
 export const inspectLanConnectionCode = (code: string) => invoke<LanConnection>("inspect_lan_connection_code", { code });
 /** The running dictation's state for a pill window rebuilt mid-session, or `null` when idle. */
 export const overlayState = () => invoke<DictationState | null>("overlay_state").catch(() => null);
+/** Mirrors `text::dictionary::Entry`: one pronunciation dictionary row. */
+export interface PronunciationEntry {
+  id: number | null;
+  pattern: string;
+  replacement: string;
+  language: "ru" | "en" | "any";
+  whole_word: boolean;
+  case_sensitive: boolean;
+  enabled: boolean;
+}
+export const listPronunciations = () => invoke<PronunciationEntry[]>("list_pronunciations");
+export const savePronunciation = (entry: PronunciationEntry) => invoke<PronunciationEntry>("save_pronunciation", { entry });
+export const deletePronunciation = (id: number) => invoke<void>("delete_pronunciation", { id });
+export const exportPronunciations = (path: string) => invoke<number>("export_pronunciations", { path });
+/** Returns [imported, skipped]. */
+export const importPronunciations = (path: string) => invoke<[number, number]>("import_pronunciations", { path });
+/** How a phrase will be read: the dictionary, then the built-in rules. */
+export const previewNormalized = (text: string, language: "ru" | "en") => invoke<string>("preview_normalized", { text, language });
+
+export interface AiNormalizationSettings {
+  enabled: boolean;
+  /** Any OpenAI-compatible HTTPS base URL, e.g. https://routerai.ru/api/v1. */
+  base_url: string;
+  model: string;
+}
+
+export interface AiNormalizationSettingsView {
+  settings: AiNormalizationSettings;
+  has_key: boolean;
+}
+
+export interface NormalizedDocument {
+  text: string;
+  fallback: boolean;
+}
+
+export const getAiNormalizationSettings = () =>
+  invoke<AiNormalizationSettingsView>("get_ai_normalization_settings");
+export const saveAiNormalizationSettings = (settings: AiNormalizationSettings, apiKey?: string) =>
+  invoke<AiNormalizationSettingsView>("save_ai_normalization_settings", { settings, apiKey });
+export const testAiNormalization = () => invoke<void>("test_ai_normalization");
+/** Mirrors `commands::ai_normalization::ModelsView`. */
+export interface AiModels { models: string[]; suggested: string | null }
+/** The endpoint's model list; without `apiKey` the saved key for the same address is used. */
+export const listAiModels = (baseUrl: string, apiKey?: string) => invoke<AiModels>("list_ai_models", { baseUrl, apiKey });
+export const previewDocumentNormalization = (text: string, language: "ru" | "en") =>
+  invoke<NormalizedDocument>("preview_document_normalization", { text, language });

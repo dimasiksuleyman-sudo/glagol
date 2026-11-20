@@ -126,6 +126,41 @@ rules («$81.3 billion» → «eighty-one point three billion dollars», «in 20
 twenty twenty-six»). The case is inferred from neighbouring words and can occasionally
 be off; listen to unusual notation. Choosing a language is not translation.
 
+**Improve number reading with AI** is off by default. In Settings → Text to speech,
+enter the address of any OpenAI-compatible service (usually ending with `/v1`; the
+RouterAI and AITunnel buttons fill it in) and its API key, then click **Load models**:
+Glagol reads the service's model list and suggests a fast inexpensive text model
+(Gemini Flash Lite when available); you can pick another one. **Save** with the switch
+on first checks the address, key and model with a built-in sample and saves only if
+the check passes; otherwise a message names the problem (address not answering, key
+not accepted, no such model). **Test AI connection** repeats the check later — useful
+because providers retire and rename models. Once enabled, document preview and
+synthesis send short excerpts near numbers, amounts and abbreviations, including
+neighboring words — at most a tenth of the text. Names and other words in Latin
+letters, links, email addresses, phone numbers and dictionary words stay on the
+computer. Use this only for documents you are comfortable sharing with the selected
+provider. The key and choice are stored in the system credential store outside backups.
+
+**Preview how this is read** on the Synthesize page shows the prepared document.
+If the provider is unreachable or a response changes the surrounding words,
+Glagol uses local rules for the affected excerpts. The audio itself is synthesized
+locally.
+
+**Pronunciation dictionary** (Settings → Text to speech, below the Silero card) tells
+Glagol how to read names, abbreviations and terms: «Written as» → «Read as» (for example
+«Anthropic» → «Энтропик»). It is applied before the built-in rules, so your choice always
+wins. Each entry has a language (Russian, English or any), «Whole word» (on by default:
+«ИИ» leaves «ИИСУС» alone) and «Match case»; an entry can be switched off without
+deleting it. When several entries match, the longest wins («Нью-Йорк Таймс» before
+«Нью-Йорк»), and a replacement is never processed again. For Russian voices mark stress
+with «+» before the stressed vowel («з+амок»); English voices skip it. «Check a phrase»
+shows how text will be read, and «Listen» (and ▶ next to an entry) speaks up to 200
+characters with the selected voice, which must be installed. «Import» accepts a CSV
+exported by Glagol or a simple two-column table «written as;read as» (comma or semicolon);
+existing words are updated. «Export» saves the dictionary as CSV. The dictionary lives in
+Glagol's database and is included in backups; up to 5000 entries. Documents already
+synthesized do not change — synthesize them again.
+
 The Library is a compact list: ▶ next to a document plays it in the shared player at the
 bottom (pause, seek, 0.5–2× speed, volume); the icons rename, export the WAV or delete.
 With six or more documents a search by title appears. User titles, document contents and

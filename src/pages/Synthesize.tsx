@@ -32,6 +32,7 @@ import { cancelTts, prepareTts } from "@/lib/tts";
 import {
   exportAudio,
   readAndParseFile,
+  previewDocumentNormalization,
   synthesizeDocument,
   type ProgressEvent,
 } from "@/lib/tauri";
@@ -60,6 +61,8 @@ export function Synthesize() {
   const voice = (speechLanguage === "en" ? preferences?.tts_voice_en : preferences?.tts_voice_ru) ?? (speechLanguage === "en" ? "en_0" : "xenia");
   const VOICES = voicesFor(speechLanguage);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isPreviewing, setIsPreviewing] = useState(false);
+  const [preview, setPreview] = useState<string | null>(null);
   const [progress, setProgress] = useState<ProgressEvent | null>(null);
   // The document_id of the most recent successful synthesis — drives
   // the secondary "Сохранить на диск" button. Cleared on the next
@@ -86,12 +89,31 @@ export function Synthesize() {
       .finally(() => { if (warmupStarted.current === provider) setIsWarmingUp(false); });
   }, [provider, status?.accepted, status?.installed, preferences?.tts_enabled]);
 
+  useEffect(() => { setPreview(null); }, [text, speechLanguage]);
+
+  async function handlePreview() {
+    setIsPreviewing(true);
+    setPreview(null);
+    try {
+      const result = await previewDocumentNormalization(text, speechLanguage);
+      setPreview(result.text);
+      if (result.fallback) toast.warning(t("aiNormalizationFallback"));
+    } catch (error) {
+      toast.error(stringifyError(error));
+    } finally {
+      setIsPreviewing(false);
+    }
+  }
+
   async function handleSynthesize() {
     setIsLoading(true);
     setProgress(null);
     setLastDocumentId(null);
     try {
-      const documentId = await synthesizeDocument(text, voice, setProgress, provider);
+      const documentId = await synthesizeDocument(text, voice, event => {
+        if (event.kind === "normalizationFallback") toast.warning(t("aiNormalizationFallback"));
+        else setProgress(event);
+      }, provider);
       setLastDocumentId(documentId);
       toast.success(t("Saved to library"), {
         action: {
@@ -200,7 +222,7 @@ export function Synthesize() {
 
   const trimmedTextLength = text.trim().length;
   const preparationActive = isWarmingUp || status?.progress?.stage === "preparing";
-  const canSynthesize = !isLoading && !preparationActive && !status?.progress && trimmedTextLength > 0;
+  const canSynthesize = !isLoading && !isPreviewing && !preparationActive && !status?.progress && trimmedTextLength > 0;
   const canExport = !isLoading && !isExporting && lastDocumentId !== null;
 
   return (
@@ -229,7 +251,7 @@ export function Synthesize() {
                 variant="outline"
                 size="sm"
                 onClick={handlePickFile}
-                disabled={isLoading || isLoadingFile}
+                disabled={isLoading || isPreviewing || isLoadingFile}
               >
                 <FileUp className="mr-1 h-4 w-4" />
                 {isLoadingFile ? t("Opening…") : t("Choose a file")}
@@ -241,13 +263,13 @@ export function Synthesize() {
               placeholder={t("Paste the text you want to read aloud.")}
               value={text}
               onChange={(event) => setText(event.target.value)}
-              disabled={isLoading}
+              disabled={isLoading || isPreviewing}
             />
             <p className="text-muted-foreground text-xs">
               {trimmedTextLength.toLocaleString(currentLocale())} {t("characters")}{" "}</p>
           </div>
 
-          <TtsLanguageSwitch disabled={isLoading || preparationActive} />
+          <TtsLanguageSwitch disabled={isLoading || isPreviewing || preparationActive} />
           <div className="space-y-2" data-tour="synth-voice">
             <Label htmlFor="voice">{t("Voice")}</Label>
             <Select value={voice} onValueChange={value => { void setTtsVoice(value).catch(e => toast.error(String(e))); }} disabled={isLoading}>
@@ -262,6 +284,17 @@ export function Synthesize() {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Button type="button" variant="outline" onClick={handlePreview}
+              disabled={isLoading || isPreviewing || isLoadingFile || trimmedTextLength === 0}>
+              {isPreviewing ? t("Preparing text preview…") : t("Preview how this is read")}
+            </Button>
+            {preview !== null && (
+              <pre className="max-h-60 overflow-auto whitespace-pre-wrap break-words rounded border bg-muted/40 p-3 font-sans text-sm"
+                tabIndex={0} aria-label={t("Text preview")}>{preview}</pre>
+            )}
           </div>
 
           <Button onClick={handleSynthesize} disabled={!canSynthesize} className="w-full">
@@ -320,6 +353,11 @@ function ProgressIndicator({ event }: ProgressIndicatorProps) {
     case "preparing":
       label = t("Preparing local speech…");
       break;
+    case "normalizing":
+      label = t("Normalizing text with AI…");
+      break;
+    case "normalizationFallback":
+      return null;
     case "chunked":
       percent = 5;
       label = t("Text split into {p0} chunks", { p0: event.total.toLocaleString(currentLocale()) });
@@ -335,7 +373,7 @@ function ProgressIndicator({ event }: ProgressIndicatorProps) {
   }
   return (
     <div className="space-y-2">
-      <Progress value={event.kind === "preparing" ? undefined : percent} />
+      <Progress value={event.kind === "preparing" || event.kind === "normalizing" ? undefined : percent} />
       <p className="text-muted-foreground text-xs">{label}</p>
     </div>
   );
