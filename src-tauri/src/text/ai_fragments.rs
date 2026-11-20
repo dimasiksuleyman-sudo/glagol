@@ -17,9 +17,16 @@ static PRIVATE_NUMBER: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"\b[0-9]{7,}\b|\b[0-9]{1,3}(?:\.[0-9]{1,3}){3}\b|\+?[0-9][ \t-]*\(?[0-9]{3}\)?[ \t-]*[0-9]{3}[ \t-]*[0-9]{2}[ \t-]*[0-9]{2}\b").unwrap()
 });
 
+/// Abbreviations written with a dot that do not end a sentence by themselves.
+const DOTTED: &[&str] = &[
+    "кв", "тыс", "млн", "млрд", "трлн", "руб", "долл", "г", "гг", "ст", "ул", "д", "т", "п", "см",
+];
+
 pub(super) struct Fragment {
     pub range: Range<usize>,
     targets: Vec<Range<usize>>,
+    /// Contains a number whose case the local rules cannot tell.
+    hard: bool,
 }
 
 struct Token {
@@ -28,6 +35,7 @@ struct Token {
     target: bool,
     blocked: bool,
     number: bool,
+    hard: bool,
     ends_sentence: bool,
 }
 
@@ -53,6 +61,8 @@ fn word_target(word: &str, follows_number: bool) -> bool {
                     | "р"
                     | "км"
                     | "кг"
+                    | "кв"
+                    | "м"
                     | "км/ч"
                     | "г"
                     | "гг"
@@ -68,7 +78,12 @@ fn word_target(word: &str, follows_number: bool) -> bool {
             )
 }
 
-pub(super) fn select(text: &str, protected: &[Range<usize>], original_text: &str) -> Vec<Fragment> {
+pub(super) fn select(
+    text: &str,
+    protected: &[Range<usize>],
+    english: bool,
+    original_text: &str,
+) -> Vec<Fragment> {
     // At most a tenth of the document (non-space characters) leaves the computer.
     let budget = (original_text.chars().filter(|c| !c.is_whitespace()).count() / DISCLOSED_SHARE)
         .min(MAX_DISCLOSED_CHARS);
@@ -97,7 +112,15 @@ pub(super) fn select(text: &str, protected: &[Range<usize>], original_text: &str
             || blocked_ranges
                 .peek()
                 .is_some_and(|r| overlaps(r, &token.range()));
-        let number = NUMBER.is_match(core);
+        // «1,5 тыс.» is «полторы тысячи»: the rules read it better than models do.
+        let one_and_a_half = !english && matches!(core, "1,5" | "1.5");
+        let number = NUMBER.is_match(core) && !one_and_a_half;
+        let hard = number
+            && !english
+            && !crate::text::normalize::ru::case_is_certain(
+                &text[..token.start()],
+                &text[token.end()..],
+            );
         let follows_number = tokens.last().is_some_and(|previous| {
             previous.number
                 && !previous.ends_sentence
@@ -108,10 +131,20 @@ pub(super) fn select(text: &str, protected: &[Range<usize>], original_text: &str
             core: start..start + core.len(),
             target: !blocked && (number || word_target(core, follows_number)),
             number: number || follows_number && word_target(core, true),
+            hard,
             blocked,
+            // «кв. м», «тыс. руб.» inside a sentence: an abbreviation's dot
+            // followed by a lowercase word does not end the sentence.
             ends_sentence: raw
                 .trim_end_matches(['»', '"', '”', '’', '\'', ')', ']', '}'])
-                .ends_with(['.', '!', '?', ';', '…']),
+                .ends_with(['.', '!', '?', ';', '…'])
+                && !(raw.ends_with('.')
+                    && DOTTED.contains(&core.to_lowercase().as_str())
+                    && text[token.end()..]
+                        .trim_start()
+                        .chars()
+                        .next()
+                        .is_some_and(char::is_lowercase)),
         });
     }
 
@@ -137,6 +170,7 @@ pub(super) fn select(text: &str, protected: &[Range<usize>], original_text: &str
             .filter(|previous| overlaps(&previous.range, &range))
         {
             previous.range.end = previous.range.end.max(range.end);
+            previous.hard |= token.hard;
             let last = previous
                 .targets
                 .last_mut()
@@ -153,22 +187,30 @@ pub(super) fn select(text: &str, protected: &[Range<usize>], original_text: &str
             candidates.push(Fragment {
                 range,
                 targets: vec![token.core.clone()],
+                hard: token.hard,
             });
         }
     }
+    // Hard numbers first, then the rest, while the budget lasts; the output
+    // keeps text order.
     let mut remaining = budget;
-    candidates
-        .into_iter()
-        .filter(|fragment| {
+    let mut chosen: Vec<Fragment> = Vec::new();
+    for hard in [true, false] {
+        for fragment in candidates.iter().filter(|f| f.hard == hard) {
             let chars = text[fragment.range.clone()].chars().count();
-            if chars > MAX_FRAGMENT_CHARS || chars > remaining {
-                return false;
+            if chosen.len() == MAX_FRAGMENTS || chars > MAX_FRAGMENT_CHARS || chars > remaining {
+                continue;
             }
             remaining -= chars;
-            true
-        })
-        .take(MAX_FRAGMENTS)
-        .collect()
+            chosen.push(Fragment {
+                range: fragment.range.clone(),
+                targets: fragment.targets.clone(),
+                hard,
+            });
+        }
+    }
+    chosen.sort_unstable_by_key(|f| f.range.start);
+    chosen
 }
 
 impl Fragment {
@@ -208,7 +250,7 @@ mod tests {
     #[test]
     fn excerpts_stay_inside_sentences_and_keep_context() {
         let text = &format!("{FILLER_RU}Около 980 млн человек пришли. {FILLER_RU}");
-        let fragments = select(text, &[], text);
+        let fragments = select(text, &[], false, text);
         let [fragment] = fragments.as_slice() else {
             panic!("expected one fragment")
         };
@@ -238,10 +280,10 @@ mod tests {
 
     #[test]
     fn avoids_full_text_contacts_identifiers_and_dictionary_output() {
-        assert!(select("Цена 20 рублей.", &[], "Цена 20 рублей.").is_empty());
+        assert!(select("Цена 20 рублей.", &[], false, "Цена 20 рублей.").is_empty());
         let text = &format!("{FILLER_RU}{FILLER_RU}Связь test9@example.org. Номер +7 (999) 123-45-67. Особая замена ABC. Рост 45% за год. Компания Anthropic.");
         let keep = text.find("ABC").unwrap();
-        let fragments = select(text, std::slice::from_ref(&(keep..keep + 3)), text);
+        let fragments = select(text, std::slice::from_ref(&(keep..keep + 3)), false, text);
         // Latin names («Anthropic») are not sent either.
         assert_eq!(fragments.len(), 1);
         assert_eq!(&text[fragments[0].range.clone()], "Рост 45% за год.");
@@ -250,11 +292,11 @@ mod tests {
     #[test]
     fn whitespace_and_dictionary_expansion_cannot_increase_the_budget() {
         let padded = format!("{}Цена 20 рублей.", " ".repeat(100));
-        assert!(select(&padded, &[], &padded).is_empty());
+        assert!(select(&padded, &[], false, &padded).is_empty());
 
         let original = "До. Цена 20 рублей.";
         let expanded = format!("{}. Цена 20 рублей.", "Длинная замена ".repeat(10));
-        assert!(select(&expanded, &[], original).is_empty());
+        assert!(select(&expanded, &[], false, original).is_empty());
     }
 
     #[test]
@@ -262,7 +304,7 @@ mod tests {
         let text = &format!(
             "{FILLER_EN}{FILLER_EN}About 10 cats and 20 dogs arrived. {FILLER_EN}{FILLER_EN}"
         );
-        let fragments = select(text, &[], text);
+        let fragments = select(text, &[], true, text);
         assert_eq!(fragments.len(), 1);
         let fragment = &fragments[0];
         assert_eq!(
@@ -275,5 +317,31 @@ mod tests {
         assert!(fragment
             .validate(text, "About ten cats and twenty birds arrived.", true)
             .is_none());
+    }
+
+    #[test]
+    fn hard_numbers_go_first_and_one_and_a_half_stays_local() {
+        let text = &format!(
+            "{FILLER_RU}Выручка за 2026 г. составила 4,8 млрд руб. и ещё 730 млн руб. {FILLER_RU}Акционеры получат 18 руб. на акцию. Из 1,5 тыс. заявок одобрена треть."
+        );
+        let sent: Vec<&str> = select(text, &[], false, text)
+            .iter()
+            .map(|f| &text[f.range.clone()])
+            .collect();
+        // The uncertain «получат 18 руб.» is chosen before the easier ones.
+        assert!(sent.iter().any(|f| f.contains("18 руб.")), "{sent:?}");
+        assert!(!sent.iter().any(|f| f.contains("1,5")), "{sent:?}");
+        // An abbreviation's dot does not cut «кв. м» in half.
+        let area = &format!("{FILLER_RU}{FILLER_RU}Склад площадью 300 кв. м в центре. {FILLER_RU}");
+        let sent: Vec<&str> = select(area, &[], false, area)
+            .iter()
+            .map(|f| &area[f.range.clone()])
+            .collect();
+        assert!(sent.iter().any(|f| f.contains("300 кв. м")), "{sent:?}");
+        let starts: Vec<usize> = select(text, &[], false, text)
+            .iter()
+            .map(|f| f.range.start)
+            .collect();
+        assert!(starts.windows(2).all(|w| w[0] < w[1]));
     }
 }

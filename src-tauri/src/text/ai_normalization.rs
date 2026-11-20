@@ -406,7 +406,7 @@ pub async fn prepare(
     let english = language == "en";
     let mut prepared = if let Some(config) = config.filter(|config| config.settings.enabled) {
         let (with_dictionary, protected) = dictionary::apply_with_ranges(text, entries, language);
-        let fragments = ai_fragments::select(&with_dictionary, &protected, text);
+        let fragments = ai_fragments::select(&with_dictionary, &protected, english, text);
         if fragments.is_empty() {
             Prepared {
                 text: with_dictionary,

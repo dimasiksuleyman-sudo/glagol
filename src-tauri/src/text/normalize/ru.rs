@@ -9,7 +9,8 @@ use regex::{Captures, Regex};
 
 use super::ru_numbers::{
     agree, cardinal, decimal, one_and_a_half, ordinal, ordinal_plural, Case, Gender, Noun, BILLION,
-    DOLLAR, EURO, KILOGRAM, KILOMETRE, MILLION, PERCENT, RUBLE, THOUSAND, TRILLION, YEAR,
+    DOLLAR, EURO, KILOGRAM, KILOMETRE, MILLION, PERCENT, RUBLE, SQUARE_KILOMETRE, SQUARE_METRE,
+    THOUSAND, TRILLION, YEAR,
 };
 
 const MONTHS_GEN: [&str; 12] = [
@@ -46,6 +47,22 @@ const ABBREVIATIONS: &[(&str, &str)] = &[
     ("ЦБ", "цэ-бэ"),
     ("МВФ", "эм-вэ-эф"),
     ("ИИ", "и-и"),
+];
+
+/// Nouns after which a number is genitive: «на уровне 16%», «в размере 5 млн».
+const GENITIVE_NOUNS: &[&str] = &[
+    "уровне",
+    "уровня",
+    "размере",
+    "объёме",
+    "объеме",
+    "количестве",
+    "пределах",
+    "районе",
+    "сумме",
+    "ценой",
+    "отметки",
+    "отметке",
 ];
 
 /// The last word before `before`, inside the current sentence, lowercased.
@@ -199,7 +216,7 @@ static NUMBER: LazyLock<Regex> = LazyLock::new(|| {
         (?P<int>\d{1,3}(?:[\x20\u{00A0}]\d{3})+|\d+)
         (?:[,.](?P<frac>\d+))?
         (?:\s?(?P<scale>трлн|млрд|млн|тыс)\b(?P<sdot>\.)?)?
-        (?:\s?(?:(?P<sym>%|₽|€|\$)|(?P<unit>км/ч|руб|долл|км|кг)\b(?P<udot>\.)?))?",
+        (?:\s?(?:(?P<sym>%|₽|€|\$)|(?P<unit>кв\.\s?км|кв\.\s?м|км/ч|руб|долл|км|кг)\b(?P<udot>\.)?))?",
     )
     .unwrap()
 });
@@ -430,6 +447,15 @@ fn numbers(text: &str) -> String {
                 {
                     Case::Ins
                 }
+                // «в 7 регионах», «на 3 заводах»: предложный по следующему слову.
+                Some(Case::Acc)
+                    if matches!(prev.as_str(), "в" | "во" | "на")
+                        && ["ах", "ях"].iter().any(|e| next.ends_with(e)) =>
+                {
+                    Case::Prep
+                }
+                // «на уровне 16%», «в размере 5 млн»: родительный.
+                None if GENITIVE_NOUNS.contains(&prev.as_str()) => Case::Gen,
                 other => other.unwrap_or(Case::Nom),
             };
             let scale: Option<Noun> = c.name("scale").map(|s| match s.as_str() {
@@ -447,6 +473,8 @@ fn numbers(text: &str) -> String {
                     "$" | "долл" => DOLLAR,
                     "км" | "км/ч" => KILOMETRE,
                     "кг" => KILOGRAM,
+                    u if u.starts_with("кв") && u.ends_with("км") => SQUARE_KILOMETRE,
+                    u if u.starts_with("кв") => SQUARE_METRE,
                     "€" => EURO,
                     "%" => PERCENT,
                     _ => RUBLE,
@@ -492,6 +520,15 @@ fn numbers(text: &str) -> String {
                 words.push("в час".to_string());
             }
             let mut out = words.join(" ");
+            // «два квадратных метра»: the adjective is plural after 2–4.
+            if c.name("unit").is_some_and(|u| u.as_str().starts_with("кв"))
+                && c.name("frac").is_none()
+                && case.is_direct()
+                && (2..=4).contains(&(n % 10))
+                && !(11..=14).contains(&(n % 100))
+            {
+                out = out.replace("квадратного", "квадратных");
+            }
             if c.name("sdot").is_some() && c.name("sym").is_none() && c.name("unit").is_none()
                 || c.name("udot").is_some()
             {
@@ -511,6 +548,26 @@ fn abbreviations(text: &str) -> String {
                 .map_or(c[0].to_string(), |(_, r)| r.to_string())
         })
         .into_owned()
+}
+
+/// Whether the rules know the grammatical case of a number between `before`
+/// and `after` (a known preposition, adjective, verb or governing noun, or
+/// none at all). Uncertain numbers are what optional AI normalization is
+/// asked about first.
+pub fn case_is_certain(before: &str, after: &str) -> bool {
+    let prev = previous_word(before);
+    if prev.is_empty() || GENITIVE_NOUNS.contains(&prev.as_str()) {
+        return true;
+    }
+    match case_after(&prev) {
+        // «в 5 …»: accusative or prepositional; only «…ах/…ях» settles it.
+        Some(Case::Acc) if matches!(prev.as_str(), "в" | "во" | "на") => {
+            let next = next_word(after);
+            ["ах", "ях"].iter().any(|e| next.ends_with(e))
+        }
+        Some(_) => true,
+        None => false,
+    }
 }
 
 /// Normalize Russian text for speech.
@@ -719,7 +776,42 @@ mod corpus {
             "Из двадцати семи участников три вышли.",
         ),
         ("Бюджет 2026 г.", "Бюджет две тысячи двадцать шестого года."),
+        (
+            "Откроет магазины в 7 регионах.",
+            "Откроет магазины в семи регионах.",
+        ),
+        ("Работает на 3 заводах.", "Работает на трёх заводах."),
+        ("Выросло на 7 процентов.", "Выросло на семь процентов."),
+        (
+            "Ставка на уровне 16%.",
+            "Ставка на уровне шестнадцати процентов.",
+        ),
+        (
+            "Штраф в размере 5 тыс. руб.",
+            "Штраф в размере пяти тысяч рублей.",
+        ),
+        (
+            "Склад площадью 300 кв. м.",
+            "Склад площадью триста квадратных метров.",
+        ),
+        ("Комната 2 кв. м.", "Комната два квадратных метра."),
+        ("Участок 1 кв. км.", "Участок один квадратный километр."),
+        (
+            "Не раньше 2028 г.",
+            "Не раньше две тысячи двадцать восьмого года.",
+        ),
     ];
+
+    #[test]
+    fn case_certainty() {
+        use super::case_is_certain;
+        assert!(case_is_certain("", " человек"));
+        assert!(case_is_certain("Из ", " заявок"));
+        assert!(case_is_certain("на уровне ", "%"));
+        assert!(case_is_certain("в ", " регионах"));
+        assert!(!case_is_certain("в ", " раз"));
+        assert!(!case_is_certain("Акционеры получат ", " рублей"));
+    }
 
     #[test]
     fn news_phrases_read_naturally() {
