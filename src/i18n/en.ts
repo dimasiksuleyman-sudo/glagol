@@ -120,4 +120,8 @@ export const en = {
   helpTipsSwitch: "Show tips",
   helpTipsNote: "Once a week in the first month, then once a month, and only about features you haven't used yet.",
   helpDontShowTips: "Don't show tips",
+  helpTtsEngineTitle: "Choose the speech engine",
+  helpTtsEngineSteps: "Open Settings → Text to speech.\nIn «Speech engine» choose Qwen3-TTS (lively voice) or Silero (light).\nFor Qwen3-TTS click «Download and enable», then pick a voice and listen to it.",
+  helpTtsEngineHint: "Here you choose which engine reads your texts.",
+  helpTtsEngineTip: "Qwen3-TTS sounds more natural and works best with a graphics card; Silero is faster on old computers but only for noncommercial use.",
 } as const;

@@ -42,6 +42,7 @@ CC BY-NC-SA 4.0 для некоммерческого использования
 | `tts/silero/catalog.rs` | Закреплённые HTTPS URL, размеры и SHA-256 |
 | `tts/silero/runtime.rs`, `runtime-files.json` | Безопасная распаковка и проверка файлов |
 | `tts/silero/worker.rs`, `worker.py` | Скрытый CPU-процесс, bounded stdio JSON, офлайн синтез |
+| `tts/qwen/` | Qwen3-TTS: закреплённые рантайм (qwen-runtime-2edb35f) и GGUF, распаковка только закреплённых DLL, скрытый процесс `--qwen-worker` с ABI `qt_*` (engine.rs), профили устройства GPU → безопасный GPU → CPU (worker.rs); провайдеры `qwen`/`qwen-en` в `tts/silero/models.rs` |
 | `commands/tts.rs` | Status/install/cancel/remove/preview; backend consent checks |
 | `commands/updates.rs` | Версия, флаг автопроверки, проверка `latest.json`, скачивание с прогрессом и установка через tauri-plugin-updater |
 | `stt/local` | Необязательные GigaAM/transcribe.cpp; CPU или Vulkan, потоки, 30-дневная квитанция проверки (`receipt.rs`); downloader переиспользуется TTS |

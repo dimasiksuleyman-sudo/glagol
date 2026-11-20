@@ -132,6 +132,10 @@ These constraints apply to changes. Resolve required architectural changes befor
   check is reused ≤30 days via a size/mtime receipt; repair/removal/open or run errors clear it.
 - `TtsBackend` defines provider, voices, chunk limit and on-disk WAV result. Future
   Yandex SpeechKit v3 is out of scope until separately requested.
+- Qwen3-TTS (`tts/qwen`, providers `qwen`/`qwen-en`) is an optional second local engine:
+  Apache 2.0 models + MIT qwentts.cpp runtime from the `qwen-runtime-*` pre-release, pinned
+  and SHA-256-verified, hidden same-EXE worker, no HTTP port, no consent; device profile
+  GPU → safe GPU → CPU is chosen on device failure and remembered. Preference `tts_engine`.
 - Silero v5.5 RU and v3 EN are CC BY-NC-SA 4.0, not MIT. Unchecked acknowledgement before first
   download; backend checks model/license hash. No consent in transferred backups.
 - Model/runtime excluded from installer. Pin all artifacts, verify before execution;

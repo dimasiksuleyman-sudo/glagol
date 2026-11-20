@@ -161,7 +161,7 @@ pub async fn synthesize_impl(
         let conn = db.lock().map_err(|e| e.to_string())?;
         super::pronunciations::for_synthesis(&conn)
     };
-    let language = if backend.capabilities().provider == "silero-en" {
+    let language = if matches!(backend.capabilities().provider, "silero-en" | "qwen-en") {
         "en"
     } else {
         "ru"
@@ -244,8 +244,8 @@ async fn synthesize_prepared_impl(
             voice: voice.into(),
             provider: caps.provider.into(),
             speech_language: match caps.provider {
-                "silero" => Some("ru".into()),
-                "silero-en" => Some("en".into()),
+                "silero" | "qwen" => Some("ru".into()),
+                "silero-en" | "qwen-en" => Some("en".into()),
                 _ => None,
             },
             status: "ready".into(),

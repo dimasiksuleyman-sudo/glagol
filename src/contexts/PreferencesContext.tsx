@@ -11,6 +11,10 @@ export interface Preferences {
   tts_language: Language;
   tts_voice_en: string;
   tts_voice_ru: string;
+  /** Local synthesis engine. */
+  tts_engine: "silero" | "qwen";
+  /** Selected Qwen3-TTS speaker. */
+  tts_voice_qwen: string;
   legacy_voice_migrated: boolean;
   /** Settings → Text to speech switch. When false, Silero is never prepared. */
   tts_enabled: boolean;
@@ -25,6 +29,7 @@ interface Context {
   setTtsLanguage: (language: Language) => Promise<void>;
   setSttLanguage: (language: Language) => Promise<void>;
   setTtsVoice: (voice: string) => Promise<void>;
+  setTtsEngine: (engine: "silero" | "qwen") => Promise<void>;
   setTtsEnabled: (enabled: boolean) => Promise<void>;
 }
 const PreferencesContext = createContext<Context | null>(null);
@@ -67,6 +72,7 @@ export function PreferencesProvider({ children, overlay = false }: { children: R
     setSttLanguage: language => change("set_stt_preference", { language }),
     setTtsVoice: voice => change("set_tts_preference", { language: preferences?.tts_language ?? "ru", voice }),
     setTtsEnabled: enabled => change("set_tts_enabled", { enabled }),
+    setTtsEngine: engine => change("set_tts_engine", { engine }),
   }}>{children}</PreferencesContext.Provider>;
 }
 export function usePreferences() {

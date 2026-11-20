@@ -36,7 +36,7 @@ import {
   synthesizeDocument,
   type ProgressEvent,
 } from "@/lib/tauri";
-import { voicesFor } from "@/lib/voices";
+import { activeVoice, voicesFor } from "@/lib/voices";
 import { TtsLanguageSwitch } from "@/components/TtsLanguageSwitch";
 
 /**
@@ -58,8 +58,8 @@ export function Synthesize() {
   const [text, setText] = useState<string>("");
   const { preferences, setTtsVoice } = usePreferences();
   const speechLanguage = preferences?.tts_language ?? "ru";
-  const voice = (speechLanguage === "en" ? preferences?.tts_voice_en : preferences?.tts_voice_ru) ?? (speechLanguage === "en" ? "en_0" : "xenia");
-  const VOICES = voicesFor(speechLanguage);
+  const voice = activeVoice(preferences, speechLanguage);
+  const VOICES = voicesFor(speechLanguage, preferences?.tts_engine);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
@@ -207,7 +207,7 @@ export function Synthesize() {
           <CardHeader>
             <CardTitle>{t("Install local text to speech")}</CardTitle>
             <CardDescription>
-              {t("Silero is downloaded separately for noncommercial use. Dictation is available without it.")}{" "}{error}
+              {preferences?.tts_engine === "qwen" ? t("qwenDownloadedSeparately") : t("Silero is downloaded separately for noncommercial use. Dictation is available without it.")}{" "}{error}
             </CardDescription>
           </CardHeader>
           <CardContent>

@@ -71,6 +71,28 @@ and Library occasionally describes a feature you have not used yet: at most once
 in the first month, then once a month. Close it, or turn tips off with the card's check
 box or the Show tips switch in Help. What you have seen is stored only on this computer.
 
+## Qwen3-TTS synthesis (lively voice)
+
+In Settings → Text to speech → «Speech engine» choose **Qwen3-TTS** and click
+«Download and enable». Qwen3-TTS models are Apache 2.0 and the qwentts.cpp
+runtime is MIT: **commercial use is allowed** and no separate acknowledgement is
+needed. About 1.3 GB is downloaded (the 0.6B model, the codec and the runtime)
+from pinned addresses and checked by SHA-256 before anything runs.
+
+Qwen3-TTS reads with natural intonation and pauses. The voices are Qwen's named
+speakers (Ryan, Aiden, Serena, Vivian and others); the same voice reads Russian and
+English text, and «Speech language» selects which. Try them with «Preview voice».
+Numbers, the pronunciation dictionary and AI normalization work as with Silero.
+
+Speed depends on the computer. With a dedicated graphics card synthesis is faster
+than real time; on a modern laptop's integrated graphics it is about 1.5 times
+slower than real time (a minute of news in a minute and a half), and on old
+computers without AVX2 many times slower. Glagol picks the graphics card itself;
+if the card runs out of memory it moves to a safer mode and then to the processor,
+and remembers this for the computer. Keep Silero for weak computers. The model
+runs in a separate hidden process with no network and no open ports; removing it
+in Settings deletes all Qwen3-TTS files.
+
 ## Optional Silero synthesis
 
 Both Silero **v3_en (English)** and **v5.5 (Russian)** are noncommercial components

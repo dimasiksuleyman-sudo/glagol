@@ -48,6 +48,9 @@ local dictation. Upgrades retain modes, server addresses, credentials and voices
 - English local dictation: Moonshine Small Streaming, native CPU runtime. Russian:
   GigaAM v3 CTC/RNNT on the processor or, optionally, the graphics card (Vulkan), with
   a selectable thread count and a one-click recommendation for the computer's hardware. Independent office-server and cloud profiles remain available.
+- Optional offline Qwen3-TTS synthesis (Apache 2.0, commercial use allowed): a lively
+  voice with natural intonation for Russian and English, best with a graphics card;
+  Glagol adapts to the card's memory and falls back to the processor.
 - Optional offline Silero synthesis: v3_en with EN 0–3 (default EN 0), and v5.5 RU
   with Aidar, Baya, Kseniya, Xenia and Eugene. Voice preview, progress and cancellation.
 - Numbers, amounts, dates and abbreviations are read as words in the right Russian
@@ -160,6 +163,9 @@ the development machine; importing pinned files was exercised separately.
 - Английская локальная диктовка: Moonshine Small Streaming, нативный CPU-runtime.
   Русская: GigaAM v3 CTC/RNNT на процессоре или, по выбору, на видеокарте (Vulkan),
   с настраиваемым числом потоков и рекомендацией под железо компьютера в один клик. Сохраняются отдельные офисный и облачный профили.
+- Необязательная офлайн-озвучка Qwen3-TTS (Apache 2.0, коммерческое использование
+  разрешено): живой голос с естественной интонацией для русского и английского, лучше
+  с видеокартой; Глагол подстраивается под её память и переходит на процессор.
 - Необязательная офлайн-озвучка Silero: v3_en с EN 0–3 (по умолчанию EN 0) и
   v5.5 RU с Айдаром, Баей, Ксенией, Xenia и Евгением. Есть образец голоса, прогресс и отмена.
 - Числа, суммы, даты и сокращения читаются словами в нужном падеже; раньше правил

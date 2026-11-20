@@ -316,6 +316,7 @@ pub fn run() {
             commands::preferences::migrate_legacy_voice,
             commands::preferences::complete_onboarding,
             commands::preferences::set_tts_preference,
+            commands::preferences::set_tts_engine,
             commands::preferences::set_stt_preference,
             commands::preferences::is_dictating,
             commands::preferences::set_tts_enabled,

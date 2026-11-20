@@ -7,7 +7,7 @@ import type { MessageKey } from "@/i18n";
 export type TourId =
   | "dictate" | "microphone" | "insert_mode" | "history" | "speed"
   | "fillers" | "ctrl_win" | "lan_server" | "lan_connect"
-  | "synthesize" | "voice" | "pronunciation" | "speech_preview" | "ai_normalization"
+  | "synthesize" | "voice" | "tts_engine" | "pronunciation" | "speech_preview" | "ai_normalization"
   | "library" | "tts_off" | "backup" | "updates" | "diagnostics";
 
 export interface Tour {
@@ -37,6 +37,7 @@ export const TOURS: Tour[] = [
   { id: "lan_connect", route: "/settings/dictation", target: "lan-connect", fallback: "speech-mode", title: "helpLanConnectTitle", steps: "helpLanConnectSteps", hint: "helpLanConnectHint", tip: "helpLanConnectTip" },
   { id: "synthesize", route: "/synthesize", target: "choose-file", needsTts: true, title: "helpSynthesizeTitle", steps: "helpSynthesizeSteps", hint: "helpSynthesizeHint", tip: "helpSynthesizeTip" },
   { id: "voice", route: "/settings/speech", target: "voice", fallback: "tts-components", needsTts: true, title: "helpVoiceTitle", steps: "helpVoiceSteps", hint: "helpVoiceHint", tip: "helpVoiceTip" },
+  { id: "tts_engine", route: "/settings/speech", target: "tts-engine", needsTts: true, title: "helpTtsEngineTitle", steps: "helpTtsEngineSteps", hint: "helpTtsEngineHint", tip: "helpTtsEngineTip" },
   { id: "pronunciation", route: "/settings/speech", target: "pronunciation", needsTts: true, title: "helpPronunciationTitle", steps: "helpPronunciationSteps", hint: "helpPronunciationHint", tip: "helpPronunciationTip" },
   { id: "speech_preview", route: "/synthesize", target: "speech-preview", fallback: "synthesize-setup", needsTts: true, title: "helpSpeechPreviewTitle", steps: "helpSpeechPreviewSteps", hint: "helpSpeechPreviewHint", tip: "helpSpeechPreviewTip" },
   { id: "ai_normalization", route: "/settings/speech", target: "ai-normalization", needsTts: true, title: "helpAiNormalizationTitle", steps: "helpAiNormalizationSteps", hint: "helpAiNormalizationHint", tip: "helpAiNormalizationTip" },

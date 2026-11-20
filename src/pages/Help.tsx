@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   AudioLines, Bell, ChevronRight, ClipboardPaste, FileUp, Gauge, Headset, History, Library, Mic, Stethoscope, Volume2, Archive,
-  BookOpen, Braces, Eye, Keyboard, Link2, Server, Waves,
+  BookOpen, Braces, Cpu, Eye, Keyboard, Link2, Server, Waves,
   type LucideIcon,
 } from "lucide-react";
 
@@ -16,7 +16,7 @@ import { TOURS, tourLink, type Tour, type TourId } from "@/lib/tours";
 /** Topics grouped like the app: dictation, text to speech, general. */
 const GROUPS: { title: "dictation" | "Text to speech" | "General"; ids: TourId[] }[] = [
   { title: "dictation", ids: ["dictate", "speed", "microphone", "insert_mode", "history", "fillers", "ctrl_win", "lan_server", "lan_connect"] },
-  { title: "Text to speech", ids: ["synthesize", "voice", "pronunciation", "speech_preview", "ai_normalization", "library", "tts_off"] },
+  { title: "Text to speech", ids: ["synthesize", "voice", "tts_engine", "pronunciation", "speech_preview", "ai_normalization", "library", "tts_off"] },
   { title: "General", ids: ["backup", "updates", "diagnostics"] },
 ];
 import { setTipsEnabled, tipsEnabled } from "@/lib/tips";
@@ -24,7 +24,7 @@ import { setTipsEnabled, tipsEnabled } from "@/lib/tips";
 const ICONS: Record<TourId, LucideIcon> = {
   dictate: Mic, speed: Gauge, microphone: Headset, insert_mode: ClipboardPaste, history: History,
   fillers: Waves, ctrl_win: Keyboard, lan_server: Server, lan_connect: Link2,
-  pronunciation: BookOpen, speech_preview: Eye, ai_normalization: Braces,
+  tts_engine: Cpu, pronunciation: BookOpen, speech_preview: Eye, ai_normalization: Braces,
   synthesize: FileUp, voice: Volume2, library: Library, tts_off: AudioLines, backup: Archive,
   updates: Bell, diagnostics: Stethoscope,
 };
