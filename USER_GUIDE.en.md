@@ -253,6 +253,14 @@ speech language remembers its local model and voice.
 - **Cloud service:** choose a preset or compatible endpoint, model, key and optional
   dictation-only proxy. The existing remote `auto` language option is retained.
 
+**Saved model availability.** In Settings → Dictation, select a saved Organization
+server or Cloud service profile and click **Check saved model**. Glagol reads only
+the model list at the saved address. The settings show the last result and date.
+If the server does not provide a usable list, Glagol reports that it could not verify
+the model. If the saved model is missing, choose another one from the provider’s
+list. The warning leaves dictation available. At startup Glagol checks the active
+remote profile in the background at most once a week. Catalog checks send no audio.
+
 **Russian local model speed.** On a computer with an older processor (for example,
 without AVX2) GigaAM recognizes at roughly the speed of speech. In Settings → Dictation →
 Recognition speed, choose Compute on: Graphics card (Vulkan) and, if you like, under Advanced the number

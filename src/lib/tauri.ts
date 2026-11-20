@@ -284,7 +284,20 @@ export async function relaunchApp(): Promise<void> {
  */
 export type SpeechMode = "local" | "server" | "cloud";
 export interface SpeechProfile { mode: SpeechMode; base_url: string; model: string; proxy: string; language: string }
-export interface SpeechSettings { profile: SpeechProfile; active_mode: SpeechMode; key_stored: boolean }
+export type SpeechModelAvailability = "available" | "missing" | "unknown" | "failed";
+export interface SpeechModelStatus {
+  configured: boolean;
+  missing: boolean;
+  last_result: SpeechModelAvailability | null;
+  checked_at: number | null;
+}
+export interface SpeechSettings {
+  profile: SpeechProfile;
+  active_mode: SpeechMode;
+  key_stored: boolean;
+  model_status: SpeechModelStatus;
+}
+export const SPEECH_MODEL_STATUS_EVENT = "speech-model-status-changed";
 export interface LocalModel { id: string; name: string; description: string; language: "en" | "ru"; provider: string; runtime_bytes: number; download_bytes: number; bytes: number; installed: boolean; partial_bytes: number }
 export interface ModelProgress { model_id: string; stage: string; downloaded: number; total: number }
 export interface LocalModelsStatus { supported: boolean; runtime_bytes: number; runtime_installed: boolean; models: LocalModel[]; progress: ModelProgress | null }
@@ -293,6 +306,8 @@ export const listServerSpeechModels = (profile: SpeechProfile, apiKey?: string) 
   invoke<string[]>("list_server_speech_models", { profile, apiKey });
 export const saveSpeechSettings = (profile: SpeechProfile, apiKey?: string) => invoke<void>("save_speech_settings", { profile, apiKey });
 export const testSpeechSettings = () => invoke<void>("test_speech_settings");
+export const checkSavedSpeechModel = (mode: SpeechMode) =>
+  invoke<Exclude<SpeechModelAvailability, "failed">>("check_saved_speech_model", { mode });
 export const deleteSpeechKey = (mode: SpeechMode) => invoke<void>("delete_speech_key", { mode });
 export const localModelsStatus = () => invoke<LocalModelsStatus>("local_models_status");
 export const downloadLocalModel = (id: string) => invoke<void>("download_local_model", { id });

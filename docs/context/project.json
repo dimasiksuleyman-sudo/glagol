@@ -3,8 +3,7 @@
   "observed_at": "2026-11-13T20:05:00.000Z",
   "active_workstream": [
     "tts-qwen",
-    "help-0.7",
-    "stt-model-picker"
+    "help-0.7"
   ],
   "links": [
     "AGENTS.md",

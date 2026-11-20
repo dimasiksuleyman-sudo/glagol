@@ -2,8 +2,8 @@
   "schema_version": 1,
   "id": "stt-model-picker",
   "title": "Выбор и проверка моделей диктовки",
-  "status": "active",
-  "next": "M2",
+  "status": "done",
+  "next": null,
   "reason": null,
   "claim": null,
   "links": [
@@ -95,7 +95,7 @@
     {
       "id": "M2",
       "title": "Ручная и еженедельная проверка выбранной облачной или серверной модели с предупреждением в настройках",
-      "status": "pending",
+      "status": "done",
       "depends_on": [
         "M1"
       ],
@@ -103,7 +103,76 @@
         "rust",
         "frontend"
       ],
-      "checks": []
+      "checks": [
+        {
+          "id": "rust",
+          "status": "PASS",
+          "method": "command",
+          "command": "cargo fmt --manifest-path src-tauri/Cargo.toml --check && cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings && cargo test --manifest-path src-tauri/Cargo.toml",
+          "cwd": ".",
+          "at": "2026-11-20T21:58:58.462Z",
+          "environment": {
+            "os": "Debian 13 (Linux container)",
+            "node": "v24.22.1",
+            "pnpm": "11.25.0",
+            "rustc": "1.100.0"
+          },
+          "exit_code": 0,
+          "output": "test result: ok. 445 passed; 0 failed; 6 ignored",
+          "evidence": "docs/workstreams/stt-model-picker/log.md"
+        },
+        {
+          "id": "frontend",
+          "status": "PASS",
+          "method": "command",
+          "command": "pnpm exec tsc --noEmit && pnpm build",
+          "cwd": ".",
+          "at": "2026-11-20T21:58:58.462Z",
+          "environment": {
+            "os": "Debian 13 (Linux container)",
+            "node": "v24.22.1",
+            "pnpm": "11.25.0",
+            "rustc": "1.100.0"
+          },
+          "exit_code": 0,
+          "output": "I18N PASS: 488 keys with matching parameters; Vite built",
+          "evidence": "docs/workstreams/stt-model-picker/log.md"
+        },
+        {
+          "id": "version",
+          "status": "PASS",
+          "method": "command",
+          "command": "node scripts/check-version.mjs",
+          "cwd": ".",
+          "at": "2026-11-20T21:58:58.462Z",
+          "environment": {
+            "os": "Debian 13 (Linux container)",
+            "node": "v24.22.1",
+            "pnpm": "11.25.0",
+            "rustc": "1.100.0"
+          },
+          "exit_code": 0,
+          "output": "Glagol 0.6.9: package, Tauri and Cargo versions match.",
+          "evidence": "docs/workstreams/stt-model-picker/log.md"
+        },
+        {
+          "id": "runbook-tests",
+          "status": "PASS",
+          "method": "command",
+          "command": "pnpm runbook:test",
+          "cwd": ".",
+          "at": "2026-11-20T21:58:58.462Z",
+          "environment": {
+            "os": "Debian 13 (Linux container)",
+            "node": "v24.22.1",
+            "pnpm": "11.25.0",
+            "rustc": "1.100.0"
+          },
+          "exit_code": 0,
+          "output": "53 passed, 0 failed",
+          "evidence": "docs/workstreams/stt-model-picker/log.md"
+        }
+      ]
     }
   ]
 }

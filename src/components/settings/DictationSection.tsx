@@ -12,11 +12,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  getSpeechSettings, listServerSpeechModels, saveSpeechSettings, testSpeechSettings, deleteSpeechKey, inspectLanConnectionCode,
+  checkSavedSpeechModel, getSpeechSettings, listServerSpeechModels, saveSpeechSettings, testSpeechSettings, deleteSpeechKey, inspectLanConnectionCode,
   localModelsStatus, downloadLocalModel, cancelModelDownload, removeLocalModel,
-  localEngineState, setLocalEngineOptions, DICTATION_STATE_EVENT,
+  localEngineState, setLocalEngineOptions, DICTATION_STATE_EVENT, SPEECH_MODEL_STATUS_EVENT,
   type DictationState,
-  type SpeechMode, type SpeechProfile, type LocalModelsStatus, type ModelProgress,
+  type SpeechMode, type SpeechModelStatus, type SpeechProfile, type SpeechSettings, type LocalModelsStatus, type ModelProgress,
   type LocalEngineOptions, type LocalEngineState,
 } from "@/lib/tauri";
 
@@ -43,6 +43,7 @@ export function DictationSection() {
   const [models, setModels] = useState<LocalModelsStatus | null>(null);
   const [progress, setProgress] = useState<ModelProgress | null>(null);
   const [keyStored, setKeyStored] = useState(false);
+  const [modelStatuses, setModelStatuses] = useState<Partial<Record<SpeechMode, SpeechModelStatus>>>({});
   const [connectionCode, setConnectionCode] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [serverModels, setServerModels] = useState<string[] | null>(null);
@@ -64,6 +65,10 @@ export function DictationSection() {
     return () => { disposed = true; };
   }, [preferences?.stt_language]);
 
+  function rememberModelStatus(settings: SpeechSettings) {
+    setModelStatuses(previous => ({ ...previous, [settings.profile.mode]: settings.model_status }));
+  }
+
   async function refreshModels() {
     const [status, engineState] = await Promise.all([localModelsStatus(), localEngineState()]);
     if (alive.current) { setModels(status); setProgress(status.progress); setEngine(engineState); }
@@ -79,10 +84,16 @@ export function DictationSection() {
     const doneListener = listen<DictationState>(DICTATION_STATE_EVENT, ({ payload }) => {
       if (!cancelled && payload.kind === "done") void localEngineState().then(setEngine).catch(() => undefined);
     });
+    const modelStatusListener = listen<SpeechMode>(SPEECH_MODEL_STATUS_EVENT, ({ payload: mode }) => {
+      void getSpeechSettings(mode).then(settings => {
+        if (!cancelled) rememberModelStatus(settings);
+      }).catch(() => undefined);
+    });
     void Promise.all([getSpeechSettings(), localModelsStatus()]).then(([settings, status]) => {
       if (cancelled) return;
       setProfile(settings.profile); setActive(settings.active_mode);
       setActiveModel(settings.profile.model); setKeyStored(settings.key_stored);
+      rememberModelStatus(settings);
       setModels(status); setProgress(status.progress);
     }).catch(e => { if (!cancelled) setLoadError(errorText(e)); });
     void localEngineState().then(state => { if (!cancelled) setEngine(state); }).catch(() => undefined);
@@ -91,6 +102,7 @@ export function DictationSection() {
       void progressListener.then(unlisten => unlisten());
       void changeListener.then(unlisten => unlisten());
       void doneListener.then(unlisten => unlisten());
+      void modelStatusListener.then(unlisten => unlisten());
     };
   }, []);
 
@@ -103,7 +115,11 @@ export function DictationSection() {
     clearServerModelList();
     try {
       const settings = await getSpeechSettings(mode);
-      if (alive.current) { setProfile(settings.profile); setKeyStored(settings.key_stored); }
+      if (alive.current) {
+        setProfile(settings.profile);
+        setKeyStored(settings.key_stored);
+        rememberModelStatus(settings);
+      }
     } catch (e) { toast.error(errorText(e)); }
     finally { setBusy(false); }
   }
@@ -132,8 +148,9 @@ export function DictationSection() {
   async function save(p: SpeechProfile, test = false) {
     await saveSpeechSettings(p, apiKey.trim() || undefined);
     if (alive.current) { setActive(p.mode); setActiveModel(p.model); setApiKey(""); }
-    if (test) await testSpeechSettings();
     const settings = await getSpeechSettings(p.mode);
+    if (alive.current) rememberModelStatus(settings);
+    if (test) await testSpeechSettings();
     if (alive.current) {
       setKeyStored(settings.key_stored);
       setMessage(test || p.mode === "server" ? t("Connection works.") : p.mode === "local" ? t("Model ready. You can start dictating.") : t("Settings saved."));
@@ -151,6 +168,7 @@ export function DictationSection() {
       if (alive.current) {
         clearServerModelList();
         setProfile(settings.profile); setKeyStored(settings.key_stored);
+        rememberModelStatus(settings);
         setActive("server"); setActiveModel(next.model); setApiKey(""); setConnectionCode("");
         const connected = t("Connected to Glagol at {p0}. You can start dictating.", { p0: found.base_url.replace(/^http:\/\//, "").replace(/\/v1$/, "") });
         setMessage(connected);
@@ -202,15 +220,45 @@ export function DictationSection() {
     } catch (e) { if (alive.current) { setMessage(errorText(e)); toast.error(errorText(e)); } }
     finally { if (alive.current) setBusy(false); }
   }
+  async function checkModel() {
+    if (!profile || profile.mode === "local") return;
+    const mode = profile.mode;
+    setBusy(true);
+    setMessage(t("Checking the saved model…"));
+    try {
+      const result = await checkSavedSpeechModel(mode);
+      if (!alive.current) return;
+      if (result === "available") toast.success(t("The saved model is in the provider’s list."));
+      if (result === "unknown") toast.info(t("The provider did not return a usable model list."));
+    } catch (e) {
+      if (alive.current) toast.error(errorText(e));
+    } finally {
+      if (alive.current) {
+        setMessage("");
+        setBusy(false);
+      }
+    }
+  }
+
   async function clearKey() {
     if (!profile) return;
+    const mode = profile.mode;
     setBusy(true);
-    try { await deleteSpeechKey(profile.mode); clearServerModelList(); setKeyStored(false); setApiKey(""); setMessage(t("Key deleted.")); }
-    catch (e) { toast.error(errorText(e)); }
+    try {
+      await deleteSpeechKey(mode);
+      if (!alive.current) return;
+      clearServerModelList();
+      setKeyStored(false);
+      setApiKey("");
+      setMessage(t("Key deleted."));
+      const settings = await getSpeechSettings(mode);
+      if (alive.current) rememberModelStatus(settings);
+    } catch (e) { toast.error(errorText(e)); }
     finally { setBusy(false); }
   }
 
   const locked = busy || progress !== null || dictating;
+  const modelStatus = profile ? modelStatuses[profile.mode] : undefined;
   const modelQuery = modelFilter.trim().toLowerCase();
   const matchingServerModels = serverModels?.filter(id => id.toLowerCase().includes(modelQuery)) ?? [];
   const visibleServerModels = matchingServerModels.slice(0, MAX_VISIBLE_SERVER_MODELS);
@@ -382,6 +430,24 @@ export function DictationSection() {
               </p>}
             </div>}
           </div>}
+          <div className="space-y-2 rounded-lg border p-3" data-tour="saved-speech-model">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm font-medium">{t("Saved model availability")}</p>
+              <Button variant="outline" size="sm" disabled={locked || !modelStatus?.configured}
+                onClick={() => void checkModel()}>{t("Check saved model")}</Button>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {modelCheckResult(modelStatus)}
+              {modelStatus?.checked_at != null && <>{" "}{t("Last checked {p0}.", {
+                p0: new Intl.DateTimeFormat(currentLocale(), { dateStyle: "medium", timeStyle: "short" }).format(modelStatus.checked_at),
+              })}</>}
+            </p>
+            {modelStatus?.missing && (
+              <p role="alert" className="rounded-md border border-amber-500/50 bg-amber-500/10 p-2 text-sm">
+                {t("The saved model is missing from the provider’s list. Choose another model from the list.")}
+              </p>
+            )}
+          </div>
           <div className="flex flex-wrap gap-2">
             <Button disabled={locked} onClick={() => void remoteSave(false)}>{t("Save and use")}</Button>
             {profile.mode === "cloud" && <Button variant="secondary" disabled={locked} onClick={() => void remoteSave(true)}>{t("Save and test")}</Button>}
@@ -392,6 +458,17 @@ export function DictationSection() {
       </>}
     </CardContent>
   </Card>;
+}
+
+function modelCheckResult(status: SpeechModelStatus | undefined) {
+  if (!status?.configured) return t("Save the profile to check its model.");
+  switch (status.last_result) {
+    case "available": return t("The saved model is in the provider’s list.");
+    case "missing": return t("The saved model was not found.");
+    case "unknown": return t("The provider did not return a usable model list.");
+    case "failed": return t("The model check failed.");
+    case null: return t("The saved model has not been checked yet.");
+  }
 }
 
 /** A recommendation with a one-click action inside «Recognition speed». */

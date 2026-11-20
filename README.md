@@ -53,6 +53,9 @@ local dictation. Upgrades retain modes, server addresses, credentials and voices
   Glagol adapts to the card's memory and falls back to the processor.
 - In **Organization server**, load and filter the model list or enter a model name.
   Glagol saves the profile only after the server accepts a short built-in audio test.
+- Dictation settings show the last catalog check and its date for saved server and
+  cloud models. Glagol also checks the active remote model at startup at most once
+  a week. This check sends no audio.
 - Optional offline Silero synthesis: v3_en with EN 0–3 (default EN 0), and v5.5 RU
   with Aidar, Baya, Kseniya, Xenia and Eugene. Voice preview, progress and cancellation.
 - Numbers, amounts, dates and abbreviations are read as words in the right Russian
@@ -170,6 +173,9 @@ the development machine; importing pinned files was exercised separately.
   с видеокартой; Глагол подстраивается под её память и переходит на процессор.
 - В режиме **«Сервер организации»** загрузите и отфильтруйте список моделей или
   введите имя. Глагол сохранит профиль после успешной проверки на встроенном аудио.
+- В настройках диктовки видны результат и дата проверки сохранённой серверной или
+  облачной модели. При запуске Глагол проверяет активную удалённую модель не чаще
+  раза в неделю. Эта проверка не отправляет аудио.
 - Необязательная офлайн-озвучка Silero: v3_en с EN 0–3 (по умолчанию EN 0) и
   v5.5 RU с Айдаром, Баей, Ксенией, Xenia и Евгением. Есть образец голоса, прогресс и отмена.
 - Числа, суммы, даты и сокращения читаются словами в нужном падеже; раньше правил
