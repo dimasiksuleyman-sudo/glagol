@@ -14,6 +14,8 @@ the per-session master logs under [`docs/day-logs/`](docs/day-logs/).
 ### Fixed
 
 - Windows auto-paste waits for shortcut modifiers to clear and sends Ctrl+V as a single batch. If the keys stay down or the window changes, the text is left in the clipboard. This addresses the unwanted KeyTips in new Outlook (GL-013). / Автовставка в Windows ждёт отпускания модификаторов и отправляет Ctrl+V одной последовательностью. Если клавиши остаются нажатыми или окно меняется, текст остаётся в буфере обмена. Это исправление для лишних подсказок клавиш в новом Outlook (GL-013).
+- Windows auto-paste uses the window active when dictation starts and skips Windows shell windows. If the intended window is unavailable, the text stays in the clipboard (GL-014). / Автовставка в Windows использует окно, активное в начале диктовки, и пропускает окна оболочки. Если исходное окно недоступно, текст остаётся в буфере обмена (GL-014).
+- Choosing local recognition activates a ready model immediately. Pending downloads and remote profile edits show a notice and action beside the mode selector. Drafts survive switching Settings tabs (GL-015). / Выбор локального распознавания сразу активирует готовую модель. Если нужно загрузить модель или сохранить удалённый профиль, рядом с режимом появится плашка с кнопкой. Черновики сохраняются при смене вкладок настроек (GL-015).
 
 ### Changed
 

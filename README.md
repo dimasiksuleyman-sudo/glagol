@@ -43,13 +43,16 @@ local dictation. Upgrades retain modes, server addresses, credentials and voices
   Hesitation sounds ("uh", "um", «эм», «э-э») are removed from the text by default.
   Optionally dictate by holding Ctrl+Win, as in Wispr Flow. On Windows,
   auto-paste briefly waits for the shortcut modifiers to clear. If they stay
-  down, the text is available in the clipboard.
+  down or the target window is different at insertion, the text is available
+  in the clipboard. Windows Search and Start also use clipboard fallback.
 - Built-in recognition server: one computer with a graphics card serves Russian
   dictation to Glagol on office computers over the local network — speech stays in
   the office, connection by pasting a code, access key always required.
 - English local dictation: Moonshine Small Streaming, native CPU runtime. Russian:
   GigaAM v3 CTC/RNNT on the processor or, optionally, the graphics card (Vulkan), with
   a selectable thread count and a one-click recommendation for the computer's hardware. Independent office-server and cloud profiles remain available.
+  Choosing local recognition activates the selected model if its files are ready.
+  Otherwise the settings show an action next to the mode selector.
 - In **Organization server**, load and filter the model list or enter a model name.
   Glagol saves the profile only after the server accepts a short built-in audio test.
 - Dictation settings show the last catalog check and its date for saved server and
@@ -162,13 +165,16 @@ the development machine; importing pinned files was exercised separately.
   Звуки-заминки («эм», «э-э», «uh», «um») по умолчанию убираются из текста.
   По желанию — диктовка по удержанию Ctrl+Win, как в Wispr Flow. В Windows
   автовставка недолго ждёт отпускания модификаторов. Если они остаются
-  нажатыми, текст доступен в буфере обмена.
+  нажатыми или при вставке активно другое окно, текст доступен в буфере
+  обмена. Для поиска Windows и «Пуска» также используется буфер.
 - Встроенный сервер распознавания: один компьютер с видеокартой раздаёт русскую
   диктовку Глаголу на офисных компьютерах по локальной сети — речь не покидает офис,
   подключение вставкой кода, ключ доступа обязателен.
 - Английская локальная диктовка: Moonshine Small Streaming, нативный CPU-runtime.
   Русская: GigaAM v3 CTC/RNNT на процессоре или, по выбору, на видеокарте (Vulkan),
   с настраиваемым числом потоков и рекомендацией под железо компьютера в один клик. Сохраняются отдельные офисный и облачный профили.
+  При выборе локального распознавания готовая модель сразу становится активной.
+  Если нужны файлы модели, действие появится рядом с выбором режима.
 - В режиме **«Сервер организации»** загрузите и отфильтруйте список моделей или
   введите имя. Глагол сохранит профиль после успешной проверки на встроенном аудио.
 - В настройках диктовки видны результат и дата проверки сохранённой серверной или
