@@ -6,7 +6,7 @@ import type { MessageKey } from "@/i18n";
  */
 export type TourId =
   | "dictate" | "microphone" | "insert_mode" | "history" | "speed"
-  | "fillers" | "ctrl_win" | "lan_server" | "lan_connect"
+  | "fillers" | "ctrl_win" | "lan_server" | "lan_connect" | "server_model"
   | "synthesize" | "voice" | "pronunciation" | "speech_preview" | "ai_normalization"
   | "library" | "tts_off" | "backup" | "updates" | "diagnostics";
 
@@ -35,6 +35,7 @@ export const TOURS: Tour[] = [
   { id: "ctrl_win", route: "/dictation", target: "ctrl-win", fallback: "hotkey", title: "helpCtrlWinTitle", steps: "helpCtrlWinSteps", hint: "helpCtrlWinHint", tip: "helpCtrlWinTip" },
   { id: "lan_server", route: "/settings/dictation", target: "lan-server", title: "helpLanServerTitle", steps: "helpLanServerSteps", hint: "helpLanServerHint", tip: "helpLanServerTip" },
   { id: "lan_connect", route: "/settings/dictation", target: "lan-connect", fallback: "speech-mode", title: "helpLanConnectTitle", steps: "helpLanConnectSteps", hint: "helpLanConnectHint", tip: "helpLanConnectTip" },
+  { id: "server_model", route: "/settings/dictation", target: "server-model-picker", fallback: "speech-mode", title: "helpServerModelTitle", steps: "helpServerModelSteps", hint: "helpServerModelHint", tip: "helpServerModelTip" },
   { id: "synthesize", route: "/synthesize", target: "choose-file", needsTts: true, title: "helpSynthesizeTitle", steps: "helpSynthesizeSteps", hint: "helpSynthesizeHint", tip: "helpSynthesizeTip" },
   { id: "voice", route: "/settings/speech", target: "voice", fallback: "tts-components", needsTts: true, title: "helpVoiceTitle", steps: "helpVoiceSteps", hint: "helpVoiceHint", tip: "helpVoiceTip" },
   { id: "pronunciation", route: "/settings/speech", target: "pronunciation", needsTts: true, title: "helpPronunciationTitle", steps: "helpPronunciationSteps", hint: "helpPronunciationHint", tip: "helpPronunciationTip" },

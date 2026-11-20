@@ -343,4 +343,11 @@ export const messages: {[K in keyof typeof en]: string} = {
   "aiModelHint": "Введите адрес и ключ и загрузите список: Глагол предложит быструю недорогую модель. Перед сохранением подключение проверяется.",
   "Checking the connection…": "Проверяем подключение…",
   "aiCheckedAndSaved": "Подключение проверено, настройки сохранены",
+  "Checking the server model…": "Проверяем модель сервера…",
+  "Loading server models…": "Загружаем модели сервера…",
+  "Glagol checks the selected model with a short built-in audio clip before saving.": "Перед сохранением Глагол проверит выбранную модель на коротком встроенном аудио.",
+  "The server did not return a model list. Enter the model name manually.": "Сервер не вернул список моделей. Введите имя модели вручную.",
+  "Choose a server model": "Выберите модель сервера",
+  "No matching server models.": "Нет моделей, подходящих под фильтр.",
+  "Showing the first {p0} models. Narrow the filter to see more.": "Показаны первые {p0} моделей. Уточните фильтр, чтобы найти нужную модель.",
 };

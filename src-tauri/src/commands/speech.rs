@@ -6,8 +6,8 @@ use crate::{
     state::AppState,
     stt::{
         local::{LocalModels, LocalProvider},
-        openai_compat::OpenAiCompatStt,
-        validation, SttBackend,
+        openai_compat::{ModelProbeError, OpenAiCompatStt},
+        validation, SttBackend, SttError,
     },
 };
 use rusqlite::Connection;
@@ -119,21 +119,25 @@ pub fn validate_profile(p: &Profile) -> Result<(), String> {
         }
         return Ok(());
     }
+    if p.model.trim().is_empty() {
+        return Err("Укажите модель распознавания.".into());
+    }
+    if !matches!(p.language.as_str(), "ru" | "en" | "auto") {
+        return Err("Недопустимый язык распознавания.".into());
+    }
+    validate_remote_connection(p)
+}
+
+fn validate_remote_connection(p: &Profile) -> Result<(), String> {
     if p.mode == Mode::Server {
         validate_server_url(&p.base_url)?;
     } else {
         validation::validate_base_url(&p.base_url)?;
     }
-    if p.model.trim().is_empty() {
-        return Err("Укажите модель распознавания.".into());
-    }
     if !p.proxy.trim().is_empty() {
         validation::validate_proxy(&p.proxy)?;
     }
-    if !matches!(p.language.as_str(), "ru" | "en" | "auto") {
-        return Err("Недопустимый язык распознавания.".into());
-    }
-    let url = reqwest::Url::parse(&p.base_url).map_err(|e| e.to_string())?;
+    let url = reqwest::Url::parse(&p.base_url).map_err(|_| "Некорректный адрес сервера.")?;
     if !url.username().is_empty()
         || url.password().is_some()
         || url.query().is_some()
@@ -171,19 +175,28 @@ pub fn validate_server_url(raw: &str) -> Result<(), String> {
     }
 }
 
+fn normalized_endpoint(raw: &str) -> &str {
+    raw.trim().trim_end_matches('/')
+}
+
 pub fn profile_key(conn: &Connection, p: &Profile) -> Result<Option<String>, String> {
     if p.mode == Mode::Local {
         return Ok(None);
     }
     let bound = repository::get_setting(conn, &format!("{}_key_endpoint", p.mode.prefix()))
         .map_err(|e| e.to_string())?;
-    if bound.as_ref().is_some_and(|b| b != &p.base_url) {
+    if bound
+        .as_ref()
+        .is_some_and(|b| normalized_endpoint(b) != normalized_endpoint(&p.base_url))
+    {
         return Ok(None);
     }
     if let Some((endpoint, key)) =
         keyring::get_bound_stt_key(p.mode == Mode::Server).map_err(|e| e.to_string())?
     {
-        return Ok((endpoint == p.base_url).then_some(key));
+        return Ok(
+            (normalized_endpoint(&endpoint) == normalized_endpoint(&p.base_url)).then_some(key),
+        );
     }
     (if p.mode == Mode::Server {
         keyring::get_server_stt_key()
@@ -201,6 +214,17 @@ pub fn remote_provider(conn: &Connection, p: &Profile) -> Result<OpenAiCompatStt
     {
         return Err("Добавьте ключ облачного сервиса в настройках диктовки.".into());
     }
+    Ok(build_remote_provider(p, key)?.with_prompt(Some(
+        if p.language == "en" {
+            "Glagol."
+        } else {
+            crate::stt::DICTATION_PROMPT
+        }
+        .into(),
+    )))
+}
+
+fn build_remote_provider(p: &Profile, key: Option<String>) -> Result<OpenAiCompatStt, String> {
     let mut builder = reqwest::Client::builder()
         .redirect(reqwest::redirect::Policy::none())
         .connect_timeout(std::time::Duration::from_secs(20));
@@ -211,20 +235,129 @@ pub fn remote_provider(conn: &Connection, p: &Profile) -> Result<OpenAiCompatStt
     if !p.proxy.trim().is_empty() {
         builder = builder.proxy(
             reqwest::Proxy::all(validation::normalize_proxy(&p.proxy)?)
-                .map_err(|e| e.to_string())?,
+                .map_err(|_| "Некорректный адрес прокси.")?,
         );
     }
-    let client = builder.build().map_err(|e| e.to_string())?;
-    Ok(
-        OpenAiCompatStt::new(client, &p.base_url, &p.model, key).with_prompt(Some(
-            if p.language == "en" {
-                "Glagol."
-            } else {
-                crate::stt::DICTATION_PROMPT
+    let client = builder
+        .build()
+        .map_err(|_| "Не удалось создать HTTP-клиент.")?;
+    Ok(OpenAiCompatStt::new(client, &p.base_url, &p.model, key))
+}
+
+fn normalize_profile(profile: &mut Profile) {
+    profile.base_url = normalized_endpoint(&profile.base_url).into();
+    profile.model = profile.model.trim().into();
+    profile.proxy = profile.proxy.trim().into();
+}
+
+fn server_draft_provider(
+    db: &std::sync::Mutex<Connection>,
+    profile: &Profile,
+    new_key: Option<&str>,
+) -> Result<OpenAiCompatStt, String> {
+    let key = if let Some(new_key) = new_key {
+        Some(new_key.into())
+    } else {
+        let conn = db.lock().map_err(|e| e.to_string())?;
+        let saved = read_profile(&conn, Some(Mode::Server))?;
+        // Even an old, unbound key may only serve its current saved endpoint.
+        if normalized_endpoint(&saved.base_url) == profile.base_url {
+            profile_key(&conn, &saved)?
+        } else {
+            None
+        }
+    };
+    build_remote_provider(profile, key)
+}
+
+fn model_probe_message(error: ModelProbeError) -> String {
+    use crate::preferences::message;
+    match error {
+        ModelProbeError::Unreachable => message(
+            "The server did not respond. Check its address and the connection.",
+            "Сервер не отвечает. Проверьте адрес и подключение.",
+        ),
+        ModelProbeError::KeyRejected => message(
+            "The server did not accept the API key. Check the key.",
+            "Сервер не принял ключ API. Проверьте ключ.",
+        ),
+        ModelProbeError::ModelNotFound => message(
+            "The selected model was not found on the server.",
+            "Выбранная модель на сервере не найдена.",
+        ),
+        ModelProbeError::RecognitionFailed => message(
+            "Test recognition failed. Check the model and language and try again.",
+            "Пробное распознавание не удалось. Проверьте модель и язык и попробуйте снова.",
+        ),
+    }
+}
+
+async fn check_server_model(
+    provider: &OpenAiCompatStt,
+    profile: &Profile,
+) -> Result<(), ModelProbeError> {
+    let language = (profile.language != "auto").then_some(profile.language.as_str());
+    provider
+        .probe_transcription(super::dictation::probe_clip(), language)
+        .await?;
+
+    // Some servers, including Glagol, transcribe with their current model
+    // regardless of the supplied name. Confirm the selected ID when there
+    // is a usable catalog. Listing remains optional after a successful probe.
+    if provider.list_models().await.is_ok_and(|ids| {
+        ids.iter().any(|id| !id.trim().is_empty()) && !ids.contains(&profile.model)
+    }) {
+        return Err(ModelProbeError::ModelNotFound);
+    }
+    Ok(())
+}
+
+/// Load model IDs using a draft endpoint and credential without saving either.
+#[tauri::command]
+pub async fn list_server_speech_models(
+    state: tauri::State<'_, AppState>,
+    mut profile: Profile,
+    api_key: Option<String>,
+) -> Result<Vec<String>, String> {
+    (async {
+        if profile.mode != Mode::Server {
+            return Err("Organization server mode is required.".into());
+        }
+        normalize_profile(&mut profile);
+        validate_remote_connection(&profile)?;
+        let new_key = api_key
+            .as_deref()
+            .map(str::trim)
+            .filter(|key| !key.is_empty());
+        let provider = server_draft_provider(&state.db, &profile, new_key)?;
+        match provider.list_models().await {
+            Ok(mut ids) => {
+                ids.retain(|id| !id.trim().is_empty());
+                ids.sort_unstable();
+                ids.dedup();
+                Ok(ids)
             }
-            .into(),
-        )),
-    )
+            Err(SttError::Api(message))
+                if ["HTTP 404:", "HTTP 405:", "HTTP 501:"]
+                    .iter()
+                    .any(|prefix| message.starts_with(prefix)) =>
+            {
+                Ok(Vec::new())
+            }
+            Err(SttError::Auth) => Err(model_probe_message(ModelProbeError::KeyRejected)),
+            Err(SttError::Network(err)) => Err(model_probe_message(if err.is_builder() {
+                ModelProbeError::KeyRejected
+            } else {
+                ModelProbeError::Unreachable
+            })),
+            Err(_) => Err(crate::preferences::message(
+                "Could not load the model list. You can enter the model name manually.",
+                "Не удалось загрузить список моделей. Можно ввести имя модели вручную.",
+            )),
+        }
+    })
+    .await
+    .map_err(crate::i18n::error)
 }
 
 #[tauri::command]
@@ -266,7 +399,7 @@ pub fn persist_profile(conn: &mut Connection, p: &Profile, new_key: bool) -> Res
             .map_err(|e| e.to_string())?
             .is_none()
         {
-            set(&binding, &previous.base_url)?;
+            set(&binding, normalized_endpoint(&previous.base_url))?;
         }
         for (key, value) in [
             ("base_url", p.base_url.as_str()),
@@ -299,9 +432,7 @@ pub async fn save_speech_settings(
     api_key: Option<String>,
 ) -> Result<(), String> {
     (async {
-        profile.base_url = profile.base_url.trim().trim_end_matches('/').into();
-        profile.model = profile.model.trim().into();
-        profile.proxy = profile.proxy.trim().into();
+        normalize_profile(&mut profile);
         validate_profile(&profile)?;
         if *state.dictation.lock().map_err(|e| e.to_string())?
             != crate::dictation::DictationPhase::Idle
@@ -320,11 +451,15 @@ pub async fn save_speech_settings(
                 .await
                 .map_err(|e| e.to_string())??;
         }
-        let has_new_key = api_key.as_ref().is_some_and(|k| !k.trim().is_empty());
-        if has_new_key && profile.mode != Mode::Local {
-            let key = api_key.as_ref().unwrap().trim();
-            keyring::set_bound_stt_key(profile.mode == Mode::Server, &profile.base_url, key)
-                .map_err(|e| e.to_string())?;
+        let new_key = api_key
+            .as_deref()
+            .map(str::trim)
+            .filter(|key| !key.is_empty());
+        if profile.mode == Mode::Server {
+            let provider = server_draft_provider(&state.db, &profile, new_key)?;
+            check_server_model(&provider, &profile)
+                .await
+                .map_err(model_probe_message)?;
         }
         {
             let phase = state.dictation.lock().map_err(|e| e.to_string())?;
@@ -332,7 +467,26 @@ pub async fn save_speech_settings(
                 return Err("Wait for the current dictation to finish.".into());
             }
             let mut conn = state.db.lock().map_err(|e| e.to_string())?;
-            persist_profile(&mut conn, &profile, has_new_key)?;
+            let key = (profile.mode != Mode::Local).then_some(new_key).flatten();
+            let is_server = profile.mode == Mode::Server;
+            let mut previous_key = None;
+            if let Some(key) = key {
+                previous_key = keyring::get_bound_stt_key(is_server).map_err(|e| e.to_string())?;
+                keyring::set_bound_stt_key(is_server, &profile.base_url, key)
+                    .map_err(|e| e.to_string())?;
+            }
+            if let Err(error) = persist_profile(&mut conn, &profile, key.is_some()) {
+                if key.is_some() {
+                    let restored = match previous_key {
+                        Some((endpoint, previous_key)) => {
+                            keyring::set_bound_stt_key(is_server, &endpoint, &previous_key)
+                        }
+                        None => keyring::delete_bound_stt_key(is_server),
+                    };
+                    restored.map_err(|e| e.to_string())?;
+                }
+                return Err(error);
+            }
             if let Ok(preferences) = crate::preferences::get(&conn) {
                 let _ = app.emit("preferences-changed", &preferences);
             }
@@ -441,6 +595,94 @@ pub fn build_backend(
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn draft_profile(server: &mockito::Server) -> Profile {
+        Profile {
+            mode: Mode::Server,
+            base_url: format!("{}/v1", server.url()),
+            model: "selected-model".into(),
+            proxy: String::new(),
+            language: "ru".into(),
+        }
+    }
+
+    #[tokio::test]
+    async fn manual_server_model_works_without_a_model_list() {
+        let mut server = mockito::Server::new_async().await;
+        let profile = draft_profile(&server);
+        let probe = server
+            .mock("POST", "/v1/audio/transcriptions")
+            .match_header("authorization", "Bearer draft-key")
+            .match_body(mockito::Matcher::AllOf(vec![
+                mockito::Matcher::Regex("name=\"file\"; filename=\"audio.wav\"".into()),
+                mockito::Matcher::Regex("selected-model".into()),
+            ]))
+            .with_body(r#"{"text":""}"#)
+            .create_async()
+            .await;
+        let models = server
+            .mock("GET", "/v1/models")
+            .with_status(404)
+            .create_async()
+            .await;
+        let db = std::sync::Mutex::new(crate::db::test_connection());
+        let provider = server_draft_provider(&db, &profile, Some("draft-key")).unwrap();
+        assert_eq!(check_server_model(&provider, &profile).await, Ok(()));
+        probe.assert_async().await;
+        models.assert_async().await;
+    }
+
+    #[tokio::test]
+    async fn rejects_auth_missing_model_and_failed_recognition() {
+        for (status, body, expected) in [
+            (403, "forbidden", ModelProbeError::KeyRejected),
+            (
+                404,
+                r#"{"error":{"code":"model_not_found"}}"#,
+                ModelProbeError::ModelNotFound,
+            ),
+            (429, "busy", ModelProbeError::RecognitionFailed),
+            (500, "unavailable", ModelProbeError::RecognitionFailed),
+            (
+                200,
+                "not a transcription",
+                ModelProbeError::RecognitionFailed,
+            ),
+        ] {
+            let mut server = mockito::Server::new_async().await;
+            let profile = draft_profile(&server);
+            let probe = server
+                .mock("POST", "/v1/audio/transcriptions")
+                .with_status(status)
+                .with_body(body)
+                .create_async()
+                .await;
+            let provider = build_remote_provider(&profile, None).unwrap();
+            assert_eq!(check_server_model(&provider, &profile).await, Err(expected));
+            probe.assert_async().await;
+        }
+    }
+
+    #[tokio::test]
+    async fn a_successful_probe_cannot_activate_an_unadvertised_model() {
+        let mut server = mockito::Server::new_async().await;
+        let profile = draft_profile(&server);
+        let _probe = server
+            .mock("POST", "/v1/audio/transcriptions")
+            .with_body(r#"{"text":""}"#)
+            .create_async()
+            .await;
+        let _models = server
+            .mock("GET", "/v1/models")
+            .with_body(r#"{"object":"list","data":[{"id":"current-model","owned_by":"glagol"}]}"#)
+            .create_async()
+            .await;
+        let provider = build_remote_provider(&profile, None).unwrap();
+        assert_eq!(
+            check_server_model(&provider, &profile).await,
+            Err(ModelProbeError::ModelNotFound)
+        );
+    }
+
     #[test]
     fn profiles_preserve_cloud_when_selecting_server_and_local() {
         let mut conn = crate::db::test_connection();

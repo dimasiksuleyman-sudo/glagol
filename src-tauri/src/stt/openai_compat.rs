@@ -26,6 +26,10 @@ const TRANSCRIBE_TIMEOUT: Duration = Duration::from_secs(90);
 /// so this per-request cap is what bounds the probe.
 const LIST_MODELS_TIMEOUT: Duration = Duration::from_secs(20);
 
+/// Bound data read from a remote model list and from a short settings probe.
+const MAX_MODELS_RESPONSE_BYTES: u64 = 1024 * 1024;
+const MAX_PROBE_RESPONSE_BYTES: u64 = 64 * 1024;
+
 /// A busy server's 429 is retried automatically this many times…
 const BUSY_RETRIES: usize = 3;
 /// …but only when it asks to wait at most this long. A Glagol LAN server
@@ -53,6 +57,15 @@ pub struct OpenAiCompatStt {
     /// dictation sets it via [`OpenAiCompatStt::with_prompt`]. The Settings
     /// key-check probe leaves it `None` (silence needs no vocabulary).
     prompt: Option<String>,
+}
+
+/// A failed attempt to validate that the selected model can transcribe.
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) enum ModelProbeError {
+    Unreachable,
+    KeyRejected,
+    ModelNotFound,
+    RecognitionFailed,
 }
 
 impl OpenAiCompatStt {
@@ -109,7 +122,7 @@ impl OpenAiCompatStt {
     /// Attach the `Authorization: Bearer …` header when a key is configured.
     fn with_auth(&self, req: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
         match &self.api_key {
-            Some(key) => req.header("Authorization", format!("Bearer {key}")),
+            Some(key) => req.bearer_auth(key),
             None => req,
         }
     }
@@ -142,14 +155,13 @@ impl OpenAiCompatStt {
         }
     }
 
-    /// One `POST {base_url}/audio/transcriptions` attempt.
-    async fn transcribe_once(
+    fn transcription_request(
         &self,
         wav_bytes: Vec<u8>,
         lang: Option<&str>,
-    ) -> Result<Transcript, SttError> {
-        let byte_len = wav_bytes.len();
-
+        prompt: Option<&str>,
+        timeout: Duration,
+    ) -> Result<reqwest::RequestBuilder, SttError> {
         // The filename is NOT optional: some providers key format detection on
         // the `.wav` extension of the `file` part.
         let file_part = multipart::Part::bytes(wav_bytes)
@@ -169,26 +181,32 @@ impl OpenAiCompatStt {
             form = form.text("language", lang.to_string());
         }
 
-        // Whisper `prompt` biasing hint (D8) — only sent when configured.
-        if let Some(prompt) = &self.prompt {
-            form = form.text("prompt", prompt.clone());
+        if let Some(prompt) = prompt {
+            form = form.text("prompt", prompt.to_owned());
         }
+        Ok(self
+            .with_auth(self.client.post(self.transcribe_url()).timeout(timeout))
+            .multipart(form))
+    }
 
+    /// One `POST {base_url}/audio/transcriptions` attempt.
+    async fn transcribe_once(
+        &self,
+        wav_bytes: Vec<u8>,
+        lang: Option<&str>,
+    ) -> Result<Transcript, SttError> {
         debug!(
-            bytes = byte_len,
+            bytes = wav_bytes.len(),
             model = %self.model,
             lang = ?lang,
             "stt transcribe request"
         );
-
-        let request = self
-            .with_auth(
-                self.client
-                    .post(self.transcribe_url())
-                    .timeout(TRANSCRIBE_TIMEOUT),
-            )
-            .multipart(form);
-
+        let request = self.transcription_request(
+            wav_bytes,
+            lang,
+            self.prompt.as_deref(),
+            TRANSCRIBE_TIMEOUT,
+        )?;
         let response = request.send().await.map_err(|e| {
             warn!(error = %e, "stt transcribe network error");
             SttError::from(e)
@@ -211,12 +229,55 @@ impl OpenAiCompatStt {
         Err(map_error_status(status, &retry_after, body))
     }
 
+    /// Check the selected model with a built-in clip. Never send a dictation
+    /// prompt, expose the response text, or accept a rate-limited response.
+    pub(crate) async fn probe_transcription(
+        &self,
+        wav_bytes: Vec<u8>,
+        lang: Option<&str>,
+    ) -> Result<(), ModelProbeError> {
+        let response = self
+            .transcription_request(wav_bytes, lang, None, LIST_MODELS_TIMEOUT)
+            .map_err(|_| ModelProbeError::RecognitionFailed)?
+            .send()
+            .await
+            .map_err(|e| {
+                if e.is_builder() {
+                    ModelProbeError::KeyRejected
+                } else {
+                    ModelProbeError::Unreachable
+                }
+            })?;
+
+        let status = response.status();
+        if matches!(status, StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN) {
+            return Err(ModelProbeError::KeyRejected);
+        }
+        let body = bounded_body(response, MAX_PROBE_RESPONSE_BYTES)
+            .await
+            .map_err(|error| {
+                if matches!(error, SttError::Network(_)) {
+                    ModelProbeError::Unreachable
+                } else {
+                    ModelProbeError::RecognitionFailed
+                }
+            })?;
+        let body = String::from_utf8_lossy(&body);
+        if status.is_success() {
+            return parse_transcript(&body)
+                .map(|_| ())
+                .map_err(|_| ModelProbeError::RecognitionFailed);
+        }
+        if status.is_client_error() && reports_missing_model(&body) {
+            return Err(ModelProbeError::ModelNotFound);
+        }
+        Err(ModelProbeError::RecognitionFailed)
+    }
+
     /// `GET {base_url}/models` — a cheap liveness probe for the key, endpoint
     /// and proxy. Returns the model ids on success; an unfamiliar-but-200 body
     /// still counts as success (empty list) because the auth check passed.
     pub async fn list_models(&self) -> Result<Vec<String>, SttError> {
-        debug!(url = %self.models_url(), "stt list_models request");
-
         let response = self
             .with_auth(
                 self.client
@@ -224,20 +285,22 @@ impl OpenAiCompatStt {
                     .timeout(LIST_MODELS_TIMEOUT),
             )
             .send()
-            .await
-            .map_err(|e| {
-                warn!(error = %e, "stt list_models network error");
-                SttError::from(e)
-            })?;
+            .await?;
 
         let status = response.status();
+        if matches!(status, StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN) {
+            return Err(SttError::Auth);
+        }
+        let retry_after = response_retry_after(response.headers());
+        if status == StatusCode::TOO_MANY_REQUESTS {
+            return Err(SttError::RateLimited(retry_after));
+        }
+        let body = bounded_body(response, MAX_MODELS_RESPONSE_BYTES).await?;
+        let body = String::from_utf8_lossy(&body);
         if !status.is_success() {
-            let retry_after = response_retry_after(response.headers());
-            let body = response.text().await.unwrap_or_default();
-            return Err(map_error_status(status, &retry_after, body));
+            return Err(map_error_status(status, &retry_after, body.into_owned()));
         }
 
-        let body = response.text().await.map_err(SttError::from)?;
         Ok(parse_model_ids(&body))
     }
 }
@@ -255,6 +318,46 @@ impl SttProvider for OpenAiCompatStt {
     async fn list_models(&self) -> Result<Vec<String>, SttError> {
         OpenAiCompatStt::list_models(self).await
     }
+}
+
+async fn bounded_body(mut response: reqwest::Response, max: u64) -> Result<Vec<u8>, SttError> {
+    let too_large = || SttError::InvalidResponse("server response exceeds the size limit".into());
+    if response.content_length().is_some_and(|length| length > max) {
+        return Err(too_large());
+    }
+    let mut body = Vec::new();
+    while let Some(chunk) = response.chunk().await? {
+        if (body.len() + chunk.len()) as u64 > max {
+            return Err(too_large());
+        }
+        body.extend_from_slice(&chunk);
+    }
+    Ok(body)
+}
+
+fn reports_missing_model(body: &str) -> bool {
+    let absent = |message: &str| {
+        let message = message.to_ascii_lowercase();
+        message.contains("model_not_found")
+            || message.contains("unknown model")
+            || (message.contains("model")
+                && ["not found", "does not exist", "no such model"]
+                    .iter()
+                    .any(|phrase| message.contains(phrase)))
+    };
+    let Ok(value) = serde_json::from_str::<serde_json::Value>(body) else {
+        return absent(body);
+    };
+    let error = &value["error"];
+    ["code", "type"].into_iter().any(|key| {
+        matches!(
+            error[key].as_str(),
+            Some("model_not_found" | "unknown_model")
+        )
+    }) || error["message"]
+        .as_str()
+        .or_else(|| error.as_str())
+        .is_some_and(absent)
 }
 
 /// Strip a single trailing `/` so `{base}/audio/transcriptions` never doubles
@@ -598,6 +701,37 @@ mod tests {
         let client = client_for(&server);
         let ids = client.list_models().await.expect("200 counts as success");
         assert!(ids.is_empty());
+    }
+
+    #[tokio::test]
+    async fn list_models_refuses_large_fixed_and_chunked_responses() {
+        let mut server = mockito::Server::new_async().await;
+        let client = client_for(&server);
+        let fixed = server
+            .mock("GET", "/models")
+            .with_body("x".repeat(MAX_MODELS_RESPONSE_BYTES as usize + 1))
+            .create_async()
+            .await;
+        assert!(matches!(
+            client.list_models().await,
+            Err(SttError::InvalidResponse(_))
+        ));
+        fixed.remove_async().await;
+        let _chunked = server
+            .mock("GET", "/models")
+            .with_chunked_body(|out| {
+                let part = [b'x'; 16 * 1024];
+                for _ in 0..65 {
+                    out.write_all(&part)?;
+                }
+                Ok(())
+            })
+            .create_async()
+            .await;
+        assert!(matches!(
+            client.list_models().await,
+            Err(SttError::InvalidResponse(_))
+        ));
     }
 
     #[tokio::test]

@@ -578,6 +578,11 @@ pub(crate) async fn check_provider(
     }
 }
 
+/// Reusable short WAV for settings checks. It contains generated silence.
+pub(crate) fn probe_clip() -> Vec<u8> {
+    wav::silence_wav_s16le_mono(PROBE_DURATION_MS, PROBE_SAMPLE_RATE)
+}
+
 /// Probe the full transcribe path with a tiny silence clip. Note: this goes
 /// straight to the client, deliberately bypassing the recording pipeline's
 /// anti-hallucination filter (which lives in PR2+, not the client), so the
@@ -586,8 +591,10 @@ async fn micro_transcription_check(
     provider: &OpenAiCompatStt,
     language: &str,
 ) -> Result<(), String> {
-    let clip = wav::silence_wav_s16le_mono(PROBE_DURATION_MS, PROBE_SAMPLE_RATE);
-    match provider.transcribe(clip, resolve_language(language)).await {
+    match provider
+        .transcribe(probe_clip(), resolve_language(language))
+        .await
+    {
         Ok(_) => Ok(()),
         Err(SttError::RateLimited(_)) => Ok(()),
         Err(e) => Err(stt_error_to_user_facing_ru(&e)),
