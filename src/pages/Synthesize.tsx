@@ -203,7 +203,7 @@ export function Synthesize() {
     return (
       <div className="space-y-6">
         <Header />
-        <Card>
+        <Card data-tour="synthesize-setup">
           <CardHeader>
             <CardTitle>{t("Install local text to speech")}</CardTitle>
             <CardDescription>
@@ -287,7 +287,7 @@ export function Synthesize() {
           </div>
 
           <div className="space-y-2">
-            <Button type="button" variant="outline" onClick={handlePreview}
+            <Button type="button" variant="outline" data-tour="speech-preview" onClick={handlePreview}
               disabled={isLoading || isPreviewing || isLoadingFile || trimmedTextLength === 0}>
               {isPreviewing ? t("Preparing text preview…") : t("Preview how this is read")}
             </Button>

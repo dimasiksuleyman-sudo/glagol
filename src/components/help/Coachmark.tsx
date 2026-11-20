@@ -81,7 +81,7 @@ export function Coachmark() {
       {placement === "below" && <span className="ml-6 text-3xl leading-none text-amber-400 drop-shadow">▲</span>}
       <div className="w-full rounded-xl border bg-card p-4 text-card-foreground shadow-xl" onClick={event => event.stopPropagation()}>
         <p className="text-sm font-semibold">{t(tour.title)}</p>
-        <p className="mt-1 text-sm leading-snug">{t(tour.hint)}</p>
+        <p className="mt-1 text-sm leading-snug">{override === "tts-switch" && tour.needsTts ? t("helpEnableTtsHint") : t(tour.hint)}</p>
         <button type="button" onClick={close} autoFocus className="mt-3 w-full rounded-md bg-primary py-2 text-sm font-medium text-primary-foreground">{t("helpGotIt")}</button>
       </div>
       {placement === "above" && <span className="ml-6 text-3xl leading-none text-amber-400 drop-shadow">▼</span>}

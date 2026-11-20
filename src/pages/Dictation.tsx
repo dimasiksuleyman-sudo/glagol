@@ -323,7 +323,7 @@ export function Dictation() {
                   disabled={busy}
                 />
                 {settings.ctrl_win_supported && (
-                  <div className="flex items-start justify-between gap-4 pt-1">
+                  <div className="flex items-start justify-between gap-4 pt-1" data-tour="ctrl-win">
                     <div className="space-y-0.5">
                       <label htmlFor="ctrl-win-toggle" className="text-sm font-medium">
                         {t("Also hold Ctrl+Win")}
