@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "id": "outlook-paste",
-  "title": "GL-013: автоматическая вставка диктовки в новый Outlook",
+  "title": "Диктовка Windows: вставка и сохранение режима (GL-013–GL-015)",
   "status": "active",
-  "next": "O2",
+  "next": "O5",
   "reason": null,
   "claim": null,
   "links": [
@@ -112,9 +112,162 @@
     {
       "id": "O2",
       "title": "Ручная проверка пользователем в новом Outlook на Windows",
-      "status": "pending",
+      "status": "done",
       "depends_on": [
         "O1"
+      ],
+      "required": [
+        "manual"
+      ],
+      "checks": [
+        {
+          "id": "manual",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Проверить автоматическую вставку диктовки в новом Outlook",
+          "cwd": ".",
+          "at": "2026-11-20T23:30:16.572Z",
+          "environment": {
+            "os": "Windows",
+            "app": "новый Outlook",
+            "source": "сообщение пользователя"
+          },
+          "exit_code": null,
+          "output": "Пользователь: «Теперь работает».",
+          "evidence": "docs/workstreams/outlook-paste/log.md#o2-подтверждение-пользователя"
+        }
+      ]
+    },
+    {
+      "id": "O3",
+      "title": "GL-014 — Сохранять окно в начале диктовки, исключить оболочку и укрепить маску «Пуска»",
+      "status": "done",
+      "depends_on": [
+        "O2"
+      ],
+      "required": [
+        "rust"
+      ],
+      "checks": [
+        {
+          "id": "rust",
+          "status": "PASS",
+          "method": "command",
+          "command": "cargo fmt --manifest-path src-tauri/Cargo.toml --check && cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings; cargo test --manifest-path src-tauri/Cargo.toml",
+          "cwd": ".",
+          "at": "2026-11-20T23:41:16.753Z",
+          "environment": {
+            "os": "Debian 13",
+            "rustc": "1.100.0",
+            "native": "Локальный sysroot GTK/ALSA/WebKit, профили dev/test без debug info"
+          },
+          "exit_code": 0,
+          "output": "test result: ok. 450 passed; 0 failed; 6 ignored",
+          "evidence": "docs/workstreams/outlook-paste/log.md#автоматические-проверки-o3-и-o4"
+        },
+        {
+          "id": "windows-adapter",
+          "status": "PASS",
+          "method": "command",
+          "command": "cargo clippy --manifest-path /dev/shm/glagol-o3-windows.1GINHP/Cargo.toml --offline --target x86_64-pc-windows-msvc --all-targets -- -D warnings",
+          "cwd": ".",
+          "at": "2026-11-20T23:41:16.753Z",
+          "environment": {
+            "os": "Debian 13",
+            "target": "x86_64-pc-windows-msvc",
+            "rustc": "1.100.0"
+          },
+          "exit_code": 0,
+          "output": "Finished dev profile for Win32 target, hook and native input; runtime untested",
+          "evidence": "docs/workstreams/outlook-paste/log.md#автоматические-проверки-o3-и-o4"
+        }
+      ]
+    },
+    {
+      "id": "O4",
+      "title": "GL-015 — Сохранять готовую локальную модель и показывать несохранённый выбор",
+      "status": "done",
+      "depends_on": [
+        "O3"
+      ],
+      "required": [
+        "frontend"
+      ],
+      "checks": [
+        {
+          "id": "frontend",
+          "status": "PASS",
+          "method": "command",
+          "command": "pnpm exec tsc --noEmit && pnpm build",
+          "cwd": ".",
+          "at": "2026-11-20T23:42:21.304Z",
+          "environment": {
+            "os": "Debian 13",
+            "node": "v24.22.1",
+            "pnpm": "11.25.0"
+          },
+          "exit_code": 0,
+          "output": "I18N PASS: 489 keys with matching parameters; Vite built",
+          "evidence": "docs/workstreams/outlook-paste/log.md#автоматические-проверки-o3-и-o4"
+        },
+        {
+          "id": "browser-smoke",
+          "status": "PASS",
+          "method": "command",
+          "command": "TMPDIR=/dev/shm node /dev/shm/glagol-settings-smoke.z2rESQ/smoke.cjs",
+          "cwd": ".",
+          "at": "2026-11-20T23:42:21.304Z",
+          "environment": {
+            "os": "Debian 13",
+            "node": "v24.22.1",
+            "pnpm": "11.25.0",
+            "browser": "Chromium 156.0.8078.79",
+            "ipc": "Playwright stub"
+          },
+          "exit_code": 0,
+          "output": "PASS ready local model, tab switch, reload, remote drafts; PASS missing model, visible action, tab switch, download, remote drafts",
+          "evidence": "docs/workstreams/outlook-paste/log.md#автоматические-проверки-o3-и-o4"
+        },
+        {
+          "id": "version",
+          "status": "PASS",
+          "method": "command",
+          "command": "node scripts/check-version.mjs",
+          "cwd": ".",
+          "at": "2026-11-20T23:42:21.304Z",
+          "environment": {
+            "os": "Debian 13",
+            "node": "v24.22.1",
+            "pnpm": "11.25.0"
+          },
+          "exit_code": 0,
+          "output": "Glagol 0.6.9: package, Tauri and Cargo versions match.",
+          "evidence": "docs/workstreams/outlook-paste/log.md#автоматические-проверки-o3-и-o4"
+        },
+        {
+          "id": "runbook-tests",
+          "status": "PASS",
+          "method": "command",
+          "command": "pnpm runbook:test",
+          "cwd": ".",
+          "at": "2026-11-20T23:42:21.304Z",
+          "environment": {
+            "os": "Debian 13",
+            "node": "v24.22.1",
+            "pnpm": "11.25.0"
+          },
+          "exit_code": 0,
+          "output": "53 passed, 0 failed",
+          "evidence": "docs/workstreams/outlook-paste/log.md#автоматические-проверки-o3-и-o4"
+        }
+      ]
+    },
+    {
+      "id": "O5",
+      "title": "Ручная проверка GL-014 и GL-015 пользователем на Windows 11",
+      "status": "pending",
+      "depends_on": [
+        "O4"
       ],
       "required": [
         "manual"

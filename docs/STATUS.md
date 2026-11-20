@@ -29,15 +29,15 @@
 
 Проверка 2026-11-20T20:33:10.897Z: Glagol 0.6.9: package, Tauri and Cargo versions match. ([evidence](../docs/workstreams/help-0.7/log.md)).
 
-### Выбранная серия: **GL-013: автоматическая вставка диктовки в новый Outlook**.
+### Выбранная серия: **Диктовка Windows: вставка и сохранение режима (GL-013–GL-015)**.
 
-**NEXT: O2 — Ручная проверка пользователем в новом Outlook на Windows** (pending).
+**NEXT: O5 — Ручная проверка GL-014 и GL-015 пользователем на Windows 11** (pending).
 
 [Решения](workstreams/outlook-paste/README.md) · [Состояние](workstreams/outlook-paste/state.json) · [Журнал](workstreams/outlook-paste/log.md)
 
-Последний завершённый шаг серии: **O1 — Разобрать и исправить автоматическую вставку диктовки после отпускания модификаторов**.
+Последний завершённый шаг серии: **O4 — GL-015 — Сохранять готовую локальную модель и показывать несохранённый выбор**.
 
-Проверка 2026-11-20T22:09:58.325Z: test result: ok. 441 passed; 0 failed; 6 ignored ([evidence](../docs/workstreams/outlook-paste/log.md)).
+Проверка 2026-11-20T23:42:21.304Z: I18N PASS: 489 keys with matching parameters; Vite built ([evidence](../docs/workstreams/outlook-paste/log.md#автоматические-проверки-o3-и-o4)).
 
 ### Выбранная серия: **Подпись установщика Windows (Authenticode) через SignPath Foundation**.
 
