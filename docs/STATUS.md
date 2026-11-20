@@ -5,15 +5,15 @@
 
 Начало работы: [AGENTS](../AGENTS.md) → этот обзор → состояние и журнал серии.
 
-Выбранная серия: **Сервер распознавания внутри Глагола для офиса (русский, GigaAM)**.
+Выбранная серия: **Нормализация текста для озвучки: правила, словарь, ИИ-фрагменты**.
 
-**NEXT: L6 — Замер (scripts/lan-server-bench.mjs) и проверка на двух машинах: ПК сына (GTX 1060 6 ГБ) — сервер, ПК и ноутбук — клиенты** (pending).
+**NEXT: N2 — Словарь произношения: миграция SQLite, раздел в настройках, импорт/экспорт, «Послушать», бэкап** (pending).
 
-[Решения](workstreams/lan-server/README.md) · [Состояние](workstreams/lan-server/state.json) · [Журнал](workstreams/lan-server/log.md)
+[Решения](workstreams/tts-normalization/README.md) · [Состояние](workstreams/tts-normalization/state.json) · [Журнал](workstreams/tts-normalization/log.md)
 
-Последний завершённый шаг серии: **L4 — Клиент: «Вставить код подключения» и проверка в одно действие**.
+Последний завершённый шаг серии: **N1 — Правила RU/EN в Rust: числа с падежом, дроби, деньги, единицы, даты, время, аббревиатуры; тесты ≥ 200 случаев**.
 
-Проверка 2026-11-19T19:30:00.000Z: test result: ok. 403 passed; 0 failed; 6 ignored ([evidence](../docs/workstreams/lan-server/log.md)).
+Проверка 2026-11-20T17:00:00.000Z: test result: ok. 416 passed; 0 failed; 6 ignored (≈80 normalization cases incl. the user's news text verbatim) ([evidence](../docs/workstreams/tts-normalization/log.md)).
 
 ## Доставка и наблюдения
 

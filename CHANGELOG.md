@@ -11,6 +11,10 @@ the per-session master logs under [`docs/day-logs/`](docs/day-logs/).
 
 ## [Unreleased]
 
+### Changed
+
+- Text to speech reads numbers, money, percentages, dates, years, centuries, times, ordinals («2-я», «90-е») and common abbreviations as words, in the grammatical case the Russian context asks for («продал 980 млн акций», «$81,3 млрд», «в 2026 г.»); English text follows English rules. Offline and engine-independent. / Озвучка читает числа, суммы, проценты, даты, годы, века, время, порядковые («2-я», «90-е») и частые сокращения словами — в падеже по русскому контексту («продал 980 млн акций», «$81,3 млрд», «в 2026 г.»); английский текст — по английским правилам. Офлайн и для любого движка.
+
 ### Added
 
 - Server for other computers (Settings → Dictation, off by default): this computer serves Russian GigaAM recognition over the local network through an OpenAI-compatible endpoint; office computers connect by pasting a connection code (address + access key) in Organization server → Glagol on another computer. Private networks only, access key always required, requests queue (beyond 32 the server answers «busy» and Glagol clients retry automatically), keep-awake option, firewall help; no speech, text or client addresses are logged. / «Сервер для других компьютеров» («Настройки» → «Диктовка», по умолчанию выключен): компьютер раздаёт русское распознавание GigaAM по локальной сети через OpenAI-совместимый API; офисные компьютеры подключаются вставкой кода подключения (адрес + ключ) в «Сервер организации» → «Глагол на другом компьютере». Только частные сети, ключ обязателен, очередь запросов (сверх 32 сервер отвечает «занят», а клиенты Глагола сами повторяют запрос), «не засыпать», помощь с брандмауэром; речь, текст и адреса компьютеров не пишутся в журнал.

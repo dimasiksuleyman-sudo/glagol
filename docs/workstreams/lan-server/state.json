@@ -2,9 +2,9 @@
   "schema_version": 1,
   "id": "lan-server",
   "title": "Сервер распознавания внутри Глагола для офиса (русский, GigaAM)",
-  "status": "active",
+  "status": "paused",
   "next": "L6",
-  "reason": null,
+  "reason": "Сервер работает на двух машинах (L6 частично: замеры GTX 1060 и RX 550, два клиента). Осталось: смена ключа и сон сервера — проверить при выпуске 0.7.0. Пользователь 2026-11-20 переключил работу на tts-normalization.",
   "claim": null,
   "links": [
     "docs/workstreams/lan-server/README.md",

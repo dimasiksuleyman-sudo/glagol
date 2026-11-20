@@ -118,9 +118,13 @@ languages. Language/model changes are disabled during the corresponding operatio
 
 Long text is split and synthesized sequentially with progress and cancellation.
 Cancellation does not publish a partial recording as a completed library document.
-English text uses English number/abbreviation handling; Russian retains its existing
-stress and Latin-letter conversion. Dates and unusual notation may be read component
-by component: listen to important text. Choosing a language is not translation.
+Before synthesis Glagol turns numbers, amounts, percentages, dates, years, centuries,
+times and abbreviations into words. Russian text gets the grammatical case from the
+context («продал 980 млн акций» → «девятьсот восемьдесят миллионов акций», «в 2026 г.» →
+«в две тысячи двадцать шестом году», «IPO» → «ай-пи-о»); English text follows English
+rules («$81.3 billion» → «eighty-one point three billion dollars», «in 2026» → «in
+twenty twenty-six»). The case is inferred from neighbouring words and can occasionally
+be off; listen to unusual notation. Choosing a language is not translation.
 
 The Library is a compact list: ▶ next to a document plays it in the shared player at the
 bottom (pause, seek, 0.5–2× speed, volume); the icons rename, export the WAV or delete.
