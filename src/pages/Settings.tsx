@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { t } from "@/i18n";
 import { useI18n, usePreferences } from "@/contexts/PreferencesContext";
 import { Navigate, NavLink, useParams } from "react-router-dom";
@@ -20,6 +21,10 @@ export function Settings() {
   useI18n();
   const { tab } = useParams();
   const { preferences } = usePreferences();
+  const [visitedDictation, setVisitedDictation] = useState(tab === "dictation");
+  useEffect(() => {
+    if (tab === "dictation") setVisitedDictation(true);
+  }, [tab]);
   if (!TABS.includes(tab as SettingsTab)) return <Navigate to="/settings/dictation" replace />;
   const label: Record<SettingsTab, string> = {
     dictation: t("Dictation"),
@@ -38,7 +43,10 @@ export function Settings() {
         {label[id]}
       </NavLink>)}
     </nav>
-    {tab === "dictation" && <><DictationSection /><LanServerSection /></>}
+    {(visitedDictation || tab === "dictation") && <div hidden={tab !== "dictation"}>
+      <DictationSection />
+    </div>}
+    {tab === "dictation" && <LanServerSection />}
     {tab === "speech" && <><TtsSection />{preferences?.tts_enabled !== false && <><PronunciationSection /><AiNormalizationSection /></>}</>}
     {tab === "general" && <>
       <div data-tour="interface-language"><LanguageSwitch /></div>
