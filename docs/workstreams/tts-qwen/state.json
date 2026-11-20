@@ -3,13 +3,62 @@
   "id": "tts-qwen",
   "title": "Оценка Qwen3-TTS как «качественных голосов» (Apache 2.0)",
   "status": "paused",
-  "next": "Q1",
-  "reason": "Пользователь 2026-11-20: «давай обязательно пощупаем КВЕН». Сначала оценка на слух (Q1), затем решение о встраивании.",
+  "next": "Q2",
+  "reason": "Q1 пройден: Qwen звучит живее; обязательна нормализация текста. Дальше — замер Q2 и серия нормализации.",
   "claim": null,
-  "links": ["docs/workstreams/tts-qwen/README.md", "docs/workstreams/tts-qwen/log.md"],
+  "links": [
+    "docs/workstreams/tts-qwen/README.md",
+    "docs/workstreams/tts-qwen/log.md"
+  ],
   "steps": [
-    {"id": "Q1", "title": "Прослушать демо Qwen3-TTS 0.6B/1.7B на русских и английских текстах пользователя, сравнить с Silero", "status": "pending", "depends_on": [], "required": ["manual"], "checks": []},
-    {"id": "Q2", "title": "Замер скорости и памяти на ПК пользователя (RX 550 4 ГБ? / процессор) и ПК сына (GTX 1060 6 ГБ); формат выполнения без Python, если возможно", "status": "pending", "depends_on": ["Q1"], "required": ["manual"], "checks": []},
-    {"id": "Q3", "title": "Решение: встраивать ли как необязательный компонент рядом с Silero; план", "status": "pending", "depends_on": ["Q2"], "required": ["decision"], "checks": []}
+    {
+      "id": "Q1",
+      "title": "Прослушать демо Qwen3-TTS 0.6B/1.7B на русских и английских текстах пользователя, сравнить с Silero",
+      "status": "done",
+      "depends_on": [],
+      "required": [
+        "manual"
+      ],
+      "checks": [
+        {
+          "id": "manual",
+          "status": "PASS",
+          "method": "manual",
+          "command": "Демо Qwen3-TTS (0.6B/1.7B) на русском новостном тексте пользователя, сравнение с Silero",
+          "cwd": ".",
+          "at": "2026-11-20T12:00:00.000Z",
+          "environment": {
+            "os": "браузер пользователя"
+          },
+          "exit_code": null,
+          "output": "«Квен обладает более живой озвучкой, меньше синтетического привкуса»; обеим моделям нужна нормализация («980 млн» → «девяносто восемдесят малерад»); «Квен 1.7 с нормализацией цифр и сокращений был бы топчик для прослушивания новостей, с выбором языка» (reported)",
+          "evidence": "docs/workstreams/tts-qwen/log.md"
+        }
+      ]
+    },
+    {
+      "id": "Q2",
+      "title": "Замер скорости и памяти на ПК пользователя (RX 550 4 ГБ? / процессор) и ПК сына (GTX 1060 6 ГБ); формат выполнения без Python, если возможно",
+      "status": "pending",
+      "depends_on": [
+        "Q1"
+      ],
+      "required": [
+        "manual"
+      ],
+      "checks": []
+    },
+    {
+      "id": "Q3",
+      "title": "Решение: встраивать ли как необязательный компонент рядом с Silero; план",
+      "status": "pending",
+      "depends_on": [
+        "Q2"
+      ],
+      "required": [
+        "decision"
+      ],
+      "checks": []
+    }
   ]
 }
