@@ -55,7 +55,11 @@ These constraints apply to changes. Resolve required architectural changes befor
 
 1. **No secrets in code, config files, or environment variables.** Authorization Keys live in Windows Credential Manager (`keyring-rs`). Access tokens live only in RAM.
 2. **Artifact downloads and public STT endpoints use verified TLS.** Office STT permits explicit private-IP/localhost HTTP under its separate policy. No retired OAuth endpoints or custom Sber root certificate.
-3. **No TTS inference network access.** Pin downloadable artifacts; the webview uses IPC, not direct provider calls.
+3. **TTS inference is local.** Optional document text preparation can send bounded
+   excerpts over verified HTTPS only after saving explicit consent. Preserve the
+   dictionary and surrounding words, fall back locally, and never log excerpts,
+   responses or keys. The endpoint and key are bound in the OS credential store.
+   Pin downloadable artifacts. The webview uses IPC for provider access.
 4. **No telemetry by default.** Sentry is opt-in, off by default. No analytics. No tracking pixels. No fingerprinting.
 5. **No `unsafe` Rust without a `// SAFETY:` comment** explaining the invariants.
 6. **No `dangerouslySetInnerHTML` in React.** Ever.

@@ -19,6 +19,9 @@ pub struct AppState {
     /// migrations must succeed at app start or the app refuses to launch.
     pub db: Mutex<Connection>,
 
+    /// Process-wide request limit and in-memory AI normalization cache.
+    pub ai_normalizer: crate::text::ai_normalization::AiNormalizer,
+
     /// Cached validation for the independent STT credential.
     pub stt_key_validated: tokio::sync::Mutex<bool>,
 
@@ -65,6 +68,7 @@ impl AppState {
     pub fn new(db: Connection, recorder: RecorderHandle) -> Self {
         Self {
             db: Mutex::new(db),
+            ai_normalizer: Default::default(),
             stt_key_validated: tokio::sync::Mutex::new(false),
             recorder,
             dictation: Mutex::new(DictationPhase::Idle),

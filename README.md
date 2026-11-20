@@ -85,6 +85,11 @@ A new installation starts with text to speech off; turn it on in Settings → Te
 speech when needed. If you only dictate, keep it off: Silero is then neither offered,
 verified at startup nor preloaded, and the Synthesize page is hidden.
 
+**Optional AI text preparation** can improve how numbers and abbreviations are read.
+It is off by default. When enabled, the selected provider receives only short excerpts
+around those expressions, up to a third of the text. Silero synthesizes audio locally.
+See [the guide](USER_GUIDE.en.md#reading-a-document) for presets, preview and fallback.
+
 ### Licenses and data
 
 Glagol is free and MIT licensed. Dictation can be used in organizations, subject to
@@ -183,6 +188,11 @@ Python/PyTorch и словарей произношения. Начальную 
 «Настройки» → «Озвучка». Если нужна только диктовка, оставьте её выключенной: Silero
 не предлагается, не проверяется при запуске и не загружается заранее, экран
 «Озвучить» скрыт.
+
+**Необязательная ИИ-нормализация** помогает читать числа и сокращения. По умолчанию
+она выключена. После включения выбранный провайдер получает короткие фрагменты рядом
+с такими выражениями, суммарно до трети текста. Silero создаёт аудио локально.
+Пресеты, предпросмотр и запасной режим описаны в [руководстве](USER_GUIDE.ru.md).
 
 ### Лицензии и данные
 

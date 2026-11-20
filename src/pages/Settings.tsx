@@ -6,6 +6,7 @@ import { BackupSection } from "@/components/settings/BackupSection";
 import { DictationSection } from "@/components/settings/DictationSection";
 import { LanServerSection } from "@/components/settings/LanServerSection";
 import { TtsSection } from "@/components/settings/TtsSection";
+import { AiNormalizationSection } from "@/components/settings/AiNormalizationSection";
 import { PronunciationSection } from "@/components/settings/PronunciationSection";
 import { UpdatesSection } from "@/components/settings/UpdatesSection";
 import { DiagnosticsSection } from "@/components/settings/DiagnosticsSection";
@@ -38,7 +39,7 @@ export function Settings() {
       </NavLink>)}
     </nav>
     {tab === "dictation" && <><DictationSection /><LanServerSection /></>}
-    {tab === "speech" && <><TtsSection />{preferences?.tts_enabled !== false && <PronunciationSection />}</>}
+    {tab === "speech" && <><TtsSection />{preferences?.tts_enabled !== false && <><PronunciationSection /><AiNormalizationSection /></>}</>}
     {tab === "general" && <>
       <div data-tour="interface-language"><LanguageSwitch /></div>
       <UpdatesSection />

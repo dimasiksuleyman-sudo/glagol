@@ -200,12 +200,7 @@ pub fn preview_normalized(
 /// (Silero honours them); English drops them.
 pub fn prepare_for_speech(text: &str, entries: &[Entry], language: &str) -> String {
     let text = dictionary::apply(text, entries, if language == "en" { "en" } else { "ru" });
-    if language == "en" {
-        // Silero English does not understand «+» stress marks.
-        crate::text::preprocessor::preprocess_english(&dictionary::strip_stress(&text))
-    } else {
-        crate::text::preprocessor::preprocess(&text)
-    }
+    crate::text::preprocessor::after_dictionary(&text, language)
 }
 
 #[cfg(test)]

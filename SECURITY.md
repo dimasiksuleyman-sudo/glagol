@@ -36,6 +36,15 @@ providers; use the current code/release when testing fixes.
   keyboard hook. It only tells Ctrl, Win and "another key" apart, passes every
   key on, ignores injected input, and never stores or logs keys; turning the
   switch off removes the hook.
+- Optional AI text preparation is off by default. Once enabled, document preview
+  and synthesis send selected short excerpts and neighboring words over verified
+  HTTPS to the configured provider, with redirects disabled. Recognized links,
+  email addresses, phone numbers, IP addresses and dictionary replacements are
+  excluded. Limits cap the excerpts at a third of the original input and 8,000
+  characters. Other sensitive text can occur in those excerpts. Responses must
+  preserve context, with local fallback for errors. The cache is bounded and
+  memory-only. Logs hold counts and timings. The OS credential store keeps the
+  explicit choice, endpoint and API key together, outside transferable backups.
 - STT credentials use OS keyring slots separate from server/cloud profiles.
 - Update checks contact GitHub only on an explicit button press or, when the user
   enables it, once after startup (off by default). Installers are accepted only with a
@@ -68,6 +77,15 @@ remain part of the deployment's security boundary.
 Текущая ветка разработки — 0.6.x; в исторических выпусках могли использоваться
 удалённые провайдеры. Для проверки исправлений используйте актуальную версию.
 
+- ИИ-нормализация текста по умолчанию выключена. После включения предпросмотр и
+  озвучка отправляют выбранные короткие фрагменты с соседними словами по HTTPS с
+  проверкой сертификата и без перенаправлений. Распознанные ссылки, email,
+  номера телефонов, IP-адреса и замены словаря исключаются. Лимит — треть
+  исходного текста и 8 000 символов. Во фрагментах могут оказаться
+  другие чувствительные данные. При ошибке или изменении контекста применяются
+  локальные правила. Кэш ограничен и живёт в памяти, журнал содержит только
+  счётчики и время. Согласие, адрес и ключ хранятся вместе в системном хранилище
+  вне переносимых бэкапов.
 - Silero, GigaAM и Moonshine после загрузки работают локально без сети. При office/cloud STT
   аудио уходит на явно выбранный пользователем сервер на условиях этого сервиса.
 - Python, CPU PyTorch, зависимости и веса скачиваются по выбору с закреплённых

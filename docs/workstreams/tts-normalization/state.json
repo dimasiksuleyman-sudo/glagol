@@ -3,7 +3,7 @@
   "id": "tts-normalization",
   "title": "Нормализация текста для озвучки: правила, словарь, ИИ-фрагменты",
   "status": "active",
-  "next": "N3",
+  "next": "N4",
   "reason": null,
   "claim": null,
   "links": [
@@ -35,7 +35,7 @@
             "pnpm": "10.28.0"
           },
           "exit_code": 0,
-          "output": "test result: ok. 416 passed; 0 failed; 6 ignored (≈80 normalization cases incl. the user's news text verbatim)",
+          "output": "test result: ok. 416 passed; 0 failed; 6 ignored (approximately 80 normalization cases)",
           "evidence": "docs/workstreams/tts-normalization/log.md"
         }
       ]
@@ -91,7 +91,7 @@
     {
       "id": "N3",
       "title": "ИИ-нормализация фрагментами по разрешению: провайдер/модель/ключ, валидация, откат на правила, кэш, предпросмотр",
-      "status": "pending",
+      "status": "done",
       "depends_on": [
         "N1"
       ],
@@ -99,7 +99,42 @@
         "rust",
         "frontend"
       ],
-      "checks": []
+      "checks": [
+        {
+          "id": "rust",
+          "status": "PASS",
+          "method": "command",
+          "command": "cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test",
+          "cwd": "src-tauri",
+          "at": "2026-11-20T17:07:04.522Z",
+          "environment": {
+            "os": "Debian 13 (Linux container)",
+            "rustc": "1.100.0",
+            "node": "v24.22.1",
+            "pnpm": "11.25.0"
+          },
+          "exit_code": 0,
+          "output": "test result: ok. 431 passed; 0 failed; 6 ignored (6 new tests for AI normalization and excerpt selection)",
+          "evidence": "docs/workstreams/tts-normalization/log.md"
+        },
+        {
+          "id": "frontend",
+          "status": "PASS",
+          "method": "command",
+          "command": "pnpm exec tsc --noEmit && pnpm build",
+          "cwd": ".",
+          "at": "2026-11-20T17:07:04.522Z",
+          "environment": {
+            "os": "Debian 13 (Linux container)",
+            "rustc": "1.100.0",
+            "node": "v24.22.1",
+            "pnpm": "11.25.0"
+          },
+          "exit_code": 0,
+          "output": "I18N PASS: 428 keys with matching parameters; Vite built",
+          "evidence": "docs/workstreams/tts-normalization/log.md"
+        }
+      ]
     },
     {
       "id": "N4",

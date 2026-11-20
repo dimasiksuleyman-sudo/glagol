@@ -7,13 +7,13 @@
 
 Выбранная серия: **Нормализация текста для озвучки: правила, словарь, ИИ-фрагменты**.
 
-**NEXT: N3 — ИИ-нормализация фрагментами по разрешению: провайдер/модель/ключ, валидация, откат на правила, кэш, предпросмотр** (pending).
+**NEXT: N4 — Документы RU/EN, SECURITY, ручная проверка на новостях** (pending).
 
 [Решения](workstreams/tts-normalization/README.md) · [Состояние](workstreams/tts-normalization/state.json) · [Журнал](workstreams/tts-normalization/log.md)
 
-Последний завершённый шаг серии: **N2 — Словарь произношения: миграция SQLite, раздел в настройках, импорт/экспорт, «Послушать», бэкап**.
+Последний завершённый шаг серии: **N3 — ИИ-нормализация фрагментами по разрешению: провайдер/модель/ключ, валидация, откат на правила, кэш, предпросмотр**.
 
-Проверка 2026-11-20T18:30:00.000Z: test result: ok. 425 passed; 0 failed; 6 ignored (9 new dictionary/storage tests) ([evidence](../docs/workstreams/tts-normalization/log.md)).
+Проверка 2026-11-20T17:07:04.522Z: test result: ok. 431 passed; 0 failed; 6 ignored (6 new tests for AI normalization and excerpt selection) ([evidence](../docs/workstreams/tts-normalization/log.md)).
 
 ## Доставка и наблюдения
 

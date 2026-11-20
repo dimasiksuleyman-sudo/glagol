@@ -147,6 +147,21 @@ pub fn delete_bound_stt_key(server: bool) -> KeyringResult<()> {
     delete_with(&bound_stt_entry(server)?)
 }
 
+/// The normalization consent, destination, model and secret are stored together
+/// in a dedicated OS credential, outside the database and transferable backups.
+pub fn get_ai_normalization() -> KeyringResult<Option<String>> {
+    let entry = Entry::new(SERVICE, "tts_ai_normalization")
+        .map_err(|e| KeyringError::Backend(e.to_string()))?;
+    get_with(&entry)
+}
+
+/// Replace the complete AI normalization configuration atomically.
+pub fn set_ai_normalization(value: &str) -> KeyringResult<()> {
+    let entry = Entry::new(SERVICE, "tts_ai_normalization")
+        .map_err(|e| KeyringError::Backend(e.to_string()))?;
+    set_with(&entry, value)
+}
+
 // ───────────────────────────────────────────────────────────────
 // Internal helpers — operate on a borrowed `Entry`.
 //

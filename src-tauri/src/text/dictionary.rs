@@ -80,6 +80,26 @@ fn pattern_source(entry: &Entry) -> String {
 /// pass: at each position the longest matching pattern wins («Нью-Йорк Таймс»
 /// over «Нью-Йорк»), and replaced text is never matched again.
 pub fn apply(text: &str, entries: &[Entry], language: &str) -> String {
+    apply_tracking(text, entries, language, |_| {})
+}
+
+/// Apply the dictionary and record output spans to keep local during normalization.
+pub fn apply_with_ranges(
+    text: &str,
+    entries: &[Entry],
+    language: &str,
+) -> (String, Vec<std::ops::Range<usize>>) {
+    let mut protected = Vec::new();
+    let output = apply_tracking(text, entries, language, |range| protected.push(range));
+    (output, protected)
+}
+
+fn apply_tracking(
+    text: &str,
+    entries: &[Entry],
+    language: &str,
+    mut track: impl FnMut(std::ops::Range<usize>),
+) -> String {
     let mut active: Vec<&Entry> = entries
         .iter()
         .filter(|e| e.enabled && (e.language == language || e.language == "any"))
@@ -96,12 +116,21 @@ pub fn apply(text: &str, entries: &[Entry], language: &str) -> String {
         tracing::warn!("pronunciation dictionary could not be compiled; skipped");
         return text.to_string();
     };
-    re.replace_all(text, |c: &regex::Captures<'_>| {
-        (1..c.len())
-            .find(|&i| c.get(i).is_some())
-            .map_or_else(|| c[0].to_string(), |i| active[i - 1].replacement.clone())
-    })
-    .into_owned()
+    let mut output = String::with_capacity(text.len());
+    let mut end = 0;
+    for captures in re.captures_iter(text) {
+        let matched = captures.get(0).expect("a capture has a full match");
+        output.push_str(&text[end..matched.start()]);
+        let start = output.len();
+        let replacement = (1..captures.len())
+            .find(|&i| captures.get(i).is_some())
+            .map_or(matched.as_str(), |i| active[i - 1].replacement.as_str());
+        output.push_str(replacement);
+        track(start..output.len());
+        end = matched.end();
+    }
+    output.push_str(&text[end..]);
+    output
 }
 
 /// Remove stress marks («+» right before a vowel) for engines that do not
