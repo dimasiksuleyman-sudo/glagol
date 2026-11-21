@@ -25,6 +25,8 @@
 
 use std::time::{Duration, Instant};
 
+#[cfg(windows)]
+mod in_app;
 #[cfg(any(windows, test))]
 mod keyboard;
 mod target;
@@ -159,7 +161,7 @@ pub fn plan_insertion(
 /// boundary: `Pasted → pasted`, `ClipboardOnly → clipboard`, `Failed → error`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InsertOutcome {
-    /// The paste events were sent to the OS (D11 — *sent*, not *landed*).
+    /// Paste was dispatched to the OS or acknowledged by our own editor.
     Pasted,
     /// The transcript is in the clipboard but no paste happened — either the mode
     /// was [`InsertionMode::ClipboardOnly`], or the paste keystroke failed and we
@@ -176,6 +178,11 @@ pub enum InsertOutcome {
 /// touching the clipboard, then pass the original focus target to dispatch.
 pub trait TextInserter: Clone + Send + 'static {
     type Target;
+
+    /// Deliver to our own window, returning `None` for other applications.
+    fn insert_in_app(&self, _text: &str) -> Option<bool> {
+        None
+    }
 
     /// Decide whether it is safe to prepare the paste.
     fn prepare_paste(&self) -> Result<Self::Target, String>;
@@ -238,12 +245,20 @@ pub fn insert_transcript<I: TextInserter, C: ClipboardAccess>(
     mode: InsertionMode,
 ) -> InsertOutcome {
     let target = if mode == InsertionMode::Paste {
-        match inserter.prepare_paste() {
-            Ok(target) => Some(target),
-            Err(reason) => {
-                tracing::warn!(reason, "automatic paste skipped; keeping text in clipboard");
-                None
+        let start = Instant::now();
+        match inserter.insert_in_app(transcript) {
+            Some(true) => {
+                log_timing(start, InsertOutcome::Pasted);
+                return InsertOutcome::Pasted;
             }
+            Some(false) => None,
+            None => match inserter.prepare_paste() {
+                Ok(target) => Some(target),
+                Err(reason) => {
+                    tracing::warn!(reason, "automatic paste skipped; keeping text in clipboard");
+                    None
+                }
+            },
         }
     } else {
         None
@@ -376,18 +391,22 @@ fn log_timing(start: Instant, outcome: InsertOutcome) {
 // ── Real implementations ────────────────────────────────────────────────
 
 /// The production inserter, with native input on Windows and Enigo elsewhere.
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct SystemInserter {
     #[cfg(windows)]
     origin: PasteOrigin,
+    #[cfg(windows)]
+    app: tauri::AppHandle,
 }
 
 impl SystemInserter {
     /// Use the foreground window captured at the start of this dictation.
-    pub fn new(_origin: PasteOrigin) -> Self {
+    pub fn new(_app: &tauri::AppHandle, _origin: PasteOrigin) -> Self {
         Self {
             #[cfg(windows)]
             origin: _origin,
+            #[cfg(windows)]
+            app: _app.clone(),
         }
     }
 }
@@ -395,6 +414,15 @@ impl SystemInserter {
 #[cfg(windows)]
 impl TextInserter for SystemInserter {
     type Target = PasteOrigin;
+
+    fn insert_in_app(&self, text: &str) -> Option<bool> {
+        if !self.origin.belongs_to_current_process() {
+            return None;
+        }
+        let result = in_app::deliver(&self.app, self.origin, text);
+        tracing::debug!(target: "glagol_lib::paste_diagnostics", ?result, "dictation delivery to main window");
+        Some(matches!(result, in_app::Delivery::Inserted))
+    }
 
     fn prepare_paste(&self) -> Result<Self::Target, String> {
         keyboard::prepare(self.origin)
@@ -503,9 +531,19 @@ pub(crate) mod fakes {
         calls: Vec<&'static str>,
         fail_paste: bool,
         fail_preparation: bool,
+        in_app: Option<bool>,
     }
 
     impl FakeInserter {
+        pub(crate) fn own_window(inserted: bool) -> Self {
+            Self {
+                inner: Arc::new(Mutex::new(FakeInserterState {
+                    in_app: Some(inserted),
+                    ..Default::default()
+                })),
+            }
+        }
+
         pub(crate) fn failing_paste() -> Self {
             Self {
                 inner: Arc::new(Mutex::new(FakeInserterState {
@@ -530,6 +568,14 @@ pub(crate) mod fakes {
 
     impl TextInserter for FakeInserter {
         type Target = ();
+
+        fn insert_in_app(&self, _: &str) -> Option<bool> {
+            let mut state = self.inner.lock().unwrap();
+            if state.in_app.is_some() {
+                state.calls.push("insert_in_app");
+            }
+            state.in_app
+        }
 
         fn prepare_paste(&self) -> Result<Self::Target, String> {
             let mut s = self.inner.lock().unwrap();
@@ -965,6 +1011,42 @@ mod tests {
     // Then this test fails: the prior text WOULD be written back over the
     // intruder, so `writes()` becomes `[TRANSCRIPT, PRIOR]` and `content()`
     // becomes PRIOR. Restore the real check → green again. Verified manually.
+
+    #[test]
+    fn own_window_uses_the_frontend_or_clipboard_without_synthetic_input() {
+        for (mode, inserted, expected, calls, clipboard_text) in [
+            (
+                InsertionMode::Paste,
+                true,
+                InsertOutcome::Pasted,
+                &["insert_in_app"][..],
+                PRIOR,
+            ),
+            (
+                InsertionMode::Paste,
+                false,
+                InsertOutcome::ClipboardOnly,
+                &["insert_in_app"][..],
+                TRANSCRIPT,
+            ),
+            (
+                InsertionMode::ClipboardOnly,
+                true,
+                InsertOutcome::ClipboardOnly,
+                &[][..],
+                TRANSCRIPT,
+            ),
+        ] {
+            let inserter = FakeInserter::own_window(inserted);
+            let clipboard = FakeClipboard::with_text(PRIOR);
+            assert_eq!(
+                insert_transcript(&inserter, &clipboard, TRANSCRIPT, mode),
+                expected
+            );
+            assert_eq!(inserter.calls(), calls);
+            assert_eq!(clipboard.content().as_deref(), Some(clipboard_text));
+        }
+    }
 
     #[test]
     fn blocked_preparation_keeps_transcript_in_clipboard_without_pasting() {
