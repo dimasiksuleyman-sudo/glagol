@@ -277,3 +277,11 @@ profile=gpu за ~9,5 с; четыре попытки «Прослушать г�
 qwentts.cpp о падении Vulkan на Pascal. Сервер диктовки на этом же ПК (GigaAM,
 Vulkan) работает (журнал 2026-11-19: обычные фразы 0,25–0,8 с, 30 с речи —
 0,83 с; замер 10 клиентов — ранее).
+
+## 2026-11-21T08:30:00.000Z — GTX 1060: обход найден — без flash attention
+
+`qwen-tts.exe` (спайк-сборка) на ПК сына, драйвер 581.80: с FA — talker до EOS,
+затем 170 address fault, «device lost», код 0xC0000409; `--no-fa` — код 0,
+out.wav. Добавлен профиль `gpu-nofa` (use_fa=false) между safe-gpu и cpu;
+черновик issue для qwentts.cpp дополнен. CUDA-сборка (windows-2022) продолжена
+как вариант ускорения для NVIDIA.

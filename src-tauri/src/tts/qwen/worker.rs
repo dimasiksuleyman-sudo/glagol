@@ -50,13 +50,20 @@ pub fn clean_style(style: Option<&str>) -> Result<Option<String>, String> {
 }
 
 /// Device settings, from fastest to safest. A device failure moves to the
-/// next profile, which is remembered for this computer.
+/// next profile, which is remembered for this computer. Each GPU profile
+/// answers a failure seen on a real card:
+/// - RX 550 (2 GB, no FP16): empty audio without clamping, and no memory for
+///   the KV cache without flash attention → `SafeGpu`;
+/// - GTX 1060 (Pascal): page faults and «device lost» with flash attention,
+///   with or without clamping; works without it → `GpuNoFa`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Profile {
     /// Best available device (GPU), defaults.
     Gpu,
     /// GPU with FP16 clamping and a short decode chunk (old or 2 GB cards).
     SafeGpu,
+    /// GPU without flash attention (cards where it faults; needs more memory).
+    GpuNoFa,
     /// Processor only.
     Cpu,
 }
@@ -65,16 +72,25 @@ impl Profile {
         match self {
             Profile::Gpu => Options {
                 device: None,
+                use_fa: true,
                 clamp_fp16: false,
                 codec_chunk_sec: 24.0,
             },
             Profile::SafeGpu => Options {
                 device: None,
+                use_fa: true,
                 clamp_fp16: true,
                 codec_chunk_sec: 6.0,
             },
+            Profile::GpuNoFa => Options {
+                device: None,
+                use_fa: false,
+                clamp_fp16: false,
+                codec_chunk_sec: 24.0,
+            },
             Profile::Cpu => Options {
                 device: Some("CPU"),
+                use_fa: true,
                 clamp_fp16: false,
                 codec_chunk_sec: 24.0,
             },
@@ -84,6 +100,7 @@ impl Profile {
         match self {
             Profile::Gpu => "gpu",
             Profile::SafeGpu => "safe-gpu",
+            Profile::GpuNoFa => "gpu-nofa",
             Profile::Cpu => "cpu",
         }
     }
@@ -91,6 +108,7 @@ impl Profile {
         match tag {
             "gpu" => Some(Profile::Gpu),
             "safe-gpu" => Some(Profile::SafeGpu),
+            "gpu-nofa" => Some(Profile::GpuNoFa),
             "cpu" => Some(Profile::Cpu),
             _ => None,
         }
@@ -99,7 +117,8 @@ impl Profile {
     pub fn next(self) -> Option<Self> {
         match self {
             Profile::Gpu => Some(Profile::SafeGpu),
-            Profile::SafeGpu => Some(Profile::Cpu),
+            Profile::SafeGpu => Some(Profile::GpuNoFa),
+            Profile::GpuNoFa => Some(Profile::Cpu),
             Profile::Cpu => None,
         }
     }
@@ -507,7 +526,9 @@ mod tests {
     #[test]
     fn profiles_degrade_to_the_processor_and_are_remembered() {
         assert_eq!(Profile::Gpu.next(), Some(Profile::SafeGpu));
-        assert_eq!(Profile::SafeGpu.next(), Some(Profile::Cpu));
+        assert_eq!(Profile::SafeGpu.next(), Some(Profile::GpuNoFa));
+        assert_eq!(Profile::GpuNoFa.next(), Some(Profile::Cpu));
+        assert!(!Profile::GpuNoFa.options().use_fa && Profile::Gpu.options().use_fa);
         assert_eq!(Profile::Cpu.next(), None);
         let safe = Profile::SafeGpu.options();
         assert!(safe.clamp_fp16 && safe.codec_chunk_sec < 24.0 && safe.device.is_none());
