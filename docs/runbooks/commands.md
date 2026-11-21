@@ -66,7 +66,9 @@ powershell -ExecutionPolicy Bypass -File scripts\qwen\bench.ps1 -BinDir <пап�
 
 ## Выпуск
 
-Только по [ранбуку выпуска](release.md): сборка, подпись обновления ключом
+Только по [ранбуку выпуска](release.md): сборка обычной командой `pnpm tauri build`
+(не с `--config src-tauri/tauri.release.conf.json` — она требует ключ во время сборки
+и падает без него, 0.7.0), затем отдельная подпись обновления ключом
 82D55017631804B2 (пароль только через `Read-Host -AsSecureString`, новый ключ
 не создавать), затем `pnpm release:assets --notes-file docs/releases/v<версия>.notes.txt`.
 
