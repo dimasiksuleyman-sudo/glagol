@@ -73,8 +73,6 @@ type LogSet = unsafe extern "C" fn(Option<LogCallback>, *mut c_void);
 pub struct Options<'a> {
     /// GGML device name (`CPU`) or `None` for the best available device.
     pub device: Option<&'a str>,
-    /// Fused flash attention; off for GPUs where it faults (GTX 1060, GL-018).
-    pub use_fa: bool,
     /// Guard FP16 accumulation on GPUs without native FP16 support.
     pub clamp_fp16: bool,
     /// Buffered codec decode chunk, seconds: smaller needs less video memory.
@@ -166,7 +164,6 @@ impl Engine {
             let mut params = params.assume_init();
             params.talker_path = talker.as_ptr();
             params.codec_path = codec.as_ptr();
-            params.use_fa = options.use_fa;
             params.clamp_fp16 = options.clamp_fp16;
             params.codec_chunk_sec = options.codec_chunk_sec;
             params.max_batch = 1;
