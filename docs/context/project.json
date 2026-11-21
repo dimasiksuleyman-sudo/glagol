@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "observed_at": "2026-11-13T20:05:00.000Z",
+  "observed_at": "2026-11-21T03:30:00.000Z",
   "active_workstream": [
     "tts-qwen",
     "outlook-paste",
@@ -75,9 +75,9 @@
       "id": "published",
       "label": "Публикация",
       "status": "observed",
-      "summary": "GitHub Release v0.6.6 опубликован как latest (тег → merge e687e62, PR #52, CI success). Установщик 10355410 байт, SHA-256 6f48efde5c9852cbcaa2c603b10ee8a24292779c0a0d7e3b4f14a837c45392d2 совпал с SHA256SUMS; latest.json по адресу программы совпадает, заметки RU/EN целы; подпись проверена minisign встроенным ключом 82D55017631804B2.",
-      "observed_at": "2026-11-13T20:05:00.000Z",
-      "source": "docs/workstreams/filler-sounds/log.md"
+      "summary": "GitHub Release v0.7.0 опубликован как latest (тег v0.7.0 → c852fae, merge PR #62, CI success). Установщик 10808447 байт, SHA-256 6bd72e9bee62a6ed5a457665d1fd1bd264ffa055044e54b508ab95ef1a010a16 совпал с SHA256SUMS; latest.json выпуска и адреса программы совпадают, version 0.7.0, заметки RU/EN целы; подпись обновления ключом 82D55017631804B2.",
+      "observed_at": "2026-11-21T03:30:00.000Z",
+      "source": "docs/workstreams/promotion/log.md"
     },
     {
       "id": "qa-environment",

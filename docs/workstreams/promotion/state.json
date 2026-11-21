@@ -3,7 +3,7 @@
   "id": "promotion",
   "title": "Продвижение: выпуск 0.7.0, витрина, Хабр, каталоги и репутация для подписи кода",
   "status": "active",
-  "next": "PR1",
+  "next": "PR2",
   "reason": null,
   "claim": {
     "owner": "Claude Code (cloud session)",
@@ -20,17 +20,32 @@
     {
       "id": "PR1",
       "title": "Выпуск 0.7.0: версия, CHANGELOG, заметки RU/EN, сборка, подпись обновления, публикация",
-      "status": "in_progress",
+      "status": "done",
       "depends_on": [],
       "required": [
         "manual"
       ],
-      "checks": []
+      "checks": [
+        {
+          "id": "manual",
+          "status": "PASS",
+          "method": "manual",
+          "command": "User: release build check (install over 0.6.6, Qwen, brackets, GL-014, GL-015, Outlook) and publication; here: download v0.7.0 assets, sha256sum -c, cmp latest.json with releases/latest/download/latest.json",
+          "cwd": ".",
+          "at": "2026-11-21T03:30:00.000Z",
+          "environment": {
+            "os": "win32 + Linux container"
+          },
+          "exit_code": null,
+          "output": "«Всё работает»; Release v0.7.0 latest → c852fae; Glagol_0.7.0_x64-setup.exe: OK (10808447 bytes); latest.json identical, version 0.7.0, minisign key 82D55017631804B2",
+          "evidence": "docs/workstreams/promotion/log.md"
+        }
+      ]
     },
     {
       "id": "PR2",
       "title": "Витрина README: скриншоты 0.7.0, «зачем Глагол», SmartScreen и как установить, политика подписи",
-      "status": "pending",
+      "status": "in_progress",
       "depends_on": [
         "PR1"
       ],
