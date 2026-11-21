@@ -11,6 +11,10 @@ the per-session master logs under [`docs/day-logs/`](docs/day-logs/).
 
 ## [Unreleased]
 
+## [v0.7.0] — 2026-11-21
+
+[Release notes, validation and limits / проверка и ограничения](docs/releases/v0.7.0.md).
+
 ### Fixed
 
 - Windows auto-paste waits for shortcut modifiers to clear and sends Ctrl+V as a single batch. If the keys stay down or the window changes, the text is left in the clipboard. This addresses the unwanted KeyTips in new Outlook (GL-013). / Автовставка в Windows ждёт отпускания модификаторов и отправляет Ctrl+V одной последовательностью. Если клавиши остаются нажатыми или окно меняется, текст остаётся в буфере обмена. Это исправление для лишних подсказок клавиш в новом Outlook (GL-013).
@@ -373,7 +377,8 @@ the per-session master logs under [`docs/day-logs/`](docs/day-logs/).
   visible progress bar so the user can see «Озвучиваем фрагмент 5 из 12».
 - **System Save As dialog** for choosing where the resulting WAV goes.
 
-[Unreleased]: https://github.com/dimasiksuleyman-sudo/glagol/compare/v0.6.1...HEAD
+[Unreleased]: https://github.com/dimasiksuleyman-sudo/glagol/compare/v0.7.0...HEAD
+[v0.7.0]: https://github.com/dimasiksuleyman-sudo/glagol/releases/tag/v0.7.0
 [v0.6.1]: https://github.com/dimasiksuleyman-sudo/glagol/releases/tag/v0.6.1
 [v0.6.0]: https://github.com/dimasiksuleyman-sudo/glagol/releases/tag/v0.6.0
 [v0.5.2]: https://github.com/dimasiksuleyman-sudo/glagol/releases/tag/v0.5.2

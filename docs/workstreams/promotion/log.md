@@ -16,3 +16,16 @@
 Пользователь: напомнить про скриншоты и главный README (это PR2); сбор на
 сертификат через Boosty — только запасной путь, «сначала штурмуем бесплатную
 версию сертификата». Записано в README серии.
+
+## 2026-11-21T03:00:00.000Z — PR1: сборка и подпись 0.7.0 на ПК
+
+Manual (вывод пользователя), ПК, D:\Projects\glagol на d07baea (Windows CI
+success на этом коммите): `pnpm tauri build --config src-tauri/tauri.release.conf.json`
+собрал Glagol_0.7.0_x64-setup.exe и затем упал без ключа («no private key») —
+ранбуки исправлены: сборка без `--config`. Подпись обновления
+`.\node_modules\.bin\tauri.cmd signer sign` — «signed successfully».
+`pnpm release:assets --notes-file docs/releases/v0.7.0.notes.txt` — SHA-256
+6bd72e9bee62a6ed5a457665d1fd1bd264ffa055044e54b508ab95ef1a010a16, размер
+10 808 447 байт. Вписаны в README, docs/releases/v0.7.0.md; CHANGELOG
+[v0.7.0] — 2026-11-21; руководства — 0.7.0. Дальше: слияние PR #62, ручная
+проверка установщика, публикация пользователем.
