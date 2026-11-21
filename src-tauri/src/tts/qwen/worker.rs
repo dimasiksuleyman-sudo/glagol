@@ -355,7 +355,20 @@ impl TtsBackend for Worker {
                 if self.cancel.load(Ordering::Relaxed) {
                     return Err("Озвучка отменена.".into());
                 }
-                let response = self.request(text, voice).await?;
+                let response = match self.request(text, voice).await {
+                    Ok(response) => response,
+                    // The worker process died mid-synthesis (a GPU driver or
+                    // shader crash, e.g. GTX 1060 + Xeon without AVX2): treat
+                    // it as a device failure and retry with a safer profile.
+                    Err(error) => {
+                        let crashed = matches!(self.child.try_wait(), Ok(Some(_)));
+                        if crashed && !self.cancel.load(Ordering::Relaxed) && self.degrade().await?
+                        {
+                            continue;
+                        }
+                        return Err(error);
+                    }
+                };
                 self.last_used = Instant::now();
                 if response["empty"] == true {
                     return Ok(None);
