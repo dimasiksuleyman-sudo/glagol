@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "id": "promotion",
+  "title": "Продвижение: выпуск 0.7.0, витрина, Хабр, каталоги и репутация для подписи кода",
+  "status": "active",
+  "next": "PR1",
+  "reason": null,
+  "claim": {
+    "owner": "Claude Code (cloud session)",
+    "at": "2026-11-21T02:00:00.000Z",
+    "branch": "claude/optimistic-franklin-cvvbsr"
+  },
+  "links": [
+    "docs/workstreams/promotion/README.md",
+    "docs/workstreams/promotion/log.md",
+    "docs/workstreams/code-signing/README.md",
+    "docs/runbooks/release.md"
+  ],
+  "steps": [
+    {
+      "id": "PR1",
+      "title": "Выпуск 0.7.0: версия, CHANGELOG, заметки RU/EN, сборка, подпись обновления, публикация",
+      "status": "in_progress",
+      "depends_on": [],
+      "required": [
+        "manual"
+      ],
+      "checks": []
+    },
+    {
+      "id": "PR2",
+      "title": "Витрина README: скриншоты 0.7.0, «зачем Глагол», SmartScreen и как установить, политика подписи",
+      "status": "pending",
+      "depends_on": [
+        "PR1"
+      ],
+      "required": [
+        "manual"
+      ],
+      "checks": []
+    },
+    {
+      "id": "PR3",
+      "title": "Статья на Хабре: черновик RU с замерами и ограничениями; публикует пользователь",
+      "status": "pending",
+      "depends_on": [
+        "PR1"
+      ],
+      "required": [
+        "manual"
+      ],
+      "checks": []
+    },
+    {
+      "id": "PR4",
+      "title": "Каталоги и сообщества: AlternativeTo, GitHub topics, профильные площадки",
+      "status": "pending",
+      "depends_on": [
+        "PR1"
+      ],
+      "required": [
+        "manual"
+      ],
+      "checks": []
+    },
+    {
+      "id": "PR5",
+      "title": "Заявка в SignPath с ссылками на репутацию (code-signing C1); при отказе — Certum",
+      "status": "pending",
+      "depends_on": [
+        "PR3"
+      ],
+      "required": [
+        "manual"
+      ],
+      "checks": []
+    }
+  ]
+}

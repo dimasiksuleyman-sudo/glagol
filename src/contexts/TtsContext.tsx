@@ -1,11 +1,12 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { providerFor } from "@/lib/voices";
 import { listen } from "@tauri-apps/api/event";
 import { getTtsStatus, type TtsStatus } from "@/lib/tts";
 import { usePreferences } from "@/contexts/PreferencesContext";
 const Context = createContext<{ status: TtsStatus | null; error: string | null; provider: string; refresh: () => Promise<void> } | null>(null);
 export function TtsProvider({ children }: { children: ReactNode }) {
   const { preferences } = usePreferences();
-  const provider = preferences?.tts_language === "en" ? "silero-en" : "silero";
+  const provider = providerFor(preferences?.tts_engine, preferences?.tts_language ?? "ru");
   const currentProvider = useRef(provider);
   currentProvider.current = provider;
   const [status, setStatus] = useState<TtsStatus | null>(null);

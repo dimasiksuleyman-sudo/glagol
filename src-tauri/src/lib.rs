@@ -40,6 +40,10 @@ pub mod i18n;
 pub fn moonshine_worker_entry() -> Option<i32> {
     stt::moonshine::child_entry()
 }
+/// Hidden Qwen3-TTS worker mode of the same executable (`--qwen-worker`).
+pub fn qwen_worker_entry() -> Option<i32> {
+    tts::qwen::child_entry()
+}
 pub mod preferences;
 pub mod state;
 
@@ -313,6 +317,8 @@ pub fn run() {
             commands::preferences::migrate_legacy_voice,
             commands::preferences::complete_onboarding,
             commands::preferences::set_tts_preference,
+            commands::preferences::set_tts_engine,
+            commands::preferences::set_tts_strip_brackets,
             commands::preferences::set_stt_preference,
             commands::preferences::is_dictating,
             commands::preferences::set_tts_enabled,
@@ -392,8 +398,9 @@ pub fn run() {
             if let tauri::RunEvent::Exit = event {
                 app_handle.state::<state::AppState>().recorder.shutdown();
                 let models = app_handle.state::<tts::silero::models::Models>();
-                models.ru.stop();
-                models.en.stop();
+                for model in models.all() {
+                    model.stop();
+                }
             }
         });
 }

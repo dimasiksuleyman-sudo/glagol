@@ -16,6 +16,14 @@ providers; use the current code/release when testing fixes.
 - Python, CPU PyTorch, dependencies and Silero weights download only by choice
   from pinned HTTPS URLs with byte-count/SHA-256 checks. A `.pt` package contains
   executable model code: only the pinned v5.5 RU / v3 EN files can be imported.
+- Qwen3-TTS runs in a hidden child mode of the same EXE (`--qwen-worker`): the
+  qwentts.cpp runtime (built by this repository's CI from a pinned commit and
+  published as the `qwen-runtime-2edb35f` pre-release) and the GGUF models are
+  downloaded only by choice, and every DLL and model is checked by size and
+  SHA-256 before loading; only the pinned DLLs are unpacked from the archive. No
+  HTTP port is opened (the upstream `tts-server` is not used), the worker talks
+  bounded stdio JSON, its own log is silenced, it exits with the parent and is
+  killed on cancel or timeout. GGML backends load from the verified runtime folder.
 - Moonshine STT runs in a hidden child mode of the same EXE, before Tauri setup.
   Every model/DLL hash is checked before loading; pinned ORT is preloaded by absolute
   path. A bounded audio queue fails loudly on overflow; only final text is inserted.

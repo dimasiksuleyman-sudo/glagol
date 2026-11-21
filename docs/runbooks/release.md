@@ -44,6 +44,10 @@ pnpm release:assets --notes-file docs/releases/v<version>.notes.txt
 затем `pnpm release:assets`. Без пароля подпись падает с той же ошибкой. ID ключа в
 `.sig` должен совпасть с pubkey в tauri.conf.json (82D55017631804B2).
 
+В 0.7.0 `pnpm tauri build --config src-tauri/tauri.release.conf.json` без ключа в
+окружении собрал установщик и затем упал с «A public key has been found, but no
+private key»: для надёжного порядка собирать без `--config`.
+
 Заметки для окна «Что нового» хранятся в `docs/releases/v<version>.notes.txt` (UTF-8):
 `--notes` из консоли PowerShell терял кириллицу (0.6.5).
 

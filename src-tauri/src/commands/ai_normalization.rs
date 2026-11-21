@@ -221,11 +221,23 @@ pub(crate) async fn prepare_document(
     text: &str,
     language: &str,
 ) -> Result<Prepared, String> {
-    let entries = {
+    let (entries, strip_brackets) = {
         let conn = state.db.lock().map_err(|e| e.to_string())?;
-        super::pronunciations::for_synthesis(&conn)
+        (
+            super::pronunciations::for_synthesis(&conn),
+            crate::preferences::get(&conn)
+                .map(|p| p.tts_strip_brackets)
+                .unwrap_or(false),
+        )
     };
-    Ok(ai::prepare(&state.ai_normalizer, config, text, &entries, language).await)
+    // «Do not read text in brackets» comes first: asides never reach the
+    // dictionary, the optional AI step or the engine.
+    let text = if strip_brackets {
+        crate::text::brackets::strip(text)
+    } else {
+        text.to_string()
+    };
+    Ok(ai::prepare(&state.ai_normalizer, config, &text, &entries, language).await)
 }
 
 /// Run the same preparation pipeline as document synthesis.

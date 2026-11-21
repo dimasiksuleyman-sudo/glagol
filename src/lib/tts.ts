@@ -13,4 +13,4 @@ export const installTts = (accepted: boolean, licenseHash: string, modelPath: st
 export const cancelTts = () => invoke<void>("cancel_tts");
 export const removeTts = (provider = "silero") => invoke<void>("remove_tts", { provider });
 /** A sample of `voice`; with `text` (≤200 characters) that phrase, prepared like a document. */
-export const previewTts = (voice: string, provider = "silero", text: string | null = null) => invoke<string>("preview_tts", { voice, provider, text });
+export const previewTts = (voice: string, provider = "silero", text: string | null = null, style: string | null = null) => invoke<string>("preview_tts", { voice, provider, text, style });

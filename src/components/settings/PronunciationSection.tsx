@@ -1,4 +1,5 @@
 import { t } from "@/i18n";
+import { activeVoice } from "@/lib/voices";
 import { useI18n, usePreferences } from "@/contexts/PreferencesContext";
 import { useEffect, useMemo, useState } from "react";
 import { open, save } from "@tauri-apps/plugin-dialog";
@@ -31,7 +32,7 @@ export function PronunciationSection() {
   const { preferences } = usePreferences();
   const { status, provider } = useTts();
   const speechLanguage = preferences?.tts_language ?? "ru";
-  const voice = (speechLanguage === "en" ? preferences?.tts_voice_en : preferences?.tts_voice_ru) ?? (speechLanguage === "en" ? "en_0" : "xenia");
+  const voice = activeVoice(preferences, speechLanguage);
   const ready = !!status?.installed && !!status?.accepted;
   const [entries, setEntries] = useState<PronunciationEntry[]>([]);
   const [draft, setDraft] = useState<PronunciationEntry>(EMPTY);

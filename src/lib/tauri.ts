@@ -42,6 +42,7 @@ export async function synthesizeDocument(
   voice: string,
   onProgress: (event: ProgressEvent) => void,
   provider = "silero",
+  style: string | null = null,
 ): Promise<string> {
   const channel = new Channel<ProgressEvent>();
   channel.onmessage = onProgress;
@@ -50,6 +51,7 @@ export async function synthesizeDocument(
     voice,
     onProgress: channel,
     provider,
+    style,
   });
 }
 

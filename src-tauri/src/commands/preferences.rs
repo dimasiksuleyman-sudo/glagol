@@ -72,6 +72,51 @@ pub fn set_tts_preference(
     .map_err(crate::i18n::error)
 }
 
+/// «Do not read text in brackets» for synthesis.
+#[tauri::command]
+pub fn set_tts_strip_brackets(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, AppState>,
+    enabled: bool,
+) -> Result<Preferences, String> {
+    let value = {
+        let conn = state.db.lock().map_err(|e| e.to_string())?;
+        preferences::set_tts_strip_brackets(&conn, enabled).map_err(|e| e.to_string())?;
+        preferences::get(&conn).map_err(|e| e.to_string())?
+    };
+    let _ = app.emit("preferences-changed", &value);
+    Ok(value)
+}
+
+/// Choose the local synthesis engine; the other engine's worker is stopped.
+#[tauri::command]
+pub async fn set_tts_engine(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, AppState>,
+    models: tauri::State<'_, crate::tts::silero::models::Models>,
+    engine: String,
+) -> Result<Preferences, String> {
+    (async {
+        let _operation = models.ru.operation.try_lock().map_err(|_| {
+            preferences::message(
+                "Wait for the current speech operation to finish.",
+                "Дождитесь завершения текущей операции озвучки.",
+            )
+        })?;
+        let value = {
+            let conn = state.db.lock().unwrap();
+            preferences::set_tts_engine(&conn, &engine)?;
+            preferences::get(&conn).map_err(|e| e.to_string())?
+        };
+        models.close_workers().await;
+        let _ = app.emit("preferences-changed", &value);
+        let _ = app.emit("tts-status", ());
+        Ok(value)
+    })
+    .await
+    .map_err(crate::i18n::error)
+}
+
 #[tauri::command]
 pub fn get_preferences(state: tauri::State<'_, AppState>) -> Result<Preferences, String> {
     preferences::get(&state.db.lock().unwrap()).map_err(|e| crate::i18n::error(e.to_string()))
@@ -143,8 +188,7 @@ pub async fn set_tts_enabled(
             preferences::get(&conn).map_err(|e| e.to_string())?
         };
         if !enabled {
-            models.ru.close_worker().await;
-            models.en.close_worker().await;
+            models.close_workers().await;
         }
         tracing::info!(enabled, "text to speech switch changed");
         let _ = app.emit("preferences-changed", &value);

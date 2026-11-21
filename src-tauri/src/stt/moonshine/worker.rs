@@ -186,7 +186,7 @@ pub fn child_main(root: &Path, parent: u32) -> Result<(), String> {
 }
 
 #[cfg(windows)]
-fn watch_parent(parent: u32) -> Result<(), String> {
+pub(crate) fn watch_parent(parent: u32) -> Result<(), String> {
     // A kernel handle survives PID reuse and detects parent crashes even while
     // native inference is stuck. Open it before loading any downloaded code.
     #[link(name = "kernel32")]
@@ -210,7 +210,7 @@ fn watch_parent(parent: u32) -> Result<(), String> {
     Ok(())
 }
 #[cfg(not(windows))]
-fn watch_parent(_: u32) -> Result<(), String> {
+pub(crate) fn watch_parent(_: u32) -> Result<(), String> {
     Err("Moonshine worker requires Windows x64".into())
 }
 

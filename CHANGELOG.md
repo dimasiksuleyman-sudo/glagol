@@ -11,6 +11,10 @@ the per-session master logs under [`docs/day-logs/`](docs/day-logs/).
 
 ## [Unreleased]
 
+## [v0.7.0] — 2026-11-21
+
+[Release notes, validation and limits / проверка и ограничения](docs/releases/v0.7.0.md).
+
 ### Fixed
 
 - Windows auto-paste waits for shortcut modifiers to clear and sends Ctrl+V as a single batch. If the keys stay down or the window changes, the text is left in the clipboard. This addresses the unwanted KeyTips in new Outlook (GL-013). / Автовставка в Windows ждёт отпускания модификаторов и отправляет Ctrl+V одной последовательностью. Если клавиши остаются нажатыми или окно меняется, текст остаётся в буфере обмена. Это исправление для лишних подсказок клавиш в новом Outlook (GL-013).
@@ -22,6 +26,10 @@ the per-session master logs under [`docs/day-logs/`](docs/day-logs/).
 - Text to speech reads numbers, money, percentages, dates, years, centuries, times, ordinals («2-я», «90-е») and common abbreviations as words, in the grammatical case the Russian context asks for («продал 980 млн акций», «$81,3 млрд», «в 2026 г.»); English text follows English rules. Offline and engine-independent. / Озвучка читает числа, суммы, проценты, даты, годы, века, время, порядковые («2-я», «90-е») и частые сокращения словами — в падеже по русскому контексту («продал 980 млн акций», «$81,3 млрд», «в 2026 г.»); английский текст — по английским правилам. Офлайн и для любого движка.
 
 ### Added
+
+- Reading style for Qwen3-TTS on the Synthesize page (even without emotion, calm, news anchor, warm, cheerful or your own description) with a «Listen» check; «Do not read text in brackets» in Settings → Text to speech skips round and square bracket asides in synthesis. / Манера чтения Qwen3-TTS на экране «Озвучить» (ровно без эмоций, спокойно, как диктор новостей, тепло, бодро или своё описание) с проверкой «Послушать»; «Не читать текст в скобках» в «Настройки» → «Озвучка» пропускает при озвучке пояснения в круглых и квадратных скобках.
+
+- Qwen3-TTS speech engine (Settings → Text to speech → Speech engine; Apache 2.0, commercial use allowed): a lively voice with natural intonation for Russian and English, nine named voices, about 1.3 GB downloaded on demand and verified by SHA-256, a hidden worker without network or ports; Glagol picks the graphics card, falls back to a safer mode or the processor when the card runs out of memory and remembers it. Silero stays as the light engine. / Движок озвучки Qwen3-TTS («Настройки» → «Озвучка» → «Движок озвучки»; Apache 2.0, коммерческое использование разрешено): живой голос с естественной интонацией для русского и английского, девять голосов, около 1,3 ГБ скачивается по желанию и проверяется по SHA-256, скрытый процесс без сети и портов; Глагол выбирает видеокарту, при нехватке её памяти переходит в безопасный режим или на процессор и запоминает это. Silero остаётся лёгким вариантом.
 
 - Help adds steps and a Show button for seven topics covering hesitation sounds, Ctrl+Win dictation, hosting and connecting to a local server, the pronunciation dictionary, text preview and AI number reading. / В справке добавлены шаги и кнопка «Показать» для семи тем о звуках-заминках, диктовке по Ctrl+Win, запуске локального сервера и подключении к нему, словаре произношения, предпросмотре текста и чтении чисел через ИИ.
 
@@ -369,7 +377,8 @@ the per-session master logs under [`docs/day-logs/`](docs/day-logs/).
   visible progress bar so the user can see «Озвучиваем фрагмент 5 из 12».
 - **System Save As dialog** for choosing where the resulting WAV goes.
 
-[Unreleased]: https://github.com/dimasiksuleyman-sudo/glagol/compare/v0.6.1...HEAD
+[Unreleased]: https://github.com/dimasiksuleyman-sudo/glagol/compare/v0.7.0...HEAD
+[v0.7.0]: https://github.com/dimasiksuleyman-sudo/glagol/releases/tag/v0.7.0
 [v0.6.1]: https://github.com/dimasiksuleyman-sudo/glagol/releases/tag/v0.6.1
 [v0.6.0]: https://github.com/dimasiksuleyman-sudo/glagol/releases/tag/v0.6.0
 [v0.5.2]: https://github.com/dimasiksuleyman-sudo/glagol/releases/tag/v0.5.2

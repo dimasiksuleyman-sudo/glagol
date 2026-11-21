@@ -5,5 +5,8 @@ fn main() {
     if let Some(code) = glagol_lib::moonshine_worker_entry() {
         std::process::exit(code);
     }
+    if let Some(code) = glagol_lib::qwen_worker_entry() {
+        std::process::exit(code);
+    }
     glagol_lib::run()
 }

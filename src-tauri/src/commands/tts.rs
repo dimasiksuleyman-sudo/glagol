@@ -60,8 +60,9 @@ pub async fn install_tts(
             .map_err(|_| "Другая операция озвучки ещё выполняется.".to_string())?;
         state.acknowledge(accepted, &license_hash)?;
         models.close_workers().await;
-        models.ru.clear_verification_cache().await;
-        models.en.clear_verification_cache().await;
+        for model in models.all() {
+            model.clear_verification_cache().await;
+        }
         let result = state.install(&app, model_path.map(PathBuf::from)).await;
         state.finish(&app, &result);
         result
@@ -71,8 +72,9 @@ pub async fn install_tts(
 }
 #[tauri::command]
 pub fn cancel_tts(models: tauri::State<'_, Models>) {
-    models.ru.stop();
-    models.en.stop();
+    for model in models.all() {
+        model.stop();
+    }
 }
 #[tauri::command]
 pub async fn remove_tts(
@@ -103,6 +105,7 @@ pub async fn preview_tts(
     provider: Option<String>,
     voice: String,
     text: Option<String>,
+    style: Option<String>,
 ) -> Result<String, String> {
     (async {
     let state = models.select(provider.as_deref())?;
@@ -150,7 +153,11 @@ pub async fn preview_tts(
 
         let synthesis_started = Instant::now();
         let synthesis_result = async {
+            let style = crate::tts::qwen::worker::clean_style(style.as_deref())?;
             let mut slot = state.worker.lock().await;
+            if let Some(crate::tts::LocalWorker::Qwen(worker)) = slot.as_mut() {
+                worker.set_style(style);
+            }
             use crate::tts::TtsBackend;
             let source = slot
                 .as_mut()

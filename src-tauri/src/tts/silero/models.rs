@@ -5,6 +5,15 @@ use std::{path::PathBuf, sync::Arc};
 
 pub const EN_VOICES: &[&str] = &["en_0", "en_1", "en_2", "en_3"];
 
+/// Which local engine runs a model.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Engine {
+    /// Silero (Python/PyTorch worker, noncommercial license, consent).
+    Silero,
+    /// Qwen3-TTS (qwentts.cpp worker, Apache 2.0/MIT, no consent needed).
+    Qwen,
+}
+
 /// Pinned model identity; never accepts an arbitrary PyTorch package.
 pub struct Model {
     pub id: &'static str,
@@ -14,6 +23,7 @@ pub struct Model {
     pub provider: &'static str,
     pub acknowledgement: &'static str,
     pub verification: &'static str,
+    pub engine: Engine,
 }
 pub const RU: Model = Model {
     id: super::MODEL_ID,
@@ -23,6 +33,7 @@ pub const RU: Model = Model {
     provider: "silero",
     acknowledgement: "acknowledgement.json",
     verification: super::VERIFICATION_STAMP,
+    engine: Engine::Silero,
 };
 pub const EN: Model = Model {
     id: "silero-v3-en",
@@ -32,12 +43,38 @@ pub const EN: Model = Model {
     provider: "silero-en",
     acknowledgement: "acknowledgement-en.json",
     verification: "verification-en.json",
+    engine: Engine::Silero,
+};
+/// Qwen3-TTS reading Russian; shares every file with [`QWEN_EN`].
+pub const QWEN_RU: Model = Model {
+    id: "qwen3-tts-0.6b-customvoice",
+    language: Language::Ru,
+    artifact: &crate::tts::qwen::catalog::TALKER,
+    voices: crate::tts::qwen::VOICES,
+    provider: "qwen",
+    acknowledgement: "",
+    verification: "verification-qwen.json",
+    engine: Engine::Qwen,
+};
+/// Qwen3-TTS reading English.
+pub const QWEN_EN: Model = Model {
+    id: "qwen3-tts-0.6b-customvoice-en",
+    language: Language::En,
+    artifact: &crate::tts::qwen::catalog::TALKER,
+    voices: crate::tts::qwen::VOICES,
+    provider: "qwen-en",
+    acknowledgement: "",
+    verification: "verification-qwen-en.json",
+    engine: Engine::Qwen,
 };
 
 /// One operation lock prevents shared runtime replacement during inference.
 pub struct Models {
     pub ru: Arc<Silero>,
     pub en: Arc<Silero>,
+    /// Qwen3-TTS in its own folder (`tts_models/qwen`), same operation lock.
+    pub qwen_ru: Arc<Silero>,
+    pub qwen_en: Arc<Silero>,
 }
 impl Models {
     /// Reuse the existing RU manager and its root and lock, preserving old installs.
@@ -47,13 +84,36 @@ impl Models {
             &EN,
             ru.operation.clone(),
         ));
-        Self { ru, en }
+        let qwen_root = ru.root.join("qwen");
+        let qwen_ru = Arc::new(Silero::for_model(
+            qwen_root.clone(),
+            &QWEN_RU,
+            ru.operation.clone(),
+        ));
+        let qwen_en = Arc::new(Silero::for_model(qwen_root, &QWEN_EN, ru.operation.clone()));
+        Self {
+            ru,
+            en,
+            qwen_ru,
+            qwen_en,
+        }
+    }
+    /// Every local model manager.
+    pub fn all(&self) -> [Arc<Silero>; 4] {
+        [
+            self.ru.clone(),
+            self.en.clone(),
+            self.qwen_ru.clone(),
+            self.qwen_en.clone(),
+        ]
     }
     /// Provider IDs are validated before accessing any files.
     pub fn select(&self, provider: Option<&str>) -> Result<Arc<Silero>, String> {
         match provider.unwrap_or("silero") {
             "silero" => Ok(self.ru.clone()),
             "silero-en" => Ok(self.en.clone()),
+            "qwen" => Ok(self.qwen_ru.clone()),
+            "qwen-en" => Ok(self.qwen_en.clone()),
             _ => Err(crate::preferences::message(
                 "Unknown speech provider.",
                 "Неизвестный провайдер озвучки.",
@@ -62,11 +122,19 @@ impl Models {
     }
     /// Stop both owned processes before a shared runtime installation or repair.
     pub async fn close_workers(&self) {
-        self.ru.close_worker().await;
-        self.en.close_worker().await;
+        for model in self.all() {
+            model.close_worker().await;
+        }
     }
     /// Remove only this language's model, partial download and metadata.
     pub fn remove_model_files(&self, model: &Silero) -> Result<(), String> {
+        if model.model.engine == Engine::Qwen {
+            // Both languages share the files: removing Qwen removes it entirely.
+            for receipt in [QWEN_RU.verification, QWEN_EN.verification] {
+                remove_if_present(model.root.join(receipt))?;
+            }
+            return crate::tts::qwen::remove(&model.root);
+        }
         for file in [
             model.model.artifact.file,
             model.model.acknowledgement,

@@ -27,6 +27,7 @@ pub enum ProgressEvent {
     Joining,
 }
 #[tauri::command]
+#[allow(clippy::too_many_arguments)] // Tauri command arguments mirror the IPC payload.
 pub async fn synthesize_document(
     app: tauri::AppHandle,
     state: tauri::State<'_, AppState>,
@@ -34,10 +35,12 @@ pub async fn synthesize_document(
     provider: Option<String>,
     text: String,
     voice: String,
+    style: Option<String>,
     on_progress: Channel<ProgressEvent>,
 ) -> Result<String, String> {
     (async {
         let tts = models.select(provider.as_deref())?;
+        let style = crate::tts::qwen::worker::clean_style(style.as_deref())?;
         if text.trim().is_empty() {
             return Err("Введите текст для озвучивания.".into());
         }
@@ -68,7 +71,7 @@ pub async fn synthesize_document(
 
             let synthesis_started = Instant::now();
             let synthesis_result = async {
-                let language = if tts.model.provider == "silero-en" {
+                let language = if tts.model.language == crate::preferences::Language::En {
                     "en"
                 } else {
                     "ru"
@@ -96,6 +99,10 @@ pub async fn synthesize_document(
                 }
                 let mut slot = tts.worker.lock().await;
                 let backend = slot.as_mut().ok_or("Движок не готов")?;
+                // The reading style applies to Qwen3-TTS only.
+                if let crate::tts::LocalWorker::Qwen(worker) = backend {
+                    worker.set_style(style.clone());
+                }
                 synthesize_prepared_impl(
                     &state.db,
                     &audio_root,
@@ -161,7 +168,7 @@ pub async fn synthesize_impl(
         let conn = db.lock().map_err(|e| e.to_string())?;
         super::pronunciations::for_synthesis(&conn)
     };
-    let language = if backend.capabilities().provider == "silero-en" {
+    let language = if matches!(backend.capabilities().provider, "silero-en" | "qwen-en") {
         "en"
     } else {
         "ru"
@@ -244,8 +251,8 @@ async fn synthesize_prepared_impl(
             voice: voice.into(),
             provider: caps.provider.into(),
             speech_language: match caps.provider {
-                "silero" => Some("ru".into()),
-                "silero-en" => Some("en".into()),
+                "silero" | "qwen" => Some("ru".into()),
+                "silero-en" | "qwen-en" => Some("en".into()),
                 _ => None,
             },
             status: "ready".into(),

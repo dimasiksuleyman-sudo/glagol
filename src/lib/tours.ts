@@ -7,7 +7,7 @@ import type { MessageKey } from "@/i18n";
 export type TourId =
   | "dictate" | "microphone" | "insert_mode" | "history" | "speed"
   | "fillers" | "ctrl_win" | "lan_server" | "lan_connect" | "server_model" | "saved_model_check"
-  | "synthesize" | "voice" | "pronunciation" | "speech_preview" | "ai_normalization"
+  | "synthesize" | "voice" | "tts_engine" | "reading_style" | "strip_brackets" | "pronunciation" | "speech_preview" | "ai_normalization"
   | "library" | "tts_off" | "backup" | "updates" | "diagnostics";
 
 export interface Tour {
@@ -39,6 +39,9 @@ export const TOURS: Tour[] = [
   { id: "saved_model_check", route: "/settings/dictation", target: "saved-speech-model", fallback: "speech-mode", title: "helpSavedModelTitle", steps: "helpSavedModelSteps", hint: "helpSavedModelHint", tip: "helpSavedModelTip" },
   { id: "synthesize", route: "/synthesize", target: "choose-file", needsTts: true, title: "helpSynthesizeTitle", steps: "helpSynthesizeSteps", hint: "helpSynthesizeHint", tip: "helpSynthesizeTip" },
   { id: "voice", route: "/settings/speech", target: "voice", fallback: "tts-components", needsTts: true, title: "helpVoiceTitle", steps: "helpVoiceSteps", hint: "helpVoiceHint", tip: "helpVoiceTip" },
+  { id: "tts_engine", route: "/settings/speech", target: "tts-engine", needsTts: true, title: "helpTtsEngineTitle", steps: "helpTtsEngineSteps", hint: "helpTtsEngineHint", tip: "helpTtsEngineTip" },
+  { id: "reading_style", route: "/synthesize", target: "reading-style", fallback: "synth-voice", needsTts: true, title: "helpReadingStyleTitle", steps: "helpReadingStyleSteps", hint: "helpReadingStyleHint", tip: "helpReadingStyleTip" },
+  { id: "strip_brackets", route: "/settings/speech", target: "strip-brackets", needsTts: true, title: "helpStripBracketsTitle", steps: "helpStripBracketsSteps", hint: "helpStripBracketsHint", tip: "helpStripBracketsTip" },
   { id: "pronunciation", route: "/settings/speech", target: "pronunciation", needsTts: true, title: "helpPronunciationTitle", steps: "helpPronunciationSteps", hint: "helpPronunciationHint", tip: "helpPronunciationTip" },
   { id: "speech_preview", route: "/synthesize", target: "speech-preview", fallback: "synthesize-setup", needsTts: true, title: "helpSpeechPreviewTitle", steps: "helpSpeechPreviewSteps", hint: "helpSpeechPreviewHint", tip: "helpSpeechPreviewTip" },
   { id: "ai_normalization", route: "/settings/speech", target: "ai-normalization", needsTts: true, title: "helpAiNormalizationTitle", steps: "helpAiNormalizationSteps", hint: "helpAiNormalizationHint", tip: "helpAiNormalizationTip" },

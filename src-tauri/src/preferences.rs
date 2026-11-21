@@ -66,6 +66,12 @@ pub struct Preferences {
     pub tts_voice_ru: String,
     pub legacy_voice_migrated: bool,
     pub tts_enabled: bool,
+    /// Local synthesis engine: `silero` (default) or `qwen`.
+    pub tts_engine: String,
+    /// Selected Qwen3-TTS speaker (shared by both speech languages).
+    pub tts_voice_qwen: String,
+    /// Do not read text in parentheses or square brackets.
+    pub tts_strip_brackets: bool,
 }
 
 fn read(conn: &Connection, key: &str, default: &str) -> rusqlite::Result<String> {
@@ -125,6 +131,12 @@ pub fn get(conn: &Connection) -> rusqlite::Result<Preferences> {
         tts_voice_ru: read(conn, "tts_voice_ru", "xenia")?,
         legacy_voice_migrated: read(conn, "legacy_voice_migrated", "0")? == "1",
         tts_enabled: read(conn, "tts_enabled", "1")? != "0",
+        tts_engine: match read(conn, "tts_engine", "silero")?.as_str() {
+            "qwen" => "qwen".into(),
+            _ => "silero".into(),
+        },
+        tts_voice_qwen: read(conn, "tts_voice_qwen", "ryan")?,
+        tts_strip_brackets: read(conn, "tts_strip_brackets", "0")? == "1",
     })
 }
 
@@ -209,8 +221,30 @@ pub fn set_tts_language(conn: &Connection, language: Language) -> rusqlite::Resu
     put(conn, "tts_language", language.tag())
 }
 
+/// Persist «do not read text in brackets».
+pub fn set_tts_strip_brackets(conn: &Connection, enabled: bool) -> rusqlite::Result<()> {
+    put(conn, "tts_strip_brackets", if enabled { "1" } else { "0" })
+}
+
+/// Persist the local synthesis engine (`silero` or `qwen`).
+pub fn set_tts_engine(conn: &Connection, engine: &str) -> Result<(), String> {
+    if !matches!(engine, "silero" | "qwen") {
+        return Err(message(
+            "Unknown speech engine.",
+            "Неизвестный движок озвучки.",
+        ));
+    }
+    put(conn, "tts_engine", engine).map_err(|e| e.to_string())
+}
+
 /// Persist a voice only in the selected language's preference slot.
 pub fn set_tts_voice(conn: &Connection, language: Language, voice: &str) -> Result<(), String> {
+    if get(conn).map_err(|e| e.to_string())?.tts_engine == "qwen" {
+        if !crate::tts::qwen::VOICES.contains(&voice) {
+            return Err(message("Unknown voice.", "Неизвестный голос."));
+        }
+        return put(conn, "tts_voice_qwen", voice).map_err(|e| e.to_string());
+    }
     let voices = if language == Language::En {
         crate::tts::silero::models::EN_VOICES
     } else {
@@ -230,6 +264,29 @@ mod tests {
         crate::db::migrations::apply_migrations(&mut c).unwrap();
         c
     }
+    #[test]
+    fn engine_and_qwen_voice_are_separate_from_silero_voices() {
+        let c = db();
+        initialize(&c, false).unwrap();
+        let p = get(&c).unwrap();
+        assert_eq!(
+            (p.tts_engine.as_str(), p.tts_voice_qwen.as_str()),
+            ("silero", "ryan")
+        );
+        assert!(set_tts_engine(&c, "other").is_err());
+        set_tts_engine(&c, "qwen").unwrap();
+        assert!(set_tts_voice(&c, Language::Ru, "xenia").is_err());
+        set_tts_voice(&c, Language::Ru, "serena").unwrap();
+        let p = get(&c).unwrap();
+        assert_eq!(
+            (p.tts_voice_qwen.as_str(), p.tts_voice_ru.as_str()),
+            ("serena", "xenia")
+        );
+        set_tts_engine(&c, "silero").unwrap();
+        set_tts_voice(&c, Language::Ru, "baya").unwrap();
+        assert_eq!(get(&c).unwrap().tts_voice_ru, "baya");
+    }
+
     #[test]
     fn empty_upgrade_keeps_implicit_cloud_and_russian_speech() {
         let c = db();

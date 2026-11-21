@@ -5,9 +5,9 @@ Offline English and Russian dictation and text-to-speech for Windows 10/11 x64.
 
 [English guide](USER_GUIDE.en.md) · [Руководство](USER_GUIDE.ru.md) · [MIT application](LICENSE) · [Security](SECURITY.md)
 
-**Download Glagol 0.6.6 / Скачать Глагол 0.6.6:**
-[Windows x64 installer](https://github.com/dimasiksuleyman-sudo/glagol/releases/download/v0.6.6/Glagol_0.6.6_x64-setup.exe)
-([release notes and SHA-256](docs/releases/v0.6.6.md), 10,355,410 bytes). From 0.6.0, later versions install from Settings → General → Updates. / С 0.6.0 следующие версии ставятся из «Настройки» → «Общие» → «Обновления».
+**Download Glagol 0.7.0 / Скачать Глагол 0.7.0:**
+[Windows x64 installer](https://github.com/dimasiksuleyman-sudo/glagol/releases/download/v0.7.0/Glagol_0.7.0_x64-setup.exe)
+([release notes and SHA-256](docs/releases/v0.7.0.md), 10,808,447 bytes). From 0.6.0, later versions install from Settings → General → Updates. / С 0.6.0 следующие версии ставятся из «Настройки» → «Общие» → «Обновления».
 
 [Code signing policy](#code-signing-policy) · [Политика подписи кода](#политика-подписи-кода)
 
@@ -55,6 +55,9 @@ local dictation. Upgrades retain modes, server addresses, credentials and voices
   a selectable thread count and a one-click recommendation for the computer's hardware. Independent office-server and cloud profiles remain available.
   Choosing local recognition activates the selected model if its files are ready.
   Otherwise the settings show an action next to the mode selector.
+- Optional offline Qwen3-TTS synthesis (Apache 2.0, commercial use allowed): a lively
+  voice with natural intonation for Russian and English, best with a graphics card;
+  Glagol adapts to the card's memory and falls back to the processor.
 - In **Organization server**, load and filter the model list or enter a model name.
   Glagol saves the profile only after the server accepts a short built-in audio test.
 - Dictation settings show the last catalog check and its date for saved server and
@@ -200,6 +203,9 @@ the development machine; importing pinned files was exercised separately.
   с настраиваемым числом потоков и рекомендацией под железо компьютера в один клик. Сохраняются отдельные офисный и облачный профили.
   При выборе локального распознавания готовая модель сразу становится активной.
   Если нужны файлы модели, действие появится рядом с выбором режима.
+- Необязательная офлайн-озвучка Qwen3-TTS (Apache 2.0, коммерческое использование
+  разрешено): живой голос с естественной интонацией для русского и английского, лучше
+  с видеокартой; Глагол подстраивается под её память и переходит на процессор.
 - В режиме **«Сервер организации»** загрузите и отфильтруйте список моделей или
   введите имя. Глагол сохранит профиль после успешной проверки на встроенном аудио.
 - В настройках диктовки видны результат и дата проверки сохранённой серверной или
@@ -297,7 +303,7 @@ OS-ключи и согласие Silero. При смене интерфейса
 
 ### Разработка и проверка
 
-Текущая версия — **0.6.6**. Установщик по ссылке сверху — 10 355 410 байт.
+Текущая версия — **0.7.0**. Установщик по ссылке сверху — 10 808 447 байт.
 Стек: Tauri 2, Rust,
 React 19, TypeScript, SQLite. `pnpm install --frozen-lockfile`, `pnpm tauri build`.
 [Архитектура](PROJECT_STRUCTURE.md), [вклад](CONTRIBUTING.md),

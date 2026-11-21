@@ -12,7 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
 import { useTts } from "@/contexts/TtsContext";
 import { cancelTts, installTts, previewTts, removeTts } from "@/lib/tts";
-import { voicesFor } from "@/lib/voices";
+import { activeVoice, voicesFor } from "@/lib/voices";
 import { markFeatureUsed } from "@/lib/tips";
 import { TtsLanguageSwitch } from "@/components/TtsLanguageSwitch";
 const mb = (bytes: number) => (bytes / 1e6).toLocaleString(currentLocale(), { maximumFractionDigits: 1 });
@@ -21,11 +21,13 @@ export function TtsSection({ compact = false }: { compact?: boolean }) {
   const { status, error, refresh, provider } = useTts();
   const [checked, setChecked] = useState(false);
   const [busy, setBusy] = useState(false);
-  const { preferences, setTtsVoice, setTtsEnabled, saving } = usePreferences();
+  const { preferences, setTtsVoice, setTtsEnabled, setTtsEngine, setTtsStripBrackets, saving } = usePreferences();
+  const qwen = preferences?.tts_engine === "qwen";
   const enabled = preferences?.tts_enabled ?? true;
   const speechLanguage = preferences?.tts_language ?? "ru";
-  const voice = (speechLanguage === "en" ? preferences?.tts_voice_en : preferences?.tts_voice_ru) ?? (speechLanguage === "en" ? "en_0" : "xenia");
-  const VOICES = voicesFor(speechLanguage);
+  const modelName = qwen ? "Qwen3-TTS 0.6B" : speechLanguage === "en" ? "Silero v3 English" : "Silero v5.5 Russian";
+  const voice = activeVoice(preferences, speechLanguage);
+  const VOICES = voicesFor(speechLanguage, preferences?.tts_engine);
   const [audio, setAudio] = useState<string | null>(null);
   useEffect(() => { setChecked(false); setAudio(null); }, [provider]);
   useEffect(() => { setAudio(null); }, [voice]);
@@ -40,7 +42,7 @@ export function TtsSection({ compact = false }: { compact?: boolean }) {
   const ready = !!status?.installed && !!status?.accepted;
   return <Card id="local-tts">
     <CardHeader>
-      <CardTitle>{t("Local text to speech — Silero")}</CardTitle>
+      <CardTitle>{qwen ? t("Local text to speech — Qwen3-TTS") : t("Local text to speech — Silero")}</CardTitle>
       <CardDescription>{t("Optional. Works offline after downloading.")}</CardDescription>
     </CardHeader>
     <CardContent className="space-y-4">
@@ -53,10 +55,27 @@ export function TtsSection({ compact = false }: { compact?: boolean }) {
       </div>}
       {(enabled || compact) && <>
       <TtsLanguageSwitch disabled={active} />
+      <div className="space-y-1" data-tour="tts-engine">
+        <label htmlFor="tts-engine" className="text-sm font-medium">{t("Speech engine")}</label>
+        <select id="tts-engine" className="w-full rounded border bg-background p-2 text-sm" value={qwen ? "qwen" : "silero"} disabled={active || saving}
+          onChange={e => { setAudio(null); setChecked(false); void setTtsEngine(e.target.value as "silero" | "qwen").then(() => refresh()).catch(err => toast.error(String(err))); }}>
+          <option value="qwen">{t("qwenEngineOption")}</option>
+          <option value="silero">{t("sileroEngineOption")}</option>
+        </select>
+        <p className="text-xs text-muted-foreground">{qwen ? t("qwenEngineNote") : t("sileroEngineNote")}</p>
+      </div>
+      {!compact && <div className="flex items-center justify-between gap-3" data-tour="strip-brackets">
+        <div className="space-y-0.5">
+          <label htmlFor="tts-strip-brackets" className="text-sm font-medium">{t("Do not read text in brackets")}</label>
+          <p className="text-muted-foreground text-xs">{t("stripBracketsNote")}</p>
+        </div>
+        <Switch id="tts-strip-brackets" checked={!!preferences?.tts_strip_brackets} disabled={!preferences || saving}
+          onCheckedChange={value => void setTtsStripBrackets(value).catch(e => toast.error(String(e)))} />
+      </div>}
       {error && <p role="alert" className="text-destructive text-sm">{error}</p>}
       {!status ? <p className="text-sm text-muted-foreground">{t("Checking status…")}</p> : <>
         {ready && <div className="space-y-2" data-tour="voice">
-          <p className="text-sm font-medium">{speechLanguage === "en" ? "Silero v3 English" : "Silero v5.5 Russian"} · {t("Ready")}</p>
+          <p className="text-sm font-medium">{modelName} · {t("Ready")}</p>
           <div className="flex flex-wrap items-center gap-2">
             <label className="flex flex-wrap items-center gap-2 text-sm">{t("Voice")}<select className="rounded border bg-background p-2" value={voice} disabled={active} onChange={e => { setAudio(null); void setTtsVoice(e.target.value).catch(e => toast.error(String(e))); }}>{VOICES.map(v => <option key={v.id} value={v.id}>{v.label}</option>)}</select></label>
             <Button variant="outline" disabled={active} onClick={() => void action(async () => { setAudio(null); markFeatureUsed("preview"); const path = await previewTts(voice, provider); setAudio(convertFileSrc(path) + "?v=" + Date.now()); })}>{t("Preview voice")}</Button>
@@ -67,11 +86,13 @@ export function TtsSection({ compact = false }: { compact?: boolean }) {
         <details className="rounded-lg border" open={!ready || compact || active} data-tour="tts-components">
           <summary className="cursor-pointer p-4 text-sm font-medium">{t("Components and license")}</summary>
           <div className="space-y-4 px-4 pb-4">
-            <p className="text-xs text-muted-foreground">{t("sharedRuntimeNote")}</p>
+            {!qwen && <p className="text-xs text-muted-foreground">{t("sharedRuntimeNote")}</p>}
             {status.download_bytes > 0 && <p className="text-sm">{t("downloadRequired", {size: mb(status.download_bytes)})}</p>}
-            <p className="text-sm">Silero Team · CC BY-NC-SA 4.0 · <strong>{t("for noncommercial use")}</strong>{t(". Download the model and runtime separately if you want to use them. Silero is not required for dictation, including office servers.")}</p>
-            <details className="text-sm"><summary className="cursor-pointer">{t("Full Silero license")}</summary><pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded border p-3 text-xs">{status.license}</pre></details>
-            {!ready && <p className="text-sm font-medium">{speechLanguage === "en" ? "Silero v3 English" : "Silero v5.5 Russian"}</p>}
+            {qwen
+              ? <p className="text-sm">Qwen team · Apache 2.0 · qwentts.cpp · MIT · <strong>{t("commercial use allowed")}</strong>{t("qwenLicenseNote")}</p>
+              : <p className="text-sm">Silero Team · CC BY-NC-SA 4.0 · <strong>{t("for noncommercial use")}</strong>{t(". Download the model and runtime separately if you want to use them. Silero is not required for dictation, including office servers.")}</p>}
+            <details className="text-sm"><summary className="cursor-pointer">{qwen ? t("Full licenses") : t("Full Silero license")}</summary><pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded border p-3 text-xs">{status.license}</pre></details>
+            {!ready && <p className="text-sm font-medium">{modelName}</p>}
             {!compact && <p className="text-sm text-muted-foreground">{t("Model:")}{" "}{mb(status.model_bytes)} {t("MB · runtime:")}{" "}{mb(status.runtime_bytes)} {t("MB. Installation requires at least")}{" "}{mb(status.disk_bytes)} {t("MB.")}</p>}
             {!status.supported && <p className="text-sm">{t("Local text to speech currently supports Windows x64.")}</p>}
             {!status.accepted && <label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={checked} disabled={active} onChange={e => setChecked(e.target.checked)} className="mt-1" />{t("I have read the Silero terms and will use it noncommercially.")}</label>}
@@ -79,10 +100,10 @@ export function TtsSection({ compact = false }: { compact?: boolean }) {
             {status.progress && status.progress.total > 0 && <div className="space-y-1"><Progress value={100 * status.progress.downloaded / status.progress.total} /><p className="text-xs">{mb(status.progress.downloaded)} / {mb(status.progress.total)} {t("MB")}</p></div>}
             <div className="flex flex-wrap gap-2">
               <Button disabled={active || !accepted || !status.supported} onClick={() => void action(() => installTts(accepted, status.license_hash, null, provider))}>{status.installed ? t("Verify and repair") : status.partial_bytes ? t("Resume download") : t("Download and enable")}</Button>
-              <Button variant="outline" disabled={active || !accepted || !status.supported} onClick={() => void action(async () => {
+              {!qwen && <Button variant="outline" disabled={active || !accepted || !status.supported} onClick={() => void action(async () => {
                 const path = await open({ multiple: false, filters: [{ name: status.model_file, extensions: ["pt"] }] });
                 if (typeof path === "string") await installTts(accepted, status.license_hash, path, provider);
-              })}>{t("Choose a downloaded model")}</Button>
+              })}>{t("Choose a downloaded model")}</Button>}
               {active ? <Button variant="outline" onClick={() => void cancelTts().catch(e => toast.error(String(e)))}>{t("Cancel")}</Button> : (status.installed || status.partial_bytes > 0 || status.accepted) && <Button variant="outline" onClick={() => void action(async () => { setAudio(null); await removeTts(provider); setChecked(false); })}>{t("removeModel")}</Button>}
             </div>
           </div>
