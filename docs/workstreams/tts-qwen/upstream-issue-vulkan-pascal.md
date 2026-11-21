@@ -46,10 +46,10 @@ Exit code `-1073740791`. Log (abridged):
 [GGML]   address fault 169: type=4 address=0x28d5eef70 precision=0x8
 [GGML] ggml_vulkan: device lost on Vulkan0
 ```
-The same happens with `--clamp-fp16` and a 6 s codec chunk. **With `--no-fa` it works**
-(exit code 0, correct `out.wav`), so the faults seem to come from the flash-attention
-path on this GPU (no FP16, no matrix cores). Glagol now falls back to `use_fa = false`
-on such cards.
+The same happens with `--clamp-fp16` and a 6 s codec chunk. With `--no-fa` the process
+exits with code 0, but `out.wav` contains a single monotone tone instead of speech —
+so the results are numerically wrong on this GPU even without flash attention (no
+FP16, no matrix cores); flash attention only turns it into a crash.
 
 **Expected**
 Synthesis completes on Vulkan0, or a clean error status if the device is unsupported.
