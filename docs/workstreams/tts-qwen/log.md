@@ -301,3 +301,10 @@ bench.ps1 с `-ServerArgs "--no-fa"`: talker до EOS (66 кадров), зат�
 lost» в декодере звука (ggml-vulkan.cpp:345, waitForFences). Вывод: Vulkan в
 qwentts.cpp на Pascal ненадёжен в любом режиме (падение или неверный звук);
 проверку `--no-fa --clamp-fp16` не проводим. Для GTX 10xx — CUDA или CPU.
+
+## 2026-11-21T10:00:00.000Z — Отчёт автору qwentts.cpp
+
+Пользователь опубликовал отчёт о сбоях Vulkan на GTX 1060 (Pascal):
+https://github.com/ServeurpersoCom/qwentts.cpp/issues/47 (текст —
+`upstream-issue-vulkan-pascal.md`). Параллельно собирается CUDA-вариант
+среды (workflow `qwen-runtime-cuda.yml`, windows-2022, CUDA 12.4.1).

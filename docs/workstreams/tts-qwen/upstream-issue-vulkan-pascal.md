@@ -1,5 +1,7 @@
 # Черновик issue для qwentts.cpp: падение Vulkan на GTX 1060
 
+> Опубликовано: https://github.com/ServeurpersoCom/qwentts.cpp/issues/47
+
 Куда: https://github.com/ServeurpersoCom/qwentts.cpp/issues/new
 Публикует пользователь со своего аккаунта. Перед отправкой вставить вывод
 `qwen-tts.exe` из шага воспроизведения (без личных данных).
