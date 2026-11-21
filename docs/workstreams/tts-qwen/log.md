@@ -308,3 +308,9 @@ qwentts.cpp на Pascal ненадёжен в любом режиме (паде�
 https://github.com/ServeurpersoCom/qwentts.cpp/issues/47 (текст —
 `upstream-issue-vulkan-pascal.md`). Параллельно собирается CUDA-вариант
 среды (workflow `qwen-runtime-cuda.yml`, windows-2022, CUDA 12.4.1).
+
+## 2026-11-21T10:10:00.000Z — уточнение: модель ноутбука
+
+Ноутбук, на котором шли все проверки Qwen («ноутбук», Ryzen 7 со встроенным
+Radeon, AVX2), — Lunnen 16 (со слов пользователя). Прежние записи журнала не
+правятся; README серии и черновик отчёта для qwentts.cpp уточнены.

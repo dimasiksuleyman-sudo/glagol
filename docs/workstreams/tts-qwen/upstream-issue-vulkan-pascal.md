@@ -27,7 +27,7 @@ driver reports page faults and the device is lost; the process ends with
 0xC0000409 (-1073740791) instead of returning an error status. Same with
 `clamp_fp16 = true` and `codec_chunk_sec = 6`. With `device = "CPU"` the same text
 synthesizes correctly. On an AMD RX 550 (2 GB, `fp16: 0`) and on an integrated
-Radeon (Ryzen 7 laptop) the Vulkan backend works (the RX 550 needs `--clamp-fp16`
+Radeon (Lunnen 16 laptop, Ryzen 7) the Vulkan backend works (the RX 550 needs `--clamp-fp16`
 and runs out of memory in the codec on long texts).
 
 **Reproduce**
