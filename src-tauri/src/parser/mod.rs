@@ -38,6 +38,20 @@ pub struct ParsedDocument {
     pub is_scanned_pdf: bool,
     /// Format the parser was selected as. `"txt" | "md" | "docx" | "pdf"`.
     pub source_format: String,
+    /// Details of a partial extraction or suspicious character mapping.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pdf_warnings: Option<PdfWarnings>,
+}
+
+/// PDF extraction warnings, localized by the receiving UI.
+#[derive(Debug, Clone, Default, Serialize, PartialEq, Eq)]
+pub struct PdfWarnings {
+    /// Pages Pdfium could not open or load as text.
+    pub skipped_pages: usize,
+    /// Readable pages whose text layer yielded no content.
+    pub pages_without_text: usize,
+    /// At least one page had many replacement or private-use characters.
+    pub suspect_font: bool,
 }
 
 /// Errors surfaced by the parser layer. Converted to `String` at the
@@ -49,6 +63,8 @@ pub enum ParseError {
     /// File contents were not valid for the chosen parser
     /// (corrupt DOCX zip, malformed PDF, etc.).
     Format(String),
+    /// Pdfium needs a password to open this file.
+    PdfPasswordRequired,
     /// TXT decoding failed for every encoding we attempted.
     Encoding(String),
     /// Every parser returned an error during the `try_all` escape hatch.
@@ -60,6 +76,7 @@ impl fmt::Display for ParseError {
         match self {
             ParseError::Io(e) => write!(f, "не удалось прочитать файл: {e}"),
             ParseError::Format(msg) => write!(f, "не удалось разобрать файл: {msg}"),
+            ParseError::PdfPasswordRequired => write!(f, "Файл защищён паролем"),
             ParseError::Encoding(msg) => write!(f, "не удалось определить кодировку: {msg}"),
             ParseError::AllParsersFailed => {
                 write!(

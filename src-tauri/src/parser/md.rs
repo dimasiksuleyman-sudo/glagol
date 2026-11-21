@@ -46,6 +46,7 @@ pub fn parse_with_language(
         text,
         is_scanned_pdf: false,
         source_format: "md".to_string(),
+        pdf_warnings: None,
     })
 }
 

@@ -163,17 +163,35 @@ export function Synthesize() {
       const filePath = typeof picked === "string" ? picked : picked[0];
 
       const parsed = await readAndParseFile(filePath);
+      const warnings = parsed.pdf_warnings;
+      const notices: string[] = [];
+      if (warnings?.skipped_pages) {
+        notices.push(t("Skipped pages: {p0}", { p0: warnings.skipped_pages.toLocaleString(currentLocale()) }));
+      }
+      if (parsed.text && warnings?.pages_without_text) {
+        notices.push(t("Pages without text (likely scans): {p0}", { p0: warnings.pages_without_text.toLocaleString(currentLocale()) }));
+      }
+      if (warnings?.suspect_font) {
+        notices.push(t("Some characters could not be read correctly. The PDF font may be the cause."));
+      }
+      if (notices.length) {
+        toast.warning(t(parsed.text ? "PDF loaded with warnings" : "No text extracted from PDF"), {
+          description: <ul className="list-disc pl-4">{notices.map(notice => <li key={notice}>{notice}</li>)}</ul>,
+          duration: 8000,
+        });
+      }
 
       if (parsed.is_scanned_pdf) {
         setScannedPdfOpen(true);
         return; // leave the textarea untouched
       }
+      if (warnings?.skipped_pages && !parsed.text) return;
 
       setText(parsed.text);
       const chars = parsed.text.length;
-      toast.success(t("File loaded ({p0} chars)", { p0: chars.toLocaleString(currentLocale()) }));
+      if (!notices.length) toast.success(t("File loaded ({p0} chars)", { p0: chars.toLocaleString(currentLocale()) }));
     } catch (err) {
-      // Backend errors come back as Russian-language strings already
+      // Backend errors are localized already
       // (file too big, content too long, parse error). Surface them
       // directly; the textarea is preserved either way.
       toast.error(stringifyError(err));

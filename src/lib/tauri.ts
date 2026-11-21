@@ -133,16 +133,16 @@ export async function updateDocumentTitle(documentId: string, title: string): Pr
  * on the Rust side; serde uses field names as-is (snake_case) so the
  * shape lines up 1:1 over the IPC boundary.
  *
- * `is_scanned_pdf` is the only non-obvious field: it is `true` only
- * when the PDF parser extracted no usable text (typical of image-only
- * scanned documents). The frontend uses it to show the OCR disclaimer
- * dialog instead of loading an empty textarea.
+ * `is_scanned_pdf` marks a PDF without a usable text layer. The frontend
+ * opens the OCR disclaimer instead of clearing the editor. Partial PDF
+ * results include warning details alongside the available text.
  */
 export interface ParsedDocument {
   text: string;
   is_scanned_pdf: boolean;
   /** `"txt" | "md" | "docx" | "pdf"` */
   source_format: string;
+  pdf_warnings?: { skipped_pages: number; pages_without_text: number; suspect_font: boolean };
 }
 
 /**
