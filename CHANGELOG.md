@@ -11,6 +11,11 @@ the per-session master logs under [`docs/day-logs/`](docs/day-logs/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Both dictation shortcuts insert at the caret in the Glagol editor. If no editable field has focus, the text is copied to the clipboard (GL-016). / Оба хоткея вставляют диктовку в поле Глагола на месте курсора. Если активного поля нет, текст копируется в буфер (GL-016).
+- PDF import preserves readable pages and reports failed pages, missing text layers and suspicious font mappings. Password-protected files get a clear message (GL-017). / Импорт PDF сохраняет текст с читаемых страниц и предупреждает о пропущенных страницах, отсутствии текстового слоя и возможной проблеме со шрифтом. Для файлов с паролем показывается понятное сообщение (GL-017).
+
 ## [v0.7.0] — 2026-11-21
 
 [Release notes, validation and limits / проверка и ограничения](docs/releases/v0.7.0.md).

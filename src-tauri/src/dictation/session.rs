@@ -310,7 +310,7 @@ async fn run_session(
 
     // Keyboard and clipboard work runs inside the pipeline's spawn_blocking.
     // Both shortcuts carry the originating window into the insertion path.
-    let inserter = SystemInserter::new(origin);
+    let inserter = SystemInserter::new(&app, origin);
     let clipboard = ArboardClipboard;
     // Pass the pinned device (D6); the recorder falls back to the system default
     // and reports it if the device is gone.

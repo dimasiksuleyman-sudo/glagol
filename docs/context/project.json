@@ -5,7 +5,8 @@
     "tts-qwen",
     "outlook-paste",
     "code-signing",
-    "promotion"
+    "promotion",
+    "fixes-0.7.1"
   ],
   "links": [
     "AGENTS.md",
