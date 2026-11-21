@@ -64,6 +64,18 @@ powershell -ExecutionPolicy Bypass -File scripts\qwen\bench.ps1 -BinDir <пап�
 Модели скачиваются один раз в `%LOCALAPPDATA%\glagol-qwen-bench\models`
 (≈ 1,5 ГБ по умолчанию), результаты и WAV — в `...\glagol-qwen-bench\out`.
 
+## Эталонный текст для замеров озвучки
+
+[tts-reference-ru.txt](tts-reference-ru.txt) — новость с числами, датами, сокращениями
+и скобками (1013 символов). Вставить на экране «Озвучить» целиком, озвучить, взять
+длительность звука из «Библиотеки» и строку журнала:
+
+```powershell
+Select-String -Path "$env:LOCALAPPDATA\app.glagol.desktop\logs\glagol.*.log" -Pattern "document synthesis completed|Qwen worker ready|device profile" | Select-Object -Last 5
+```
+
+Скорость = длительность звука (с) / (`synthesis_ms` / 1000).
+
 ## Выпуск
 
 Только по [ранбуку выпуска](release.md): сборка обычной командой `pnpm tauri build`
