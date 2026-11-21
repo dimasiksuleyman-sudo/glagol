@@ -44,7 +44,8 @@ local dictation. Upgrades retain modes, server addresses, credentials and voices
   the final text once. Auto-paste or clipboard only; optional history is off by default.
   Hesitation sounds ("uh", "um", «эм», «э-э») are removed from the text by default.
   Optionally dictate by holding Ctrl+Win, as in Wispr Flow. On Windows,
-  auto-paste briefly waits for the shortcut modifiers to clear. If they stay
+  both shortcuts insert directly in the focused text field in Glagol.
+  Auto-paste into other apps briefly waits for the shortcut modifiers to clear. If they stay
   down or the target window is different at insertion, the text is available
   in the clipboard. Windows Search and Start also use clipboard fallback.
 - Built-in recognition server: one computer with a graphics card serves Russian
@@ -68,7 +69,8 @@ local dictation. Upgrades retain modes, server addresses, credentials and voices
 - Numbers, amounts, dates and abbreviations are read as words in the right Russian
   case; your pronunciation dictionary («written as → read as», stress with «+») comes
   first; optional AI help for tricky numbers through any OpenAI-compatible service.
-- Paste text or import TXT/MD/DOCX/PDF. Long documents use a sequential WAV pipeline.
+- Paste text or import TXT/MD/DOCX/PDF. PDF import keeps readable pages and
+  warns about pages it skipped. Long documents use a sequential WAV pipeline.
   Library, rename, localized player, 0.5–2× playback, WAV export and backups.
   Existing recordings and their metadata remain usable.
 - Settings in Dictation, Text to speech and General tabs; built-in Help with short steps,
@@ -192,7 +194,8 @@ the development machine; importing pinned files was exercised separately.
   готовый текст вставится один раз. Доступен режим буфера; история изначально выключена.
   Звуки-заминки («эм», «э-э», «uh», «um») по умолчанию убираются из текста.
   По желанию — диктовка по удержанию Ctrl+Win, как в Wispr Flow. В Windows
-  автовставка недолго ждёт отпускания модификаторов. Если они остаются
+  оба хоткея вставляют текст прямо в активное поле Глагола.
+  Автовставка в другие приложения недолго ждёт отпускания модификаторов. Если они остаются
   нажатыми или при вставке активно другое окно, текст доступен в буфере
   обмена. Для поиска Windows и «Пуска» также используется буфер.
 - Встроенный сервер распознавания: один компьютер с видеокартой раздаёт русскую
@@ -216,7 +219,8 @@ the development machine; importing pinned files was exercised separately.
 - Числа, суммы, даты и сокращения читаются словами в нужном падеже; раньше правил
   работает ваш словарь произношения («как написано → как читать», ударение «+»);
   по желанию — помощь ИИ со сложными числами через любой OpenAI-совместимый сервис.
-- Текст или TXT/MD/DOCX/PDF; последовательная озвучка длинных документов в WAV.
+- Текст или TXT/MD/DOCX/PDF. При импорте PDF Глагол сохраняет читаемые страницы
+  и предупреждает о пропусках. Длинные документы озвучиваются последовательно в WAV.
   Библиотека, переименование, локализованный плеер, скорость 0.5–2×, экспорт и бэкапы.
   Старые записи и метаданные остаются доступны.
 - Настройки на вкладках «Диктовка», «Озвучка» и «Общие»; встроенная «Справка» с короткими
