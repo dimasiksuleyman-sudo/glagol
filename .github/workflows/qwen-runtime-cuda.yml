@@ -1,0 +1,113 @@
+name: Qwen runtime (CUDA) release
+
+# tts-qwen, GL-018: on NVIDIA Pascal (GTX 1060) the Vulkan backend of
+# qwentts.cpp crashes mid-synthesis. This builds the same pinned runtime with
+# the CUDA backend added (plus Vulkan and the CPU variants), bundling the
+# redistributable CUDA runtime DLLs, for NVIDIA cards. A push to a claude/**
+# branch that changes this file only builds and uploads a 3-day artifact; a
+# qwen-runtime-cuda-* tag publishes a pre-release that is never "latest".
+
+on:
+  push:
+    tags: ["qwen-runtime-cuda-*"]
+    branches: ["claude/**"]
+    paths: [".github/workflows/qwen-runtime-cuda.yml"]
+
+permissions:
+  contents: write
+
+env:
+  QWENTTS_REPO: ServeurpersoCom/qwentts.cpp
+  QWENTTS_SHA: 2edb35f87b709a070b2d5379f77e5c52a1daa585
+  VULKAN_VERSION: 1.4.313.2
+  CUDA_VERSION: 12.4.1
+  # Pascal (GTX 10xx) to Ada (RTX 40xx); keeps the DLL size bounded.
+  CUDA_ARCHS: "61;75;86;89"
+
+jobs:
+  build:
+    name: qwen.dll (Windows x64, CUDA + Vulkan + CPU)
+    runs-on: windows-latest
+    timeout-minutes: 120
+    steps:
+      - name: Checkout qwentts.cpp at the pinned commit
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.QWENTTS_REPO }}
+          ref: ${{ env.QWENTTS_SHA }}
+          submodules: recursive
+          path: qwentts
+
+      - name: Install CUDA toolkit
+        uses: Jimver/cuda-toolkit@v0.2.19
+        with:
+          cuda: ${{ env.CUDA_VERSION }}
+          method: network
+          sub-packages: '["nvcc", "cudart", "cublas", "cublas_dev", "thrust", "visual_studio_integration"]'
+
+      - name: Install Vulkan SDK
+        shell: pwsh
+        run: |
+          $installer = "$env:RUNNER_TEMP\VulkanSDK-Installer.exe"
+          curl.exe -fL -o $installer "https://sdk.lunarg.com/sdk/download/$env:VULKAN_VERSION/windows/vulkansdk-windows-X64-$env:VULKAN_VERSION.exe"
+          & $installer --accept-licenses --default-answer --confirm-command install
+          Add-Content $env:GITHUB_ENV "VULKAN_SDK=C:\VulkanSDK\$env:VULKAN_VERSION"
+          Add-Content $env:GITHUB_PATH "C:\VulkanSDK\$env:VULKAN_VERSION\bin"
+
+      - name: Build
+        shell: pwsh
+        working-directory: qwentts
+        run: |
+          cmake -S . -B build -DQWEN_SHARED=ON -DGGML_CUDA=ON -DGGML_VULKAN=ON `
+            -DGGML_CPU_ALL_VARIANTS=ON -DGGML_BACKEND_DL=ON "-DCMAKE_CUDA_ARCHITECTURES=$env:CUDA_ARCHS"
+          cmake --build build --config Release -j $env:NUMBER_OF_PROCESSORS
+
+      - name: Package
+        id: package
+        shell: pwsh
+        run: |
+          $name = "qwen-runtime-cuda-windows-x64-$($env:QWENTTS_SHA.Substring(0,7))"
+          New-Item -ItemType Directory $name | Out-Null
+          Get-ChildItem qwentts/build -Recurse -Include *.dll |
+            Where-Object { $_.FullName -match '\\Release\\' } |
+            Copy-Item -Destination $name
+          if (-not (Test-Path "$name/qwen.dll")) { throw "qwen.dll was not built" }
+          if (-not (Test-Path "$name/ggml-cuda.dll")) { throw "ggml-cuda.dll was not built" }
+          # Redistributable CUDA runtime libraries the CUDA backend links to.
+          foreach ($pattern in "cudart64_*.dll", "cublas64_*.dll", "cublasLt64_*.dll") {
+            Get-ChildItem "$env:CUDA_PATH\bin" -Filter $pattern | Copy-Item -Destination $name
+          }
+          Copy-Item qwentts/LICENSE "$name/LICENSE-qwentts.txt"
+          if (Test-Path qwentts/ggml/LICENSE) { Copy-Item qwentts/ggml/LICENSE "$name/LICENSE-ggml.txt" }
+          if (Test-Path "$env:CUDA_PATH\EULA.txt") { Copy-Item "$env:CUDA_PATH\EULA.txt" "$name/LICENSE-NVIDIA-CUDA.txt" }
+          Copy-Item qwentts/src/qwen.h "$name/qwen.h"
+          "qwentts.cpp $env:QWENTTS_SHA (MIT), ggml (MIT), CUDA $env:CUDA_VERSION runtime (NVIDIA redistributable), archs $env:CUDA_ARCHS, Vulkan SDK $env:VULKAN_VERSION" | Set-Content "$name/VERSION.txt"
+          Get-ChildItem $name -File | Sort-Object Name | ForEach-Object {
+            "{0}  {1}  {2}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower(), $_.Length, $_.Name
+          } | Set-Content "$name/FILES.sha256"
+          Get-Content "$name/FILES.sha256"
+          Compress-Archive -Path "$name/*" -DestinationPath "$name.zip"
+          $hash = (Get-FileHash "$name.zip" -Algorithm SHA256).Hash.ToLower()
+          "$hash  $name.zip" | Set-Content SHA256SUMS.txt
+          Get-Content SHA256SUMS.txt
+          (Get-Item "$name.zip").Length
+          "zip=$name.zip" | Add-Content $env:GITHUB_OUTPUT
+          "dir=$name" | Add-Content $env:GITHUB_OUTPUT
+
+      - name: Upload test artifact
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: qwen-runtime-cuda-test
+          path: ${{ steps.package.outputs.dir }}
+          retention-days: 3
+
+      - name: Publish pre-release
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $notes = "Qwen3-TTS CUDA runtime for Glagol on NVIDIA cards (not a Glagol release): qwentts.cpp $env:QWENTTS_SHA (MIT) with CUDA $env:CUDA_VERSION (archs $env:CUDA_ARCHS), Vulkan and CPU backends, plus NVIDIA's redistributable CUDA runtime DLLs. Downloaded by Glagol on demand and verified by SHA-256."
+          gh release create "$env:GITHUB_REF_NAME" "${{ steps.package.outputs.zip }}" SHA256SUMS.txt `
+            --repo "$env:GITHUB_REPOSITORY" --prerelease --latest=false --title "$env:GITHUB_REF_NAME" --notes $notes
