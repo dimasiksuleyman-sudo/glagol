@@ -294,3 +294,10 @@ attention (FA лишь приводил к падению). Профиль `gpu-
 он «успешно» озвучивал бы мусор. Проверяется `--no-fa --clamp-fp16`; иначе для
 NVIDIA Pascal — только CUDA-сборка или процессор. Нужна проверка «звук похож
 на речь» перед публикацией фрагмента, чтобы молча не отдавать мусор.
+
+## 2026-11-21T09:00:00.000Z — GTX 1060: tts-server с --no-fa тоже «device lost»
+
+bench.ps1 с `-ServerArgs "--no-fa"`: talker до EOS (66 кадров), затем «device
+lost» в декодере звука (ggml-vulkan.cpp:345, waitForFences). Вывод: Vulkan в
+qwentts.cpp на Pascal ненадёжен в любом режиме (падение или неверный звук);
+проверку `--no-fa --clamp-fp16` не проводим. Для GTX 10xx — CUDA или CPU.

@@ -49,7 +49,9 @@ Exit code `-1073740791`. Log (abridged):
 The same happens with `--clamp-fp16` and a 6 s codec chunk. With `--no-fa` the process
 exits with code 0, but `out.wav` contains a single monotone tone instead of speech —
 so the results are numerically wrong on this GPU even without flash attention (no
-FP16, no matrix cores); flash attention only turns it into a crash.
+FP16, no matrix cores); flash attention only turns it into a crash. With `tts-server --no-fa` the talker
+again reaches EOS (66 frames) and then the device is lost in the codec decode:
+`ggml_vulkan: device lost on Vulkan0` at `ggml-vulkan.cpp:345` (`waitForFences`).
 
 **Expected**
 Synthesis completes on Vulkan0, or a clean error status if the device is unsupported.
