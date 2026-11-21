@@ -7,6 +7,7 @@ import App from "./App";
 import { OverlayPill } from "@/components/dictation/OverlayPill";
 import { TtsProvider } from "@/contexts/TtsContext";
 import { PreferencesProvider } from "@/contexts/PreferencesContext";
+import { listenForDictationInsert } from "@/lib/dictation-insert";
 import { reportUiReady } from "@/lib/tauri";
 import "./index.css";
 
@@ -30,6 +31,7 @@ if (isOverlay) {
     </React.StrictMode>,
   );
 } else {
+  if (windowLabel === "main") void listenForDictationInsert().catch(() => undefined);
   root.render(
     <React.StrictMode>
       <PreferencesProvider><TtsProvider>

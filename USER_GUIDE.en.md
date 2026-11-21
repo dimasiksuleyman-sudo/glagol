@@ -147,6 +147,12 @@ Synthesize and save to library. Input files are limited to 10 MB and 500,000 ext
 characters. Scanned PDFs need external OCR. Text stays in the editor when switching
 languages. Language/model changes are disabled during the corresponding operation.
 
+For a PDF with a mix of readable and failed pages, Glagol loads the available
+text and reports the number of pages skipped or without text. A warning about
+the PDF font means some extracted characters may be unreadable. To import a
+password-protected PDF, first open it with its password in a PDF reader and save
+an unlocked copy.
+
 Long text is split and synthesized sequentially with progress and cancellation.
 Cancellation does not publish a partial recording as a completed library document.
 Before synthesis Glagol turns numbers, amounts, percentages, dates, years, centuries,
@@ -346,12 +352,15 @@ Good to know:
 
 ## Windows limitations
 
-- Release all shortcut keys after dictating. Auto-paste waits up to half a second
+- In Glagol's main window, both shortcuts insert in the focused text field
+  at the caret or replace the selection. If no editable field has focus, the
+  text goes to the clipboard.
+- Release all shortcut keys after dictating. Auto-paste into other apps waits up to half a second
   for Ctrl, Shift, Alt and Win to clear. It checks that the window where you
   started is still active. If a modifier stays down, another window is active,
   or the target is Windows Search, Start or another shell window, the text goes
   to the clipboard for manual `Ctrl+V`.
-- Auto-paste restores previous text clipboard contents, but cannot restore images/files.
+- Auto-paste into other apps restores previous text clipboard contents, but cannot restore images/files.
   Clipboard managers changing line endings can prevent restoration. Windows Win+V
   history may retain transcripts independently of Glagol's history setting.
 - Elevated windows may need Glagol at the same privilege level. Two identically named

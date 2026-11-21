@@ -388,12 +388,16 @@
     "ru": "не удалось загрузить Pdfium: {e}"
   },
   {
+    "en": "the Pdfium library is unavailable",
+    "ru": "библиотека Pdfium недоступна"
+  },
+  {
     "en": "opening PDF: {e}",
     "ru": "открытие PDF: {e}"
   },
   {
-    "en": "extracting page text: {e}",
-    "ru": "извлечение текста страницы: {e}"
+    "en": "The file is password protected",
+    "ru": "Файл защищён паролем"
   },
   {
     "en": "BOM specifies {} but the contents cannot be decoded",

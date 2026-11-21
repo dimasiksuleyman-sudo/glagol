@@ -65,6 +65,7 @@ pub fn parse(path: &Path) -> Result<ParsedDocument, ParseError> {
         text: out.trim_end().to_string(),
         is_scanned_pdf: false,
         source_format: "docx".to_string(),
+        pdf_warnings: None,
     })
 }
 

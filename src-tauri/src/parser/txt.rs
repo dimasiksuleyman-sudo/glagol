@@ -28,6 +28,7 @@ pub fn parse(path: &Path) -> Result<ParsedDocument, ParseError> {
         text,
         is_scanned_pdf: false,
         source_format: "txt".to_string(),
+        pdf_warnings: None,
     })
 }
 

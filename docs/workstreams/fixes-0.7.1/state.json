@@ -1,0 +1,175 @@
+{
+  "schema_version": 1,
+  "id": "fixes-0.7.1",
+  "title": "Исправления 0.7.1 — диктовка в Глаголе и импорт PDF",
+  "status": "active",
+  "next": "F3",
+  "reason": null,
+  "claim": null,
+  "links": [
+    "docs/workstreams/fixes-0.7.1/README.md",
+    "docs/workstreams/fixes-0.7.1/log.md",
+    "docs/findings/README.md"
+  ],
+  "steps": [
+    {
+      "id": "F1",
+      "title": "GL-016 — Вставка диктовки в поле главного окна Глагола",
+      "status": "done",
+      "depends_on": [],
+      "required": [
+        "rust",
+        "frontend"
+      ],
+      "checks": [
+        {
+          "id": "rust",
+          "status": "PASS",
+          "method": "command",
+          "command": "cargo fmt --manifest-path src-tauri/Cargo.toml --check && cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings && cargo test --manifest-path src-tauri/Cargo.toml dictation::",
+          "cwd": ".",
+          "at": "2026-11-21T01:22:47.395Z",
+          "environment": {
+            "os": "Debian 13",
+            "node": "v24.22.1",
+            "pnpm": "11.25.0",
+            "rustc": "1.100.0"
+          },
+          "exit_code": 0,
+          "output": "172 passed, 1 ignored, 0 failed",
+          "evidence": "docs/workstreams/fixes-0.7.1/log.md#f1-вставка-в-главном-окне"
+        },
+        {
+          "id": "frontend",
+          "status": "PASS",
+          "method": "command",
+          "command": "pnpm exec tsc --noEmit && pnpm build",
+          "cwd": ".",
+          "at": "2026-11-21T01:22:47.395Z",
+          "environment": {
+            "os": "Debian 13",
+            "node": "v24.22.1",
+            "pnpm": "11.25.0",
+            "rustc": "1.100.0"
+          },
+          "exit_code": 0,
+          "output": "523 keys with matching parameters; Vite built",
+          "evidence": "docs/workstreams/fixes-0.7.1/log.md#f1-вставка-в-главном-окне"
+        },
+        {
+          "id": "frontend-smoke",
+          "status": "PASS",
+          "method": "command",
+          "command": "TMPDIR=/dev/shm node /dev/shm/glagol-071-ui.cjs",
+          "cwd": ".",
+          "at": "2026-11-21T01:22:47.395Z",
+          "environment": {
+            "os": "Debian 13",
+            "node": "v24.22.1",
+            "pnpm": "11.25.0",
+            "rustc": "1.100.0"
+          },
+          "exit_code": 0,
+          "output": "EN and RU PASS: selection, React state, caret, no focus, expired request, password field",
+          "evidence": "docs/workstreams/fixes-0.7.1/log.md#f1-вставка-в-главном-окне"
+        }
+      ]
+    },
+    {
+      "id": "F2",
+      "title": "GL-017 — Частичный импорт PDF и понятные предупреждения",
+      "status": "done",
+      "depends_on": [
+        "F1"
+      ],
+      "required": [
+        "rust",
+        "frontend"
+      ],
+      "checks": [
+        {
+          "id": "rust",
+          "status": "PASS",
+          "method": "command",
+          "command": "cargo fmt --manifest-path src-tauri/Cargo.toml --check && cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings && cargo test --manifest-path src-tauri/Cargo.toml",
+          "cwd": ".",
+          "at": "2026-11-21T01:29:15.130Z",
+          "environment": {
+            "os": "Debian 13",
+            "node": "v24.22.1",
+            "pnpm": "11.25.0",
+            "rustc": "1.100.0"
+          },
+          "exit_code": 0,
+          "output": "463 passed, 0 failed, 6 ignored",
+          "evidence": "docs/workstreams/fixes-0.7.1/log.md#итоговые-проверки"
+        },
+        {
+          "id": "frontend",
+          "status": "PASS",
+          "method": "command",
+          "command": "node scripts/check-version.mjs && pnpm exec tsc --noEmit && pnpm build",
+          "cwd": ".",
+          "at": "2026-11-21T01:29:15.130Z",
+          "environment": {
+            "os": "Debian 13",
+            "node": "v24.22.1",
+            "pnpm": "11.25.0",
+            "rustc": "1.100.0"
+          },
+          "exit_code": 0,
+          "output": "Glagol 0.7.0: package, Tauri and Cargo versions match; I18N PASS: 528 keys; Vite built",
+          "evidence": "docs/workstreams/fixes-0.7.1/log.md#итоговые-проверки"
+        },
+        {
+          "id": "browser-smoke",
+          "status": "PASS",
+          "method": "command",
+          "command": "TMPDIR=/dev/shm PDF_SMOKE=1 node /dev/shm/glagol-071-ui.cjs",
+          "cwd": ".",
+          "at": "2026-11-21T01:29:15.130Z",
+          "environment": {
+            "os": "Debian 13",
+            "node": "v24.22.1",
+            "pnpm": "11.25.0",
+            "rustc": "1.100.0",
+            "browser": "Chromium 156",
+            "ipc": "Playwright stub"
+          },
+          "exit_code": 0,
+          "output": "EN and RU PASS: in-app selection and localized PDF warnings; existing text preserved when all pages failed",
+          "evidence": "docs/workstreams/fixes-0.7.1/log.md#итоговые-проверки"
+        },
+        {
+          "id": "runbook-tests",
+          "status": "PASS",
+          "method": "command",
+          "command": "pnpm runbook:test && pnpm i18n:test",
+          "cwd": ".",
+          "at": "2026-11-21T01:29:15.130Z",
+          "environment": {
+            "os": "Debian 13",
+            "node": "v24.22.1",
+            "pnpm": "11.25.0",
+            "rustc": "1.100.0"
+          },
+          "exit_code": 0,
+          "output": "53 runbook tests and 3 i18n tests passed",
+          "evidence": "docs/workstreams/fixes-0.7.1/log.md#итоговые-проверки"
+        }
+      ]
+    },
+    {
+      "id": "F3",
+      "title": "Ручная проверка GL-016 и GL-017 пользователем",
+      "status": "pending",
+      "depends_on": [
+        "F2"
+      ],
+      "required": [
+        "manual"
+      ],
+      "checks": []
+    }
+  ]
+}

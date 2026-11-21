@@ -119,6 +119,15 @@ mod windows_target {
             Self(foreground().map(|(_, identity)| identity))
         }
 
+        pub(in crate::dictation) fn belongs_to_current_process(self) -> bool {
+            self.0
+                .is_some_and(|origin| origin.process == std::process::id())
+        }
+
+        pub(in crate::dictation) fn is_window(self, handle: usize) -> bool {
+            self.0.is_some_and(|origin| origin.handle == handle)
+        }
+
         fn check(self) -> Result<(HWND, WindowIdentity), String> {
             let origin = self.0.ok_or("no foreground window at dictation start")?;
             if let Some((window, current)) = foreground() {
